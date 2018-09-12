@@ -6,6 +6,7 @@
 #include "exiv2/exiv2.hpp"
 
 #include "sift.h"
+#include "image.hpp"
 #include "opencv2/xfeatures2d.hpp"
 #include "opencv2/features2d.hpp"
 
@@ -26,15 +27,6 @@ using std::cout;
 using std::endl;
 using std::string;
 using namespace cv::xfeatures2d;
-
-struct Img {
-    string fileName;
-};
-
-struct Location {
-	float longitude;
-	float latitude;
-};
 
 Location getCoodinates(string path) {
     Location loc;
@@ -65,7 +57,6 @@ Location getCoodinates(string path) {
 
     loc.longitude = longitude;
     loc.latitude = latitude;
-    
     return loc;
 }
 
