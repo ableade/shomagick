@@ -37,8 +37,8 @@ struct Location {
 };
 
 Location getCoodinates(string path) {
-	Location loc;
-	Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(path);
+    Location loc;
+    Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(path);
     assert(image.get() != 0);
     image->readMetadata();
     Exiv2::ExifData &exifData = image->exifData();
@@ -48,6 +48,21 @@ Location getCoodinates(string path) {
     	throw Exiv2::Error(1, error);
     }
     Exiv2::ExifData::const_iterator end = exifData.end();
+    Exiv2::Value::AutoPtr latV = Exiv2::Value::create(Exiv2::signedRational);
+    Exiv2::Value::AutoPtr longV = Exiv2::Value::create(Exiv2::signedRational);
+    auto longitudeKey = Exiv2::ExifKey("Exif.GPSInfo.GPSLongitude");
+    auto latitudeKey = Exiv2::ExifKey("Exif.GPSInfo.GPSLatitude");
+    auto latPos = exifData.findKey(latitudeKey);
+    auto longPos = exifData.findKey(longitudeKey);
+    if (latPos == exifData.end() || longPos == exifData.end()) throw Exiv2::Error(1, "Key not found");
+    // Get a pointer to a copy of the value
+    latV = latPos->getValue();
+    longV = longPos->getValue();
+    auto latitude = latV->toFloat() + (latV->toFloat(1) / 60.0) + (latV->toFloat(2) / 3600.0); 
+    auto longitude =longV->toFloat() + (longV->toFloat(1) / 60.0) + (longV->toFloat(2) / 3600.0);
+										
+    cout << "Latitude of this image is "<<latitude<<endl;
+    cout << "Longitude of this image is "<<longitude<<endl;
     for (Exiv2::ExifData::const_iterator i = exifData.begin(); i != end; ++i) {
         const char* tn = i->typeName();
         std::cout << std::setw(44) << std::setfill(' ') << std::left
