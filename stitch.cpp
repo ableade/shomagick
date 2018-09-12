@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <exiv2/exiv2.h>
 
 #include "sift.h"
 #include "opencv2/xfeatures2d.hpp"
@@ -29,6 +30,37 @@ using namespace cv::xfeatures2d;
 struct Img {
     string fileName;
 };
+
+struct Location {
+	float longitude;
+	float latitude;
+}
+
+Location getCoodinates(string path) {
+	Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(path);
+    assert(image.get() != 0);
+    image->readMetadata();
+    Exiv2::ExifData &exifData = image->exifData();
+    if (exifData.empty()) {
+    	std::string error(argv[1]);
+    	error += ": No Exif data found in the file";
+    	throw Exiv2::Error(1, error);
+    }
+    for (Exiv2::ExifData::const_iterator i = exifData.begin(); i != end; ++i) {
+        const char* tn = i->typeName();
+        std::cout << std::setw(44) << std::setfill(' ') << std::left
+                  << i->key() << " "
+                  << "0x" << std::setw(4) << std::setfill('0') << std::right
+                  << std::hex << i->tag() << " "
+                  << std::setw(9) << std::setfill(' ') << std::left
+                  << (tn ? tn : "Unknown") << " "
+                  << std::dec << std::setw(3)
+                  << std::setfill(' ') << std::right
+                  << i->count() << "  "
+                  << std::dec << i->value()
+                  << "\n";
+    }
+}
 
 int getImages(string path, vector<Img>& imgs, vector<Mat>& descps) {
 	auto count =0;
