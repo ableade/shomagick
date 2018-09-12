@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <set>
-#include <exiv2/exiv2.h>
+#include "exiv2/exiv2.hpp"
 
 #include "sift.h"
 #include "opencv2/xfeatures2d.hpp"
@@ -34,18 +34,20 @@ struct Img {
 struct Location {
 	float longitude;
 	float latitude;
-}
+};
 
 Location getCoodinates(string path) {
+	Location loc;
 	Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(path);
     assert(image.get() != 0);
     image->readMetadata();
     Exiv2::ExifData &exifData = image->exifData();
     if (exifData.empty()) {
-    	std::string error(argv[1]);
+    	std::string error(path);
     	error += ": No Exif data found in the file";
     	throw Exiv2::Error(1, error);
     }
+    Exiv2::ExifData::const_iterator end = exifData.end();
     for (Exiv2::ExifData::const_iterator i = exifData.begin(); i != end; ++i) {
         const char* tn = i->typeName();
         std::cout << std::setw(44) << std::setfill(' ') << std::left
@@ -60,6 +62,7 @@ Location getCoodinates(string path) {
                   << std::dec << i->value()
                   << "\n";
     }
+    return loc;
 }
 
 int getImages(string path, vector<Img>& imgs, vector<Mat>& descps) {
@@ -68,18 +71,19 @@ int getImages(string path, vector<Img>& imgs, vector<Mat>& descps) {
 	vector<directory_entry> v;
     assert (is_directory(path));
     copy(directory_iterator(path), directory_iterator(), back_inserter(v));
-    for (entry : v) {
+    for (auto entry : v) {
     	vector<KeyPoint> keypoints;
     	Img img;
     	Mat imge = cv::imread(entry.path().string());
         if (imge.empty())
             continue;
         count++;
+        getCoodinates(entry.path().string());
         Mat descriptors;
     	img.fileName = entry.path().string();
-    	sift(imge, Mat(), keypoints, descriptors);
+    	//sift(imge, Mat(), keypoints, descriptors);
     	imgs.push_back(img);
-    	descps.push_back(descriptors);
+    	//descps.push_back(descriptors);
     }
     cout << "Found "<< count << "usable images"<<endl;
     return count;

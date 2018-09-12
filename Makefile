@@ -27,6 +27,7 @@ OPENCV_LINK_FLAGS += -lopencv_objdetect
 
 LFLAGS += -lboost_filesystem
 LFLAGS += -lboost_system
+LFLAGS += -lexiv2
 LFLAGS += `pkg-config --libs opencv`
 LFLAGS += -g
 shomagick : stitch.cpp
