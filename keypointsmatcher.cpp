@@ -50,8 +50,10 @@ int main(int argc, char* argv[]) {
 		matcher.match(trainDescriptors[i], matches, 3);
 		for(auto matchList: matches) {
 			for (auto match: matchList) {
-				cout << "Image match was at "<<match.imgIdx<<endl;
-				cout<< "Match with image "<<v[match.imgIdx].path().string()<<endl;
+				if (match.imgIdx != i) {
+					cout << "Image match was at "<<match.imgIdx<<endl;
+					cout<< "Match with image "<<v[match.imgIdx].path().string()<<endl;
+				}
 			}
 		}
 		cout << "Examined all matches "<<endl;
