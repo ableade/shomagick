@@ -53,11 +53,11 @@ int main(int argc, char* argv[]) {
 				if (match.imgIdx != i) {
 					cout << "Image match was at "<<match.imgIdx<<endl;
 					cout<< "Match with image "<<v[match.imgIdx].path().string()<<endl;
+					cout << "Distance for this match was "<<match.distance<<endl;
 				}
 			}
 			cout <<"Finished examining matchlist"<<endl;
 		}
-		cout << "Examined all matches "<<endl;
-		cout << "****************************"<<endl;
+		cout << "Examined all matches "<<endl;	
 	}
 }
