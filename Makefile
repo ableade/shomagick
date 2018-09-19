@@ -1,8 +1,7 @@
 SOURCES = $(wildcard *.cpp)
 OBJECTS = $(SOURCES:.cpp=.o)
 
-# Use the name of the current directory as the name of the executable: 
-all:  shomagick
+all:  shomagick matcher
 
 
 DEPDIR = deps
@@ -30,8 +29,12 @@ LFLAGS += -lboost_system
 LFLAGS += -lexiv2
 LFLAGS += `pkg-config --libs opencv`
 LFLAGS += -g
-shomagick : stitch.cpp
-	$(CXX) $(CXXFLAGS) -o $@ $< $(LFLAGS)
+
+shomagick : stitch.cpp kdtree.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LFLAGS)
+
+matcher: keypointsmatcher.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LFLAGS) 
 
 clean:
-	rm -f $(OBJECTS) $(addprefix $(DEPDIR)/, $(DEPS)) shomagick
+	rm -f $(OBJECTS) $(addprefix $(DEPDIR)/, $(DEPS)) shomagick shomagick.exe matcher matcher.exe

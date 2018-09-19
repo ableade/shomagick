@@ -4,8 +4,10 @@
 #include <vector>
 #include <set>
 #include "exiv2/exiv2.hpp"
+//#include <pcl/point_cloud.h>
+//#include <pcl/kdtree/kdtree_flann.h>
 
-#include "sift.h"
+#include "detector.h"
 #include "image.hpp"
 #include "opencv2/xfeatures2d.hpp"
 #include "opencv2/features2d.hpp"
@@ -17,6 +19,7 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/calib3d.hpp"
 #include "opencv2/imgproc.hpp"
+#include "kdtree.h"
 
 using namespace boost::filesystem;
 using std::vector;
@@ -26,6 +29,7 @@ using cv::BFMatcher;
 using std::cout;
 using std::endl;
 using std::string;
+using std::function;
 using namespace cv::xfeatures2d;
 
 Location getCoodinates(string path) {
@@ -60,32 +64,37 @@ Location getCoodinates(string path) {
     return loc;
 }
 
-int getImages(string path, vector<Img>& imgs, vector<Mat>& descps) {
+vector<directory_entry> getImages(string path, vector<Img>& imgs, vector<Mat>& descps) {
 	auto count =0;
-	SIFTDetector sift;
+	Detector <SURF> myDetector;
 	vector<directory_entry> v;
     assert (is_directory(path));
     copy(directory_iterator(path), directory_iterator(), back_inserter(v));
     for (auto entry : v) {
     	vector<KeyPoint> keypoints;
     	Img img;
-    	Mat imge = cv::imread(entry.path().string());
+    	Mat imge = cv::imread(entry.path().string()); 
         if (imge.empty())
             continue;
         count++;
         getCoodinates(entry.path().string());
         Mat descriptors;
     	img.fileName = entry.path().string();
-    	//sift(imge, Mat(), keypoints, descriptors);
-    	imgs.push_back(img);
-    	//descps.push_back(descriptors);
+    	myDetector(imge, Mat(), keypoints, descriptors);
+    	descps.push_back(descriptors);
+
+        cout << "Parsing GPS information for this image"<<endl;
+        auto loc = getCoodinates(path);
+        img.location = loc;
+        imgs.push_back(img);
     }
     cout << "Found "<< count << "usable images"<<endl;
-    return count;
+    return v;
 }
 
 
 int main(int argc, char* argv[]) {
+    auto dimensionality =2;
 	vector<Mat> trainDescriptors;
 	vector<Img> mosaicImages;
 	if (argc < 2) {
@@ -93,8 +102,38 @@ int main(int argc, char* argv[]) {
 		exit(1);
 	}
 	path imageDirectory(argv[1]);
-	int imageCount = getImages(imageDirectory.string(), mosaicImages, trainDescriptors);
-	SIFTMatcher<BFMatcher> matcher(trainDescriptors);
+    auto v = getImages(imageDirectory.string(), mosaicImages, trainDescriptors);
+	Matcher<BFMatcher> matcher(trainDescriptors);
+
+    //Iniitalize K-D tree for GPS location data
+    void *kd;
+    kd = kd_create(dimensionality);
+
+    for (auto img : mosaicImages) {
+        double pos[dimensionality] = {img.location.longitude, img.location.latitude};
+        void *dt = &img.location;
+        assert(kd_insert(static_cast<kdtree*>(kd), pos, dt) == 0); 
+    }
+
+    //Compute the nearest neighbors for every image
+    for (auto i = 0; i< v.size(); i++) {
+        cout << "Image: "<< v[i].path().string()<<endl;
+        auto range = 3;
+        void *result_set;
+
+        double pt[] = {mosaicImages[i].location.longitude, mosaicImages[i].location.latitude}; result_set = kd_nearest_range(static_cast<kdtree*>(kd), pt, range);
+
+        auto current = kd_res_item(static_cast<kdres*>(result_set), pt);
+        while(kd_res_next(static_cast<kdres*>(result_set)) != 0) {
+            if (current!= NULL) {
+                auto loc = static_cast<Location*>(current); 
+
+            }
+        }
+    }
+
+
+    /*
 	//computing matches among all images
 	for(int i=0; i< imageCount; i++) {
 		vector< vector <DMatch> > matches;
@@ -105,4 +144,5 @@ int main(int argc, char* argv[]) {
 			}
 		}
 	}
+    */
 }

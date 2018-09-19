@@ -13,29 +13,30 @@ using std::cout;
 using namespace cv::xfeatures2d;
 
 
-struct SIFTDetector
+template <class DetectorClass>
+struct Detector
 {
-    Ptr<Feature2D> sift;
+    Ptr<DetectorClass> detector;
 
-    SIFTDetector()
+    Detector()
     {
-        sift = SIFT::create();
+        detector =  DetectorClass::create();
     }
 
     template<class T>
     void operator()(const T& in, const T& mask, vector<KeyPoint>& pts, T& descriptors, bool useProvided=false )
     {
-        sift->detectAndCompute(in, mask, pts, descriptors, useProvided);
+        detector->detectAndCompute(in, mask, pts, descriptors, useProvided);
     }
 };
 
 template<class KPMatcher>
-struct SIFTMatcher
+struct Matcher
 {
     KPMatcher matcher;
 
     template <class T>
-    SIFTMatcher(const vector<T>& descriptorSet){
+    Matcher(const vector<T>& descriptorSet):matcher{}{
         matcher.add(descriptorSet);
         cout << "Now training descriptor set for all images";
         matcher.train();

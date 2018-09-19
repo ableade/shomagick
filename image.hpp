@@ -1,5 +1,7 @@
-#ifndef IMAGE_HPP_
-#define IMAGE_HPP_
+#ifndef SHOIMAGE_HPP_
+#define SHOIMAGE_HPP_
+
+#include <string>
 
 struct Location {
 	float longitude;
@@ -8,7 +10,7 @@ struct Location {
 
 
 struct Img {
-    string fileName;
+    std::string fileName;
     Location location;
 };
 
