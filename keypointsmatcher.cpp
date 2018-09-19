@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
 	Matcher<FlannBasedMatcher> matcher(trainDescriptors);
 
 	for(int i=0; i< v.size(); i++) {
-		cout << "Now finding marches for image: "<<v[i].path().string()<<endl;
+		cout << "Now finding matches for image: "<<v[i].path().string()<<endl;
 		vector< vector <DMatch> > matches;
 		matcher.match(trainDescriptors[i], matches, 3);
 		for(auto matchList: matches) {
@@ -55,6 +55,7 @@ int main(int argc, char* argv[]) {
 					cout<< "Match with image "<<v[match.imgIdx].path().string()<<endl;
 				}
 			}
+			cout <<"Finished examining matchlist"<<endl;
 		}
 		cout << "Examined all matches "<<endl;
 		cout << "****************************"<<endl;
