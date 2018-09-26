@@ -19,7 +19,18 @@ vector<directory_entry> getImages(string path, vector<Mat>& descps) {
 	Detector <SURF> myDetector;
 	vector<directory_entry> v;
     assert (is_directory(path));
+#if 0
     copy(directory_iterator(path), directory_iterator(), back_inserter(v));
+#else
+    copy_if(
+    	directory_iterator(path),
+    	directory_iterator(),
+    	back_inserter(v),
+    	[]( const directory_entry& e ){
+    		return is_regular_file( e );
+    	}
+    );
+#endif
     for (auto entry : v) {
     	vector<KeyPoint> keypoints;
     	Mat imge = cv::imread(entry.path().string()); 
@@ -42,6 +53,7 @@ int main(int argc, char* argv[]) {
 	path imageDirectory(argv[1]);
 
 	auto v = getImages(imageDirectory.string(), trainDescriptors);
+	cout << "Number of descriptors is "<< trainDescriptors.size()<<endl;
 	Matcher<FlannBasedMatcher> matcher(trainDescriptors);
 
 	for(int i=0; i< v.size(); i++) {
