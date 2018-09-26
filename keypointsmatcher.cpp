@@ -34,6 +34,7 @@ vector<directory_entry> getImages(string path, vector<Mat>& descps) {
 }
 
 int main(int argc, char* argv[]) {
+	auto ratio=0.75
 	if (argc < 2) {
 		cout << "Program usage: <images directory>"<<endl;
 		exit(1);
@@ -45,6 +46,7 @@ int main(int argc, char* argv[]) {
 	Matcher<FlannBasedMatcher> matcher(trainDescriptors);
 
 	for(int i=0; i< v.size(); i++) {
+		cout << "I is now 	"<<i<<endl;
 		cout << "Now finding matches for image: "<<v[i].path().string()<<endl;
 		vector< vector <DMatch> > matches;
 		matcher.match(trainDescriptors[i], matches, 3);
