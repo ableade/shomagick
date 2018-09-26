@@ -34,7 +34,6 @@ vector<directory_entry> getImages(string path, vector<Mat>& descps) {
 }
 
 int main(int argc, char* argv[]) {
-	auto ratio=0.75
 	if (argc < 2) {
 		cout << "Program usage: <images directory>"<<endl;
 		exit(1);
