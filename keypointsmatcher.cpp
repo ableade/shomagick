@@ -44,6 +44,11 @@ vector<directory_entry> getImages(string path, vector<Mat>& descps) {
     return v;
 }
 
+string parseFileNameFromPath(string path) {
+	int index = path.find_last_of('/');
+	return path.substr(index+1);
+}
+
 int main(int argc, char* argv[]) {
 	if (argc < 2) {
 		cout << "Program usage: <images directory>"<<endl;
@@ -51,20 +56,26 @@ int main(int argc, char* argv[]) {
 	}
 	vector<Mat> trainDescriptors;
 	path imageDirectory(argv[1]);
+	ofstream outFile;
+	string outputFileName = "results.csv";
+	outFile.open(outputFileName);
 
 	auto v = getImages(imageDirectory.string(), trainDescriptors);
 	cout << "Number of descriptors is "<< trainDescriptors.size()<<endl;
 	Matcher<FlannBasedMatcher> matcher(trainDescriptors);
+	
+	outFile << "Query image name, Match image name, Query keypoint index, Match keypoint index, Distance "<<endl;
 
 	for(int i=0; i< v.size(); i++) {
-		cout << "I is now 	"<<i<<endl;
 		cout << "Now finding matches for image: "<<v[i].path().string()<<endl;
+		outFile << parseFileNameFromPath(v[i].path().string())<< ",";
 		vector< vector <DMatch> > matches;
 		matcher.match(trainDescriptors[i], matches, 3);
 		for(auto matchList: matches) {
 			for (auto match: matchList) {
 				if (match.imgIdx != i) {
-					cout << "Image match was at "<<match.imgIdx<<endl;
+					outFile << parseFileNameFromPath(v[match.imgIdx].path().string())
+					<< ","<<match.queryIdx<<","<<match.trainIdx<<","<<match.distance<<","<<endl;
 					cout<< "Match with image "<<v[match.imgIdx].path().string()<<endl;
 					cout << "Distance for this match was "<<match.distance<<endl;
 				}
@@ -72,5 +83,6 @@ int main(int argc, char* argv[]) {
 			cout <<"Finished examining matchlist"<<endl;
 		}
 		cout << "Examined all matches "<<endl;	
+		outFile.close();
 	}
 }
