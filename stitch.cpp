@@ -69,7 +69,14 @@ vector<directory_entry> getImages(string path, vector<Img>& imgs, vector<Mat>& d
 	Detector <SURF> myDetector;
 	vector<directory_entry> v;
     assert (is_directory(path));
-    copy(directory_iterator(path), directory_iterator(), back_inserter(v));
+     copy_if(
+    	directory_iterator(path),
+    	directory_iterator(),
+    	back_inserter(v),
+    	[]( const directory_entry& e ){
+    		return is_regular_file( e );
+    	}
+    );
     for (auto entry : v) {
     	vector<KeyPoint> keypoints;
     	Img img;
@@ -132,17 +139,4 @@ int main(int argc, char* argv[]) {
         }
     }
 
-
-    /*
-	//computing matches among all images
-	for(int i=0; i< imageCount; i++) {
-		vector< vector <DMatch> > matches;
-		matcher.match(trainDescriptors[i], matches, 3);
-		for(auto matchList: matches) {
-			for (auto match: matchList) {
-				cout << "Image match was at "<<match.imgIdx<<endl;
-			}
-		}
-	}
-    */
 }
