@@ -86,7 +86,7 @@ vector<directory_entry> getImages(string path, vector<Img>& imgs, vector<Mat>& d
         count++;
         getCoodinates(entry.path().string());
         Mat descriptors;
-    	img.fileName = entry.path().string();
+    	img.fileName = parseFileNameFromPath(entry.path().string());
     	myDetector(imge, Mat(), keypoints, descriptors);
     	descps.push_back(descriptors);
 
@@ -118,7 +118,7 @@ int main(int argc, char* argv[]) {
 
     for (auto img : mosaicImages) {
         double pos[dimensionality] = {img.location.longitude, img.location.latitude};
-        void *dt = &img.location;
+        void *dt = &img;
         assert(kd_insert(static_cast<kdtree*>(kd), pos, dt) == 0); 
     }
 
@@ -131,12 +131,14 @@ int main(int argc, char* argv[]) {
         double pt[] = {mosaicImages[i].location.longitude, mosaicImages[i].location.latitude}; result_set = kd_nearest_range(static_cast<kdtree*>(kd), pt, range);
 
         auto current = kd_res_item(static_cast<kdres*>(result_set), pt);
+        cout << "Closest neighbors for this image are "<<endl;
         while(kd_res_next(static_cast<kdres*>(result_set)) != 0) {
             if (current!= NULL) {
-                auto loc = static_cast<Location*>(current); 
-
+                auto img = static_cast<Img*>(current); 
+                cout << "Image name was "<<img->fileName << endl;
             }
         }
+        cout <<endl;
     }
 
 }

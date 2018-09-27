@@ -4,10 +4,17 @@
 #include <string>
 #include <cmath>
 
+using std::string;
+
 const int DEG = 180;
 
 float toRadian (float deg) {
 	return deg * M_PI/DEG;
+}
+
+string parseFileNameFromPath(string path) {
+	int index = path.find_last_of('/');
+	return path.substr(index+1);
 }
 
 struct Location {

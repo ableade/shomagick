@@ -45,11 +45,6 @@ vector<directory_entry> getImages(string path, vector<Mat>& descps) {
     return v;
 }
 
-string parseFileNameFromPath(string path) {
-	int index = path.find_last_of('/');
-	return path.substr(index+1);
-}
-
 int main(int argc, char* argv[]) {
 	if (argc < 2) {
 		cout << "Program usage: <images directory>"<<endl;
@@ -65,7 +60,7 @@ int main(int argc, char* argv[]) {
 	cout << "Number of descriptors is "<< trainDescriptors.size()<<endl;
 	Matcher<FlannBasedMatcher> matcher(trainDescriptors);
 	
-	outFile << "Query image name, Match image name, Query keypoint index, Match keypoint index, Distance "<<endl;
+	outFile << "Query image name, Match image name, Query keypoint index, Match keypoint index, Distance, "<<endl;
 
 	for(int i=0; i< v.size(); i++) {
 		cout << "Now finding matches for image: "<<v[i].path().string()<<endl;
