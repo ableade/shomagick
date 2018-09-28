@@ -118,7 +118,7 @@ int main(int argc, char* argv[]) {
     //Compute the nearest neighbors for every image
     for (auto i = 0; i< v.size(); i++) {
         cout << "Image: "<< v[i].path().string()<<endl;
-        auto range = 0.00003;
+        auto range = 0.00010;
         void *result_set;
 
         double pt[] = {mosaicImages[i].location.longitude, mosaicImages[i].location.latitude}; result_set = kd_nearest_range(static_cast<kdtree*>(kd), pt, range);
