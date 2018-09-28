@@ -78,6 +78,6 @@ int main(int argc, char* argv[]) {
 			cout <<"Finished examining matchlist"<<endl;
 		}
 		cout << "Examined all matches "<<endl;	
-		outFile.close();
 	}
+	outFile.close();
 }

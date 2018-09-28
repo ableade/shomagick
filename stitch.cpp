@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <boost/filesystem.hpp>
 #include <string>
 #include <vector>
@@ -30,6 +31,7 @@ using std::cout;
 using std::endl;
 using std::string;
 using std::function;
+using std::setprecision;
 using namespace cv::xfeatures2d;
 
 Location getCoodinates(string path) {
@@ -61,10 +63,12 @@ Location getCoodinates(string path) {
 
     loc.longitude = longitude;
     loc.latitude = latitude;
+
+    cout << "Latitude: "<< setprecision(10)<<latitude << "longitude: "<<longitude <<endl;
     return loc;
 }
 
-vector<directory_entry> getImages(string path, vector<Img>& imgs, vector<Mat>& descps) {
+vector<directory_entry> getImages(string path, vector<Img>& imgs) {
 	auto count =0;
 	Detector <SURF> myDetector;
 	vector<directory_entry> v;
@@ -80,18 +84,9 @@ vector<directory_entry> getImages(string path, vector<Img>& imgs, vector<Mat>& d
     for (auto entry : v) {
     	vector<KeyPoint> keypoints;
     	Img img;
-    	Mat imge = cv::imread(entry.path().string()); 
-        if (imge.empty())
-            continue;
-        count++;
-        getCoodinates(entry.path().string());
-        Mat descriptors;
     	img.fileName = parseFileNameFromPath(entry.path().string());
-    	myDetector(imge, Mat(), keypoints, descriptors);
-    	descps.push_back(descriptors);
-
-        cout << "Parsing GPS information for this image"<<endl;
-        auto loc = getCoodinates(path);
+        cout << "Parsing GPS information for this image"<< entry.path().string()<<endl;
+        auto loc = getCoodinates(entry.path().string());
         img.location = loc;
         imgs.push_back(img);
     }
@@ -102,21 +97,19 @@ vector<directory_entry> getImages(string path, vector<Img>& imgs, vector<Mat>& d
 
 int main(int argc, char* argv[]) {
     auto dimensionality =2;
-	vector<Mat> trainDescriptors;
 	vector<Img> mosaicImages;
 	if (argc < 2) {
 		cout << "Program usage: <images directory>"<<endl;
 		exit(1);
 	}
 	path imageDirectory(argv[1]);
-    auto v = getImages(imageDirectory.string(), mosaicImages, trainDescriptors);
-	Matcher<BFMatcher> matcher(trainDescriptors);
+    auto v = getImages(imageDirectory.string(), mosaicImages);
 
     //Iniitalize K-D tree for GPS location data
     void *kd;
     kd = kd_create(dimensionality);
 
-    for (auto img : mosaicImages) {
+    for (auto& img : mosaicImages) {
         double pos[dimensionality] = {img.location.longitude, img.location.latitude};
         void *dt = &img;
         assert(kd_insert(static_cast<kdtree*>(kd), pos, dt) == 0); 
@@ -125,20 +118,24 @@ int main(int argc, char* argv[]) {
     //Compute the nearest neighbors for every image
     for (auto i = 0; i< v.size(); i++) {
         cout << "Image: "<< v[i].path().string()<<endl;
-        auto range = 3;
+        auto range = 0.00003;
         void *result_set;
 
         double pt[] = {mosaicImages[i].location.longitude, mosaicImages[i].location.latitude}; result_set = kd_nearest_range(static_cast<kdtree*>(kd), pt, range);
-
-        auto current = kd_res_item(static_cast<kdres*>(result_set), pt);
+        cout << "Size of the result set is "<<kd_res_size(static_cast<kdres*>(result_set))<<endl;
+        
         cout << "Closest neighbors for this image are "<<endl;
-        while(kd_res_next(static_cast<kdres*>(result_set)) != 0) {
-            if (current!= NULL) {
-                auto img = static_cast<Img*>(current); 
-                cout << "Image name was "<<img->fileName << endl;
-            }
+        while(!kd_res_end(static_cast<kdres*>(result_set))) {
+        	auto current = kd_res_item(static_cast<kdres*>(result_set), pt);
+        	if (current == nullptr) {
+        		cout << "Got NULL pointer"<<endl;
+        		continue;
+        	}
+        	auto img = static_cast<Img*>(current); 
+        	cout << "Image name was "<<img->fileName << endl;
+        	kd_res_next(static_cast<kdres*>(result_set));
         }
-        cout <<endl;
+         cout <<endl;
     }
 
 }
