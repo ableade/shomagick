@@ -1,4 +1,6 @@
 #include <iostream>
+#include <iomanip>
+
 #include <fstream>
 #include <string>
 #include <utility>
@@ -94,16 +96,17 @@ int main(int argc, char* argv[]) {
 				}
 			}
 			cout <<"Finished examining matchlist"<<endl;
-			for(int j =0; j< percentageMatches.size(); j++) {
+
+		}
+		for(int j =0; j< percentageMatches.size(); j++) {
 				auto queryFileName = parseFileNameFromPath(v[i].path().string());
 				auto trainFileName = parseFileNameFromPath(v[j].path().string());
 				if (i == j)
 					continue;
 				auto pct = percentageMatches[j].count() / float(trainDescriptors[i].rows);
 				outFile<< queryFileName << "," << trainFileName << ","<< matchCount[make_pair(queryFileName, trainFileName)]
-				<<"," << pct << ","<<endl;
+				<<"," << std::fixed<<std::setprecision(6)<<pct << ","<<endl;
 			}
-		}
 		cout << "Examined all matches "<<endl;	
 	}
 	outFile.close();
