@@ -70,7 +70,6 @@ int main(int argc, char* argv[]) {
 	outFile << "Query image name, Match image name, num_matches, Keypoint Match Percentage, "<<endl;
 
 	for(int i=0; i< v.size(); i++) {
-		set< pair <string, string> > rawMatches;
 		map< pair <string, string>, int> matchCount;
 		vector<   boost::dynamic_bitset<> > percentageMatches(v.size(), boost::dynamic_bitset<>(trainDescriptors[i].rows));
 		assert (percentageMatches.size()== v.size());
@@ -84,11 +83,11 @@ int main(int argc, char* argv[]) {
 				auto trainFileName = parseFileNameFromPath(v[match.imgIdx].path().string());
 				if (match.imgIdx != i) {
 					auto aPair = make_pair(queryFileName, trainFileName);
-					auto search = rawMatches.find(aPair);
-					if (search != rawMatches.end()) {
+					auto search = matchCount.find(aPair);
+					if (search != matchCount.end()) {
 						matchCount[aPair] ++;
+						cout << "Pair "<< queryFileName << "-"<< trainFileName << "Is appearing again"<<endl;
 					} else {
-						rawMatches.insert(aPair);
 						matchCount[aPair] = 1;
 					}
 					percentageMatches[match.imgIdx][match.queryIdx] = 1;
