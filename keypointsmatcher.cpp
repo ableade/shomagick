@@ -99,6 +99,7 @@ int main(int argc, char* argv[]) {
 
 		}
 		for(int j =0; j< percentageMatches.size(); j++) {
+				cout << "J is now"<<j<<endl;
 				auto queryFileName = parseFileNameFromPath(v[i].path().string());
 				auto trainFileName = parseFileNameFromPath(v[j].path().string());
 				if (i == j)
