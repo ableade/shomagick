@@ -136,22 +136,24 @@ int main(int argc, char* argv[]) {
         void *result_set;
 
         double pt[] = {mosaicImages[i].location.longitude, mosaicImages[i].location.latitude}; result_set = kd_nearest_range(static_cast<kdtree*>(kd), pt, range);
+	double pos[dimensionality];
         cout << "Size of the result set is "<<kd_res_size(static_cast<kdres*>(result_set))<<endl;
         
         cout << "Closest neighbors for this image are "<<endl;
         while(!kd_res_end(static_cast<kdres*>(result_set))) {
-        	auto current = kd_res_item(static_cast<kdres*>(result_set), pt);
+        	auto current = kd_res_item(static_cast<kdres*>(result_set), pos);
         	if (current == nullptr) {
         		cout << "Got NULL pointer"<<endl;
         		continue;
         	}
         	auto img = static_cast<Img*>(current); 
             double dist = sqrt( dist_sq( pt, pos, dimensionality ) );
+	    cout << "Distance was "<<std::fixed<<std::setprecision(6)<<dist<<endl;
         	cout << "Image name was "<<img->fileName << endl;
-            outfile << currentImage<<","<<img->fileName<<","<<dist<<","<<endl;
+            outfile << currentImage<<","<<img->fileName<<","<<std::fixed<<std::setprecision(7)<<dist<<","<<endl;
         	kd_res_next(static_cast<kdres*>(result_set));
         }
          cout <<endl;
     }
-
+   outfile.close();
 }
