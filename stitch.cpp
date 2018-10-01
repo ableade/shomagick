@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <fstream>
 #include "exiv2/exiv2.hpp"
 //#include <pcl/point_cloud.h>
 //#include <pcl/kdtree/kdtree_flann.h>
@@ -94,8 +95,18 @@ vector<directory_entry> getImages(string path, vector<Img>& imgs) {
     return v;
 }
 
+static double dist_sq( double *a1, double *a2, int dims ) {
+  double dist_sq = 0, diff;
+  while( --dims >= 0 ) {
+    diff = (a1[dims] - a2[dims]);
+    dist_sq += diff*diff;
+  }
+  return dist_sq;
+}
 
 int main(int argc, char* argv[]) {
+    std::ofstream outfile;
+    string resultsFileName = "nearest.csv";
     auto dimensionality =2;
 	vector<Img> mosaicImages;
 	if (argc < 2) {
@@ -115,9 +126,12 @@ int main(int argc, char* argv[]) {
         assert(kd_insert(static_cast<kdtree*>(kd), pos, dt) == 0); 
     }
 
+    outfile.open(resultsFileName);
+    outfile << "Image name, Neighboring image name, Distance,"<<endl;
     //Compute the nearest neighbors for every image
     for (auto i = 0; i< v.size(); i++) {
-        cout << "Image: "<< v[i].path().string()<<endl;
+        auto currentImage = parseFileNameFromPath(v[i].path().string());
+        cout << "Image: "<< currentImage<<endl;
         auto range = 0.00010;
         void *result_set;
 
@@ -132,7 +146,9 @@ int main(int argc, char* argv[]) {
         		continue;
         	}
         	auto img = static_cast<Img*>(current); 
+            double dist = sqrt( dist_sq( pt, pos, dimensionality ) );
         	cout << "Image name was "<<img->fileName << endl;
+            outfile << currentImage<<","<<img->fileName<<","<<dist<<","<<endl;
         	kd_res_next(static_cast<kdres*>(result_set));
         }
          cout <<endl;
