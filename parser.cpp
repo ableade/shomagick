@@ -3,6 +3,7 @@
 #include <fstream>
 #include <utility>
 #include <map>
+#include <iomanip>
 #include <array>
 #include <algorithm>
 #include <vector>
@@ -29,40 +30,34 @@ int main (int argc, char* argv[]) {
 		cout << "Program usage: <Keypoints file> <Distances file>"<<endl;
 		exit(1);
 	}
-
-	ifstream infile(argv[1]);
+	io::CSVReader<4> in(argv[1]);
+	io::CSVReader<3> nearest(argv[2]);
 	ofstream outfile("datajoin.csv");
 	vector<std::array<char, 100>> header;
 	outfile << "Query Image Name, Match Image Name, Num Matches, Keypoint Match Percentage, Distance,"<<endl;
-	string h;
-	getline(infile, h);
 
 	int numMatches;
 	string queryImageName, matchImageName;
 	double matchKeypointPercentage, distance;
 	map <pair<string, string>, Matchdetails> imagePairs;
 
-	while(infile >> queryImageName >> matchImageName >> numMatches >> matchKeypointPercentage) {
+	in.read_header(io::ignore_extra_column, "Query image name", "Match image name", "num_matches", "Keypoint Match Percentage");
+	while(in.read_row(queryImageName, matchImageName, numMatches, matchKeypointPercentage)){
 		cout << "Making a read"<<endl;
-		auto aPair = make_pair(queryImageName, matchImageName);
+		auto aPair = make_pair(queryImageName, matchImageName);	
 		Matchdetails detail{matchKeypointPercentage, numMatches};
 		imagePairs[aPair] = detail;
-
 	}
-	infile.close();
-
 	//Finished parsing keypoints file, parse distances file.
-	infile.open(argv[2]);
-	getline(infile, h);
-
-	while (infile >> queryImageName >> matchImageName >> distance) {
+	nearest.read_header(io::ignore_extra_column, "Image name", "Neighboring image name", "Distance");
+	while (nearest.read_row(queryImageName, matchImageName, distance)) {
 		auto aPair = make_pair(queryImageName, matchImageName);
 		if (imagePairs.find(aPair) != imagePairs.end()) {
 			outfile << queryImageName << ","<<matchImageName << "," << imagePairs[aPair].numMatches << ","
-			<<imagePairs[aPair].matchPercentage<< ","<<distance<<","<<endl;
+			<<imagePairs[aPair].matchPercentage<< ","<<std::fixed<<std::setprecision(10)<<distance<<","<<endl;
 		}
 	}
-	infile.close(); outfile.close();
+	outfile.close();
 	
 	return 0;
 }
