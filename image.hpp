@@ -7,6 +7,9 @@
 using std::string;
 
 const int DEG = 180;
+const float WGS84_A = 6378137.0;
+const float WGS84_B = 6356752.314245;
+
 
 float toRadian (float deg) {
 	return deg * M_PI/DEG;
@@ -20,6 +23,7 @@ string parseFileNameFromPath(string path) {
 struct Location {
 	float longitude;
 	float latitude;
+	float altitude;
 
 	float distanceTo(Location loc) {
 		auto b =2;
@@ -37,6 +41,18 @@ struct Location {
 		auto c =b * atan2(sqrt(a), sqrt(1-a));
 		return earthRadius * c;
 	}
+
+	/**
+	 * Uses WGS84 model for GPS distance. See https://github.com/mapillary/OpenSfM/blob/master/opensfm/geo.py
+	 */
+	float distanceTo(float longitude, float latitude, float altitude) {
+
+	}
+
+	float ecef() {
+		
+	}
+
 };
 
 
