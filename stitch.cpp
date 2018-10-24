@@ -5,6 +5,7 @@
 #include <vector>
 #include <set>
 #include <fstream>
+#include <utility>
 #include "exiv2/exiv2.hpp"
 //#include <pcl/point_cloud.h>
 //#include <pcl/kdtree/kdtree_flann.h>
@@ -32,6 +33,7 @@ using std::cout;
 using std::endl;
 using std::string;
 using std::function;
+using std::pair;
 using std::setprecision;
 using namespace cv::xfeatures2d;
 
@@ -104,8 +106,14 @@ static double dist_sq( double *a1, double *a2, int dims ) {
   return dist_sq;
 }
 
+bool pairCompare (pair<string, double>a, pair <string,double> b) {
+    return a.second < b.second;
+}
+
 int main(int argc, char* argv[]) {
     std::ofstream outfile;
+    std::ofstream harvFile;
+    std::ofstream wsgFile;
     string resultsFileName = "nearest.csv";
     auto dimensionality =2;
 	vector<Img> mosaicImages;
@@ -113,6 +121,7 @@ int main(int argc, char* argv[]) {
 		cout << "Program usage: <images directory>"<<endl;
 		exit(1);
 	}
+    auto k =5;
 	path imageDirectory(argv[1]);
     auto v = getImages(imageDirectory.string(), mosaicImages);
 
@@ -131,15 +140,11 @@ int main(int argc, char* argv[]) {
     //Compute the nearest neighbors for every image
     for (auto i = 0; i< v.size(); i++) {
         auto currentImage = parseFileNameFromPath(v[i].path().string());
-        cout << "Image: "<< currentImage<<endl;
         auto range = 0.00010;
         void *result_set;
 
         double pt[] = {mosaicImages[i].location.longitude, mosaicImages[i].location.latitude}; result_set = kd_nearest_range(static_cast<kdtree*>(kd), pt, range);
-	double pos[dimensionality];
-        cout << "Size of the result set is "<<kd_res_size(static_cast<kdres*>(result_set))<<endl;
-        
-        cout << "Closest neighbors for this image are "<<endl;
+        double pos[dimensionality];        
         while(!kd_res_end(static_cast<kdres*>(result_set))) {
         	auto current = kd_res_item(static_cast<kdres*>(result_set), pos);
         	if (current == nullptr) {
@@ -148,12 +153,51 @@ int main(int argc, char* argv[]) {
         	}
         	auto img = static_cast<Img*>(current); 
             double dist = sqrt( dist_sq( pt, pos, dimensionality ) );
-	    cout << "Distance was "<<std::fixed<<std::setprecision(6)<<dist<<endl;
-        	cout << "Image name was "<<img->fileName << endl;
             outfile << currentImage<<","<<img->fileName<<","<<std::fixed<<std::setprecision(7)<<dist<<","<<endl;
         	kd_res_next(static_cast<kdres*>(result_set));
         }
          cout <<endl;
     }
    outfile.close();
+
+    harvFile.open("harv.csv"); wsgFile.open("wsg.csv");
+   //Compute nearest neighbors using haversie formula
+   harvFile << "Image name, Neighboring image name, Distance,"<<endl;
+   wsgFile << "Image name, Neighboring image name, Distance,"<<endl;
+   for(auto i =0; i< v.size();++i) {
+       vector<pair<string,double > > harvDistances;
+       vector<pair<string,double > > wsgDistances;
+       auto currentImage = parseFileNameFromPath(v[i].path().string());
+       cout<<std::fixed<<std::setprecision(7);
+       cout<<"Current image is " << currentImage<<endl;
+       cout << "Coordinates for current image are "<<mosaicImages[i].location<<endl;
+       cout << "ECEF for current image is " << mosaicImages[i].location.ecef()<<endl;
+       for (int j=0; j < v.size();++j) {
+           if (j == i) {
+               continue;
+           }
+           //calculate distance from v[i] tp v[j]
+
+           auto harvesineDistance = mosaicImages[i].location.distanceTo(mosaicImages[j].location);
+           auto wsgDistance = mosaicImages[i].location.wgDistanceTo(mosaicImages[j].location);
+
+           auto harvPair = make_pair(mosaicImages[j].fileName, harvesineDistance);
+           auto wsgPair = make_pair(mosaicImages[j].fileName, wsgDistance);
+           harvDistances.push_back(harvPair);
+           wsgDistances.push_back(wsgPair);
+           //cout << "Coordinates for compare image are "<<mosaicImages[j].location<<endl;
+           //cout << "Haversine distance is "<< harvesineDistance<<endl;
+           //cout << "ECEF for compare image is "<<mosaicImages[j].location.ecef()<<endl;
+           //cout << "Wsg distance is "<<wsgDistance<<endl;
+       }
+       sort (harvDistances.begin(), harvDistances.end(), pairCompare);
+       sort (wsgDistances.begin(), wsgDistances.end(), pairCompare);
+       for(int j=0; j<k; ++j) {
+           harvFile << currentImage<<","<<harvDistances[j].first<<","<<std::fixed<<std::setprecision(7)<<harvDistances[j].second<<","<<endl;
+           wsgFile  << currentImage <<"," << wsgDistances[j].first<<","<<std::fixed<<std::setprecision(7)<<wsgDistances[j].second<<","<<endl;
+       }
+       cout << "*********************"<<endl;
+   }
+    harvFile.close();
+    wsgFile.close();
 }
