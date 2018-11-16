@@ -5,23 +5,23 @@
 #include "image.hpp"
 #include <boost/filesystem.hpp>
 
-using std::string;
-using std::vector;
-using namespace boost::filesystem;
-
 class FlightSession {
 
 private:
-	vector<Img> imageData;
-	string imageDirectory;
-	path imageDirectoryPath;
-	path imageFeaturesPath;
+	std::vector<Img> imageData;
+	std::string imageDirectory;
+	boost::filesystem::path imageDirectoryPath;
+	boost::filesystem::path imageFeaturesPath;
+	boost::filesystem::path imageMatchesPath;
 
 public:
 	FlightSession(string imageDirectory);
 	Location getCoordinates(string imagePath);
-	const vector<Img> getImageSet();
-	const path getImageDirectoryPath() const;
-	const path getImageFeaturesPath() const;
+	std::vector<Img> getImageSet() const;
+	const boost::filesystem::path getImageDirectoryPath() const;
+	const boost::filesystem::path getImageFeaturesPath() const;
+	const boost::filesystem::path getImageMatchesPath() const;
+	int getImageIndex(string imageName) const;
+
 };
 #endif

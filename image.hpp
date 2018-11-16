@@ -16,11 +16,11 @@ const float WGS84_A = 6378137.0;
 const float WGS84_B = 6356752.314245;
 const float EARTH_RADIUS = 6371e3;
 
-double toRadian (double deg) {
+inline double toRadian (double deg) {
 	return deg * M_PI/DEG;
 }
 
-string parseFileNameFromPath(string path) {
+inline string parseFileNameFromPath(string path) {
 	int index = path.find_last_of('/');
 	return path.substr(index+1);
 }

@@ -346,7 +346,7 @@ struct kdres *kd_nearest_range(struct kdtree *kd, const double *pos, double rang
 {
     int ret;
     struct kdres *rset;
-
+    
     if(!(rset = new kdres)) {
         return 0;
     }

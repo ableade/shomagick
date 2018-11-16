@@ -30,7 +30,7 @@ LFLAGS += -lexiv2
 LFLAGS += `pkg-config --libs opencv`
 LFLAGS += -g
 
-shomagick : stitch.cpp kdtree.cpp
+shomagick : stitch.cpp kdtree.cpp flightsession.cpp shomatcher.cpp RobustMatcher.cpp shotracking.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LFLAGS)
 
 matcher: keypointsmatcher.cpp
