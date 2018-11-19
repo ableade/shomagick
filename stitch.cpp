@@ -35,6 +35,10 @@ using std::set;
 using std::setprecision;
 using std::string;
 using std::vector;
+using cv::FeatureDetector;
+using cv::DescriptorExtractor;
+using cv::ORB;
+
 using namespace cv::xfeatures2d;
 
 bool pairCompare(pair<string, double> a, pair<string, double> b)
@@ -54,10 +58,31 @@ int main(int argc, char *argv[])
   }
   FlightSession flight(argv[1]);
   ShoMatcher shoMatcher(flight);
-  
-  shoMatcher.getCandidateMatches();
-  shoMatcher.runRobustFeatureDetection();
+  cv::Ptr<FeatureDetector> detector = ORB::create();
+  cv::Ptr<DescriptorExtractor> extractor = ORB::create();
 
+
+
+  //**** Begin Matching Pipeline ******
+  shoMatcher.getCandidateMatches();
+  shoMatcher.setFeatureDetector(detector);
+  shoMatcher.setFeatureExtractor(extractor);
+  shoMatcher.extractFeatures();
+  shoMatcher.runRobustFeatureDetection();
+  //*******End matching pipeline******
+
+  ShoTracker tracker (flight, shoMatcher.getCandidateImages());
+  tracker.createFeatureNodes();
+  tracker.createTracks();
+  auto tracksGraph = tracker.buildTracksGraph();
+  cout << "Created tracks graph "<<endl;
+  cout << "Number of vertices is "<<tracksGraph.m_vertices.size()<<endl;
+  cout << "Number of edges is "<<tracksGraph.m_edges.size()<<endl; 
+  auto commonTracks = tracker.commonTracks(tracksGraph);
+  cout << commonTracks.size()<<endl;
+  for(auto commonTrack : commonTracks) {
+    cout << "This pair has " << commonTrack.second.size() << " tracks"<<endl;
+  }
   /*
 harvFile.open("harv.csv"); wsgFile.open("wsg.csv");
 //Compute nearest neighbors using haversine formula

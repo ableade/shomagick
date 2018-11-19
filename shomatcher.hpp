@@ -26,14 +26,22 @@ class ShoMatcher
     std::map<string, std::vector<string>> candidateImages;
     void *kd;
     int dimensions = 2;
+    cv::Ptr<cv::FeatureDetector> detector_;
+    cv::Ptr<cv::DescriptorExtractor> extractor_;
+    cv::Ptr<cv::DescriptorMatcher> matcher_;
+
+    bool _extractFeature(string fileName);
     
 
   public:
         ShoMatcher(FlightSession flight):flight(flight) {};
-        void getCandidateMatches(double range = 0.00010);
+        void getCandidateMatches(double range = 0.000125);
+        int extractFeatures();
         void runRobustFeatureDetection();
-        bool generateImageFeaturesFile(string imageName);
-        bool saveMatches(string fileName, std::vector<cv::DMatch> matches);
         void buildKdTree();
+        std::map<string, std::vector<string>> getCandidateImages() const;
+        void setFeatureDetector(const cv::Ptr<cv::FeatureDetector>& detector);
+        void setFeatureExtractor(const cv::Ptr<cv::DescriptorExtractor>& extractor);
+        void setMatcher(const cv::Ptr<cv::DescriptorMatcher>& matcher);
 };
 #endif
