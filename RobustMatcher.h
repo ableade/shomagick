@@ -61,8 +61,11 @@ public:
   void robustMatch( const cv::Mat& image1,const cv::Mat& trainImage, std::vector<cv::DMatch>& matches,
               std::vector<cv::KeyPoint>& keypoints1, std::vector<cv::KeyPoint>& keypoints2 );
 
- // Match feature points using ratio test
- void fastRobustMatch( const cv::Mat& frame, std::vector<cv::DMatch>& good_matches,
+
+  //Match feature point using  ratio and symmetry test
+  void robustMatch(const std::vector<cv::KeyPoint>& keypoints1, const cv::Mat descriptors1, const std::vector<cv::KeyPoint>& keypoints2, const cv::Mat descriptors2,  std::vector<cv::DMatch>& matches);
+  // Match feature points using ratio test
+  void fastRobustMatch( const cv::Mat& frame, std::vector<cv::DMatch>& good_matches,
                        std::vector<cv::KeyPoint>& keypoints_frame,
                        const cv::Mat& descriptors_model );
 

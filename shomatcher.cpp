@@ -1,6 +1,7 @@
 #include "shomatcher.hpp"
 #include "kdtree.h"
 #include "RobustMatcher.h"
+#include <set>
 
 using cv::Ptr;
 using cv::FeatureDetector;
@@ -8,6 +9,7 @@ using cv::imread;
 using cv::ORB;
 using std::map;
 using std::pair;
+using std::set;
 using std::endl;
 
 void ShoMatcher::getCandidateMatches(double range)
@@ -23,7 +25,6 @@ void ShoMatcher::getCandidateMatches(double range)
         double pt[] = {imageSet[i].location.longitude, imageSet[i].location.latitude};
         result_set = kd_nearest_range(static_cast<kdtree *>(kd), pt, range);
         auto resultSetSize = static_cast<kdres*>(result_set)->size;
-        cout << "Size of result set is "<<resultSetSize<<endl;
         double pos[this->dimensions];
         while (!kd_res_end(static_cast<kdres *>(result_set)))
         {
@@ -33,7 +34,6 @@ void ShoMatcher::getCandidateMatches(double range)
                 continue;
             
             auto img = static_cast<Img *>(current);
-            cout << "Image filename is "<<img->fileName.size()<<endl;
             double dist = sqrt(dist_sq(pt, pos, this->dimensions));
             if (currentImage != img->fileName) {
                 matchSet.push_back(img->fileName);
@@ -46,27 +46,58 @@ void ShoMatcher::getCandidateMatches(double range)
         }
     }
 }
+
+int ShoMatcher::extractFeatures() {
+    set <string> detected;
+    if(! this->candidateImages.size()) 
+        return 0;
+    
+    for(auto it = this->candidateImages.begin(); it!=candidateImages.end(); it++) {
+        if (detected.find(it->first) == detected.end() && this->_extractFeature(it->first)) {
+            detected.insert(it->first);
+        }
+        
+        for (auto _it = it->second.begin(); _it!=it->second.end(); ++_it) {
+            if (detected.find(*_it) == detected.end()) {
+                if (this->_extractFeature(*_it)) {
+                    detected.insert(*_it);
+                }
+            }
+        }
+        
+    }
+    return detected.size();
+}
+
+bool ShoMatcher:: _extractFeature(string fileName) {
+    auto modelimageNamePath = this->flight.getImageDirectoryPath() / fileName;
+    Mat modelImg = imread(modelimageNamePath.string());
+    if (modelImg.empty())
+        return false;
+
+    std::vector<cv::KeyPoint> keypoints;
+    cv::Mat descriptors;
+    this->detector_->detect(modelImg, keypoints);
+    this->extractor_->compute(modelImg, keypoints, descriptors);
+    cout << "Extracted features for "<<fileName <<endl;
+    return this->flight.saveImageFeaturesFile(fileName, keypoints, descriptors);
+}
+
 void ShoMatcher::runRobustFeatureDetection() {
+    if (!this->candidateImages.size())
+        return;
+    
     RobustMatcher rmatcher;
-    cv::Ptr<FeatureDetector> orb = ORB::create();
-    rmatcher.setFeatureDetector(orb); 
-    rmatcher.setDescriptorExtractor(orb); 
 
     for(auto it = this->candidateImages.begin(); it!=candidateImages.end(); it++) {
         auto modelimageNamePath = this->flight.getImageDirectoryPath() / it->first;
-        cout << "Reading image "<<modelimageNamePath.string()<<endl;
-        Mat modelImg = imread(modelimageNamePath.string());
-        if (modelImg.empty())
-            cout << "The model image is empty"<<endl;
+        auto trainFeatureSet = this->flight.loadFeatures(it->first);
+
         for (auto matchIt = it->second.begin(); matchIt!= it->second.end(); ++ matchIt) {
-            auto queryImageNamePath = this->flight.getImageDirectoryPath() / *matchIt;
-            Mat queryImg = imread(queryImageNamePath.string());
-            if (queryImg.empty()) {
-                cout << "The query image is empty "<<endl;
-            }
+            auto queryFeatureSet = this->flight.loadFeatures(*matchIt);
             vector<DMatch> matches;
-            vector<KeyPoint> keypoints1, keypoints2;
-            rmatcher.robustMatch(queryImg, modelImg, matches, keypoints1, keypoints2);
+
+            rmatcher.robustMatch(trainFeatureSet.first, trainFeatureSet.second, queryFeatureSet.first, queryFeatureSet.second, matches);
 
             cout << "Size of match set obtained from "<< it->first << " is "<< matches.size()<<endl;
             int trainIndex = this->flight.getImageIndex(*matchIt);
@@ -75,29 +106,10 @@ void ShoMatcher::runRobustFeatureDetection() {
                 matches[i].imgIdx = trainIndex;
                 
             }
-            this->saveMatches(it->first, matches);
+            this->flight.saveMatches(it->first, matches);
         }
     }
     
-}
-
-bool ShoMatcher::generateImageFeaturesFile(string imageName) {
-    vector<KeyPoint> keypoints;
-    Mat descriptors;
-    auto imageNamePath = this->flight.getImageDirectoryPath() / imageName;
-    auto imageFeaturePath = this->flight.getImageFeaturesPath() / imageName;
-    if (!boost::filesystem::exists(imageFeaturePath))
-    {
-        Mat img = imread(imageNamePath.string());
-        if (!img.empty())
-        {
-            surfDetector(img, Mat(), keypoints, descriptors);
-            cv::FileStorage file(imageFeaturePath.string(), cv::FileStorage::WRITE);
-            file << imageFeaturePath.string() << descriptors;
-            file.release();
-            }
-        }
-    return boost::filesystem::exists(imageFeaturePath);
 }
 
 void ShoMatcher::buildKdTree() {
@@ -109,13 +121,18 @@ void ShoMatcher::buildKdTree() {
     }
 }
 
-bool ShoMatcher::saveMatches(string fileName, std::vector<cv::DMatch> matches) {
+map<string, std::vector<string>> ShoMatcher::getCandidateImages() const {
+   return this->candidateImages;
+}
 
-    auto imageMatchesPath = this->flight.getImageMatchesPath() / (fileName + ".xml");
-    cout << "Saving file "<< imageMatchesPath.string()<<endl;;
-    cv::FileStorage fs(imageMatchesPath.string(), cv::FileStorage::WRITE);
-    fs<< "matchCount" << (int)matches.size();
-    fs << "matches" << matches;
-    fs.release();
-    return boost::filesystem::exists(imageMatchesPath);
+void ShoMatcher::setFeatureDetector(const cv::Ptr<cv::FeatureDetector>& detector) {
+   this->detector_ = detector;
+}
+
+void ShoMatcher::setFeatureExtractor(const cv::Ptr<cv::DescriptorExtractor>& extractor) {
+   this->extractor_ = extractor;
+}
+
+void ShoMatcher::setMatcher(const cv::Ptr<cv::DescriptorMatcher>& matcher) {
+   this->matcher_ = matcher;
 }
