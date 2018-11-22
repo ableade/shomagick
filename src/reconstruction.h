@@ -13,7 +13,8 @@ class Reconstructor {
     public:
         Reconstructor(FlightSession flight, TrackGraph tg);
         Reconstructor(FlightSession flight, ShoTracker tracker);
-        void computeEssentialMatrix(string image1,  string image2, Camera camera);
+        void computeEssentialMatrix(string image1,  string image2,  Camera camera, int method = cv::RANSAC, double tresh = 0.999, double prob = 1.0);
+        void recoverTwoCameraViewPose(string image1, string image2, Camera camera);
 
 };
 
