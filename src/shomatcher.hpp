@@ -20,27 +20,26 @@ inline double dist_sq(double *a1, double *a2, int dims)
 
 class ShoMatcher
 {
-  private:
-    FlightSession flight;
-    std::map<string, std::vector<string>> candidateImages;
-    void *kd;
-    int dimensions = 2;
-    cv::Ptr<cv::FeatureDetector> detector_;
-    cv::Ptr<cv::DescriptorExtractor> extractor_;
-    cv::Ptr<cv::DescriptorMatcher> matcher_;
+private:
+  FlightSession flight;
+  std::map<string, std::vector<string>> candidateImages;
+  void *kd;
+  int dimensions = 2;
+  cv::Ptr<cv::FeatureDetector> detector_;
+  cv::Ptr<cv::DescriptorExtractor> extractor_;
+  cv::Ptr<cv::DescriptorMatcher> matcher_;
 
-    bool _extractFeature(string fileName);
-    
+  bool _extractFeature(string fileName);
 
-  public:
-        ShoMatcher(FlightSession flight):flight(flight) {};
-        void getCandidateMatches(double range = 0.000125);
-        int extractFeatures();
-        void runRobustFeatureDetection();
-        void buildKdTree();
-        std::map<string, std::vector<string>> getCandidateImages() const;
-        void setFeatureDetector(const cv::Ptr<cv::FeatureDetector>& detector);
-        void setFeatureExtractor(const cv::Ptr<cv::DescriptorExtractor>& extractor);
-        void setMatcher(const cv::Ptr<cv::DescriptorMatcher>& matcher);
+public:
+  ShoMatcher(FlightSession flight) : flight(flight){};
+  void getCandidateMatches(double range = 0.000125);
+  int extractFeatures();
+  void runRobustFeatureDetection();
+  void buildKdTree();
+  std::map<string, std::vector<string>> getCandidateImages() const;
+  void setFeatureDetector(const cv::Ptr<cv::FeatureDetector> &detector);
+  void setFeatureExtractor(const cv::Ptr<cv::DescriptorExtractor> &extractor);
+  void setMatcher(const cv::Ptr<cv::DescriptorMatcher> &matcher);
 };
 #endif

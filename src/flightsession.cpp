@@ -3,14 +3,14 @@
 #include <iostream>
 
 using namespace boost::filesystem;
-using std::cout;
-using std::vector;
-using std::map;
 using cv::DMatch;
-using cv::Mat;
-using cv::KeyPoint;
 using cv::FileNode;
 using cv::FileNodeIterator;
+using cv::KeyPoint;
+using cv::Mat;
+using std::cout;
+using std::map;
+using std::vector;
 
 FlightSession::FlightSession(string imageDirectory) : imageDirectory(imageDirectory)
 {
@@ -22,14 +22,14 @@ FlightSession::FlightSession(string imageDirectory) : imageDirectory(imageDirect
 	this->imageMatchesPath = this->imageDirectoryPath / "matches";
 	this->imageTracksPath = this->imageDirectoryPath / "tracks";
 
-	if (!boost::filesystem::exists(this->imageFeaturesPath) || !boost::filesystem::exists(this->imageMatchesPath)
-	 || !boost::filesystem::exists(this->imageTracksPath));
+	if (!boost::filesystem::exists(this->imageFeaturesPath) || !boost::filesystem::exists(this->imageMatchesPath) || !boost::filesystem::exists(this->imageTracksPath))
+		;
 	{
-		cout << "Creating directory "<< this->imageFeaturesPath.string()<<endl;
+		cout << "Creating directory " << this->imageFeaturesPath.string() << endl;
 		boost::filesystem::create_directory(this->imageFeaturesPath);
-		cout <<  "Creating directory "<<this->imageMatchesPath.string()<<endl;
+		cout << "Creating directory " << this->imageMatchesPath.string() << endl;
 		boost::filesystem::create_directory(this->imageMatchesPath);
-		cout << "Creating directory "<<this->imageTracksPath.string();
+		cout << "Creating directory " << this->imageTracksPath.string();
 		boost::filesystem::create_directory(this->imageTracksPath);
 	}
 	copy_if(
@@ -99,7 +99,8 @@ const path FlightSession::getImageFeaturesPath() const
 	return this->imageFeaturesPath;
 }
 
-const path FlightSession::getImageMatchesPath() const {
+const path FlightSession::getImageMatchesPath() const
+{
 	return this->imageMatchesPath;
 }
 
@@ -115,69 +116,81 @@ bool FlightSession::saveTracksFile(std::map <int, std::vector <int>> tracks) {
 }
 */
 
-const path FlightSession::getImageTracksPath() const {
+const path FlightSession::getImageTracksPath() const
+{
 	return this->imageTracksPath;
 }
 
-int FlightSession::getImageIndex(string imageName) const{
-	for(int i=0; i < this->imageData.size(); ++i) {
-		if (this->imageData[i].fileName == imageName) {
+int FlightSession::getImageIndex(string imageName) const
+{
+	for (int i = 0; i < this->imageData.size(); ++i)
+	{
+		if (this->imageData[i].fileName == imageName)
+		{
 			return i;
 		}
 	}
 	return -1;
 }
 
-bool FlightSession::saveImageFeaturesFile(string imageName, const std::vector<cv::KeyPoint>& keypoints, const cv::Mat descriptors) {
-    auto imageFeaturePath = this->getImageFeaturesPath() / imageName;
-    if (!boost::filesystem::exists(imageFeaturePath))
-    {
-        cv::FileStorage file(imageFeaturePath.string(), cv::FileStorage::WRITE);
-        file << "Keypoints " << keypoints;
-        file << "Descriptors " << descriptors;
-        file.release();
-    }
-    return boost::filesystem::exists(imageFeaturePath);
-}
-
-bool FlightSession::saveMatches(string fileName, std::map <string, vector<cv::DMatch>> matches) {
-
-    auto imageMatchesPath = this->getImageMatchesPath() / (fileName + ".xml");
-    cout << "Writing file "<< imageMatchesPath.string()<<endl;;
-    cv::FileStorage fs(imageMatchesPath.string(), cv::FileStorage::WRITE);
-    fs << "MatchCount" << (int)matches.size();
-    fs << "candidateImageMatches" << "[";
-	for(auto it = matches.begin(); it != matches.end(); ++it) {
-		fs << "{:" << "imageName" << it->first << "matches" << it->second << "}";
-		
+bool FlightSession::saveImageFeaturesFile(string imageName, const std::vector<cv::KeyPoint> &keypoints, const cv::Mat descriptors)
+{
+	auto imageFeaturePath = this->getImageFeaturesPath() / imageName;
+	if (!boost::filesystem::exists(imageFeaturePath))
+	{
+		cv::FileStorage file(imageFeaturePath.string(), cv::FileStorage::WRITE);
+		file << "Keypoints " << keypoints;
+		file << "Descriptors " << descriptors;
+		file.release();
 	}
-    fs.release();
-    return boost::filesystem::exists(imageMatchesPath);
+	return boost::filesystem::exists(imageFeaturePath);
 }
 
-map <string, vector <DMatch>> FlightSession:: loadMatches(string fileName) {
-	map <string, vector <DMatch>> allPairMatches;
+bool FlightSession::saveMatches(string fileName, std::map<string, vector<cv::DMatch>> matches)
+{
 
-    auto imageMatchesPath = this->getImageMatchesPath() / (fileName + ".xml");
-    cv::FileStorage fs(imageMatchesPath.string(), cv::FileStorage::READ);
+	auto imageMatchesPath = this->getImageMatchesPath() / (fileName + ".xml");
+	cout << "Writing file " << imageMatchesPath.string() << endl;
+	;
+	cv::FileStorage fs(imageMatchesPath.string(), cv::FileStorage::WRITE);
+	fs << "MatchCount" << (int)matches.size();
+	fs << "candidateImageMatches"
+	   << "[";
+	for (auto it = matches.begin(); it != matches.end(); ++it)
+	{
+		fs << "{:"
+		   << "imageName" << it->first << "matches" << it->second << "}";
+	}
+	fs.release();
+	return boost::filesystem::exists(imageMatchesPath);
+}
+
+map<string, vector<DMatch>> FlightSession::loadMatches(string fileName)
+{
+	map<string, vector<DMatch>> allPairMatches;
+
+	auto imageMatchesPath = this->getImageMatchesPath() / (fileName + ".xml");
+	cv::FileStorage fs(imageMatchesPath.string(), cv::FileStorage::READ);
 	FileNode cMatches = fs["candidateImageMatches"];
 	FileNodeIterator it = cMatches.begin(), it_end = cMatches.end();
-    for( ; it != it_end; ++it) {
+	for (; it != it_end; ++it)
+	{
 		vector<DMatch> pairwiseMatches;
 		(*it)["matches"] >> pairwiseMatches;
-		string matchImage = (string) (*it)["imageName"];
+		string matchImage = (string)(*it)["imageName"];
 		allPairMatches.insert(make_pair(matchImage, pairwiseMatches));
 	}
-    return allPairMatches;
+	return allPairMatches;
 }
 
-ImageFeatures FlightSession::loadFeatures(string imageName) {
+ImageFeatures FlightSession::loadFeatures(string imageName)
+{
 	auto imageFeaturePath = this->getImageFeaturesPath() / imageName;
 	cv::FileStorage fs(imageFeaturePath.string(), cv::FileStorage::READ);
-    vector <KeyPoint> keypoints;
+	vector<KeyPoint> keypoints;
 	Mat descriptors;
-    fs["Keypoints"] >> keypoints;
+	fs["Keypoints"] >> keypoints;
 	fs["Descriptors"] >> descriptors;
 
-    return make_pair(keypoints, descriptors);
+	return make_pair(keypoints, descriptors);
 }

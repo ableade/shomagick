@@ -3,15 +3,16 @@
 
 #include <opencv2/opencv.hpp>
 
-class Camera {
+class Camera
+{
 
-    private:
-        cv::Mat cameraMatrix;
+  private:
+    cv::Mat cameraMatrix;
 
-    public:
-        Camera();
-        Camera(cv::Mat cameraMatrix);
-        double getFocal();
-        cv::Mat getCameraMatrix();
+  public:
+    Camera();
+    Camera(cv::Mat cameraMatrix);
+    double getFocal();
+    cv::Mat getCameraMatrix();
 };
 #endif

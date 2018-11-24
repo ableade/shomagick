@@ -6,11 +6,12 @@
 #include <map>
 #include <boost/filesystem.hpp>
 
-typedef std::pair< std::vector<cv::KeyPoint> , cv::Mat> ImageFeatures;
+typedef std::pair<std::vector<cv::KeyPoint>, cv::Mat> ImageFeatures;
 
-class FlightSession {
+class FlightSession
+{
 
-private:
+  private:
 	std::vector<Img> imageData;
 	std::string imageDirectory;
 	boost::filesystem::path imageDirectoryPath;
@@ -18,7 +19,7 @@ private:
 	boost::filesystem::path imageMatchesPath;
 	boost::filesystem::path imageTracksPath;
 
-public:
+  public:
 	FlightSession(string imageDirectory);
 	Location getCoordinates(string imagePath);
 	std::vector<Img> getImageSet() const;
@@ -26,12 +27,11 @@ public:
 	const boost::filesystem::path getImageFeaturesPath() const;
 	const boost::filesystem::path getImageMatchesPath() const;
 	const boost::filesystem::path getImageTracksPath() const;
-	bool saveTracksFile(std::map <int, std::vector <int>> tracks);
+	bool saveTracksFile(std::map<int, std::vector<int>> tracks);
 	int getImageIndex(string imageName) const;
-	std::map <string, std::vector<cv::DMatch>> loadMatches(string fileName);
-	bool saveImageFeaturesFile(string imageName, const std::vector<cv::KeyPoint>& keypoints, const cv::Mat descriptors);
-	bool saveMatches(string fileName, std::map<string ,std::vector<cv::DMatch>> matches);
+	std::map<string, std::vector<cv::DMatch>> loadMatches(string fileName);
+	bool saveImageFeaturesFile(string imageName, const std::vector<cv::KeyPoint> &keypoints, const cv::Mat descriptors);
+	bool saveMatches(string fileName, std::map<string, std::vector<cv::DMatch>> matches);
 	ImageFeatures loadFeatures(string imageName);
-
 };
 #endif

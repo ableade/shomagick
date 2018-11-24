@@ -6,23 +6,25 @@
 #include <fstream>
 #include <opencv2/core.hpp>
 
-using std::string;
 using cv::Point3d;
-using std::ostream;
 using std::endl;
+using std::ostream;
+using std::string;
 
 const int DEG = 180;
 const float WGS84_A = 6378137.0;
 const float WGS84_B = 6356752.314245;
 const float EARTH_RADIUS = 6371e3;
 
-inline double toRadian (double deg) {
-	return deg * M_PI/DEG;
+inline double toRadian(double deg)
+{
+	return deg * M_PI / DEG;
 }
 
-inline string parseFileNameFromPath(string path) {
+inline string parseFileNameFromPath(string path)
+{
 	int index = path.find_last_of('/');
-	return path.substr(index+1);
+	return path.substr(index + 1);
 }
 
 /*
@@ -37,34 +39,36 @@ double distanceEarth(double lat1d, double lon1d, double lat2d, double lon2d) {
   return 2.0 * EARTH_RADIUS * asin(sqrt(u * u + cos(lat1r) * cos(lat2r) * v * v));
 }
 */
-struct Location {
+struct Location
+{
 	double longitude;
 	double latitude;
 	double altitude;
 
-	float distanceTo(Location loc) {
-		auto b =2;
+	float distanceTo(Location loc)
+	{
+		auto b = 2;
 		auto longRad = toRadian(this->longitude);
 		auto latRad = toRadian(this->latitude);
 
 		auto locLongRad = toRadian(loc.longitude);
 		auto locLatRad = toRadian(loc.latitude);
 
-		auto u = sin ((locLatRad - latRad)/2);
-		auto v = sin ((locLongRad - longRad)/2);
-		
-		
-		return 2.0 * EARTH_RADIUS * asin(sqrt(u*u + cos(latRad) * cos(locLatRad) * v * v));
+		auto u = sin((locLatRad - latRad) / 2);
+		auto v = sin((locLongRad - longRad) / 2);
+
+		return 2.0 * EARTH_RADIUS * asin(sqrt(u * u + cos(latRad) * cos(locLatRad) * v * v));
 	}
 
 	/**
 	 * Uses WGS84 model for GPS distance. See https://github.com/mapillary/OpenSfM/blob/master/opensfm/geo.py
 	 */
-	float wgDistanceTo(Location loc) {
+	float wgDistanceTo(Location loc)
+	{
 		auto p1 = this->ecef();
 		auto p2 = loc.ecef();
 
-		auto dist = sqrt(pow((p1.x-p2.x),2) + pow((p1.y-p2.y),2) + pow((p1.z-p2.z),2));
+		auto dist = sqrt(pow((p1.x - p2.x), 2) + pow((p1.y - p2.y), 2) + pow((p1.z - p2.z), 2));
 		return dist;
 	}
 
@@ -72,33 +76,33 @@ struct Location {
 	 * CHeck results for ecef function here http://
 	 * www.oc.nps.edu/oc2902w/coord/llhxyz.htm
 	 */
-	Point3d ecef() {
-		auto b =2.0;
-		auto a2 = pow(WGS84_A,b);
+	Point3d ecef()
+	{
+		auto b = 2.0;
+		auto a2 = pow(WGS84_A, b);
 		auto b2 = pow(WGS84_B, b);
 		auto longRad = toRadian(this->longitude);
 		auto latRad = toRadian(this->latitude);
 
-
-		auto l = 1.0 / sqrt(a2 * pow(cos(latRad), b) + b2 * pow(sin(latRad),2));
-		auto x = (a2* l + this->altitude)  * cos(latRad) * cos(longRad);
-		auto y = (a2* l + this->altitude) * cos(latRad) * sin(longRad);
+		auto l = 1.0 / sqrt(a2 * pow(cos(latRad), b) + b2 * pow(sin(latRad), 2));
+		auto x = (a2 * l + this->altitude) * cos(latRad) * cos(longRad);
+		auto y = (a2 * l + this->altitude) * cos(latRad) * sin(longRad);
 		auto z = (b2 * l + this->altitude) * sin(latRad);
 
-		return Point3d(x,y,z);
-	}
-	
-	friend ostream& operator<<(ostream& os, const Location& loc)  {  
-		os << loc.latitude << " " << loc.longitude << " " << loc.altitude;  
-		return os;  
+		return Point3d(x, y, z);
 	}
 
+	friend ostream &operator<<(ostream &os, const Location &loc)
+	{
+		os << loc.latitude << " " << loc.longitude << " " << loc.altitude;
+		return os;
+	}
 };
 
-
-struct Img {
-    std::string fileName;
-    Location location;
+struct Img
+{
+	std::string fileName;
+	Location location;
 };
 
 #endif
