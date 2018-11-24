@@ -25,8 +25,11 @@
 
 using namespace boost::filesystem;
 using cv::BFMatcher;
+using cv::DescriptorExtractor;
 using cv::DMatch;
+using cv::FeatureDetector;
 using cv::imread;
+using cv::ORB;
 using std::cout;
 using std::endl;
 using std::function;
@@ -35,9 +38,6 @@ using std::set;
 using std::setprecision;
 using std::string;
 using std::vector;
-using cv::FeatureDetector;
-using cv::DescriptorExtractor;
-using cv::ORB;
 
 using namespace cv::xfeatures2d;
 
@@ -61,8 +61,6 @@ int main(int argc, char *argv[])
   cv::Ptr<FeatureDetector> detector = ORB::create();
   cv::Ptr<DescriptorExtractor> extractor = ORB::create();
 
-
-
   //**** Begin Matching Pipeline ******
   shoMatcher.getCandidateMatches();
   shoMatcher.setFeatureDetector(detector);
@@ -72,19 +70,19 @@ int main(int argc, char *argv[])
   //******End matching pipeline******
 
   //***Begin tracking pipeline *****
-  ShoTracker tracker (flight, shoMatcher.getCandidateImages());
+  ShoTracker tracker(flight, shoMatcher.getCandidateImages());
   auto featureNodes = tracker.createFeatureNodes();
   tracker.createTracks(featureNodes);
   auto tracksGraph = tracker.buildTracksGraph();
-  cout << "Created tracks graph "<<endl;
-  cout << "Number of vertices is "<<tracksGraph.m_vertices.size()<<endl;
-  cout << "Number of edges is "<<tracksGraph.m_edges.size()<<endl; 
+  cout << "Created tracks graph " << endl;
+  cout << "Number of vertices is " << tracksGraph.m_vertices.size() << endl;
+  cout << "Number of edges is " << tracksGraph.m_edges.size() << endl;
   auto commonTracks = tracker.commonTracks(tracksGraph);
-  cout << commonTracks.size()<<endl;
-  for(auto commonTrack : commonTracks) {
-    cout << "This pair has " << commonTrack.second.size() << " tracks"<<endl;
+  cout << commonTracks.size() << endl;
+  for (auto commonTrack : commonTracks)
+  {
+    cout << "This pair has " << commonTrack.second.size() << " tracks" << endl;
   }
-
 
   /*
 harvFile.open("harv.csv"); wsgFile.open("wsg.csv");
