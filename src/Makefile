@@ -1,5 +1,5 @@
-SOURCES = $(wildcard *.cpp)
-OBJECTS = $(SOURCES:.cpp=.o)
+# SOURCES = $(wildcard *.cpp)
+
 
 all:  shomagick matcher
 
@@ -15,6 +15,9 @@ CXXFLAGS += -Weffc++
 CXXFLAGS += -Werror=reorder
 CXXFLAGS += -Werror=return-type
 
+INCLUDEFLAGS += -isystem /usr/include/eigen3
+INCLUDEFLAGS += -isystem /usr/include/python2.7
+
 OPENCV_LINK_FLAGS += -lopencv_core
 OPENCV_LINK_FLAGS += -lopencv_highgui
 OPENCV_LINK_FLAGS += -lopencv_imgcodecs
@@ -25,13 +28,28 @@ OPENCV_LINK_FLAGS += -lopencv_xfeatures2d
 OPENCV_LINK_FLAGS += -lopencv_objdetect
 
 LFLAGS += -lboost_filesystem
+LFLAGS += -lopengv
+LFLAGS += -lboost_python
 LFLAGS += -lboost_system
 LFLAGS += -lexiv2
 LFLAGS += `pkg-config --libs opencv`
 LFLAGS += -g
 
-shomagick : stitch.cpp kdtree.cpp flightsession.cpp shomatcher.cpp RobustMatcher.cpp shotracking.cpp
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LFLAGS)
+SOURCES += stitch.cpp
+SOURCES += kdtree.cpp
+SOURCES += flightsession.cpp
+SOURCES += shomatcher.cpp
+SOURCES += RobustMatcher.cpp
+SOURCES += shotracking.cpp
+SOURCES += reconstructor.cpp
+SOURCES += camera.cpp
+SOURCES += reconstruction.cpp
+SOURCES += multiview.cpp
+
+OBJECTS = $(SOURCES:.cpp=.o)
+
+shomagick : $(SOURCES)
+	$(CXX) $(INCLUDEFLAGS) $(CXXFLAGS) -o $@ $^ $(LFLAGS)
 
 matcher: keypointsmatcher.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LFLAGS) 

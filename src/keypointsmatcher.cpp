@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
 			}
 			cout << "Finished examining matchlist" << endl;
 		}
-		for (int j = 0; j < percentageMatches.size(); j++)
+		for (size_t j = 0; j < percentageMatches.size(); j++)
 		{
 			cout << "J is now" << j << endl;
 			auto queryFileName = parseFileNameFromPath(v[i].path().string());

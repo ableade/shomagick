@@ -22,9 +22,9 @@ class ShoMatcher
 {
 private:
   FlightSession flight;
-  std::map<string, std::vector<string>> candidateImages;
   void *kd;
   int dimensions = 2;
+  std::map<string, std::vector<string>> candidateImages;
   cv::Ptr<cv::FeatureDetector> detector_;
   cv::Ptr<cv::DescriptorExtractor> extractor_;
   cv::Ptr<cv::DescriptorMatcher> matcher_;
@@ -32,7 +32,7 @@ private:
   bool _extractFeature(string fileName);
 
 public:
-  ShoMatcher(FlightSession flight) : flight(flight){};
+  ShoMatcher(FlightSession flight) : flight(flight), kd(nullptr), candidateImages(), detector_(cv::ORB::create()), extractor_(cv::ORB::create()), matcher_(){};
   void getCandidateMatches(double range = 0.000125);
   int extractFeatures();
   void runRobustFeatureDetection();

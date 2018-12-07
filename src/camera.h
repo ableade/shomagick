@@ -2,17 +2,36 @@
 #define CAMERA_HPP_
 
 #include <opencv2/opencv.hpp>
+#include <opengv/types.hpp>
+
+class Pose {
+  private:
+    cv::Mat rotation;
+    cv::Mat translation;
+
+  public:
+    Pose () : rotation(cv::Mat::zeros(3,3,CV_32F)), translation(cv::Mat::zeros(3,1,CV_32F)) {}
+    Pose(cv::Mat rotation, cv::Mat translation) : rotation(rotation), translation(translation) {}
+    cv::Mat getRotationMatrix() const;
+    cv::Mat getOrigin() const;
+};
 
 class Camera
 {
 
   private:
     cv::Mat cameraMatrix;
+    cv::Mat distortionCoefficients;
+    void _cvPointsToBearingVec(cv::Mat pRect, opengv::bearingVectors_t& );
 
   public:
     Camera();
-    Camera(cv::Mat cameraMatrix);
+    Camera(cv::Mat cameraMatrix, cv::Mat distortion);
     double getFocal();
-    cv::Mat getCameraMatrix();
+    cv::Mat getKMatrix();
+    cv::Mat getDistortionMatrix();
+    void cvPointsToBearingVec(
+    const std::vector<cv::Point2f>&, opengv::bearingVectors_t& );
+    opengv::bearingVector_t  cvPointToBearingVec(cv::Point2f &point);
 };
 #endif

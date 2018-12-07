@@ -22,6 +22,7 @@
 #include "kdtree.h"
 #include "shomatcher.hpp"
 #include "shotracking.h"
+#include "reconstructor.h"
 
 using namespace boost::filesystem;
 using cv::BFMatcher;
@@ -71,19 +72,17 @@ int main(int argc, char *argv[])
 
   //***Begin tracking pipeline *****
   ShoTracker tracker(flight, shoMatcher.getCandidateImages());
-  auto featureNodes = tracker.createFeatureNodes();
+  vector<pair<FeatureNode, FeatureNode>> featureNodes;
+  vector<FeatureProperty> featureProps;
+  tracker.createFeatureNodes(featureNodes, featureProps);
   tracker.createTracks(featureNodes);
-  auto tracksGraph = tracker.buildTracksGraph();
+  auto tracksGraph = tracker.buildTracksGraph(featureProps);
   cout << "Created tracks graph " << endl;
   cout << "Number of vertices is " << tracksGraph.m_vertices.size() << endl;
   cout << "Number of edges is " << tracksGraph.m_edges.size() << endl;
   auto commonTracks = tracker.commonTracks(tracksGraph);
-  cout << commonTracks.size() << endl;
-  for (auto commonTrack : commonTracks)
-  {
-    cout << "This pair has " << commonTrack.second.size() << " tracks" << endl;
-  }
-
+  Reconstructor reconstructor(flight, tracksGraph, tracker.getTrackNodes(), tracker.getImageNodes());
+  reconstructor.runIncrementalReconstruction(tracker);
   /*
 harvFile.open("harv.csv"); wsgFile.open("wsg.csv");
 //Compute nearest neighbors using haversine formula
