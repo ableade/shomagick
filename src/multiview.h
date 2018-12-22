@@ -5,15 +5,13 @@ This code is taken from OpenSFM see License at
 #include <iostream>
 #include <fstream>
 #include <string>
-#include "types.h"
 #include <Eigen/SVD>
 #include <Eigen/LU>
 #include <Eigen/QR>
 #include <Eigen/StdVector>
 
-
-namespace csfm {
-
+namespace csfm
+{
 
 typedef std::vector<Eigen::Matrix<double, 3, 4>, Eigen::aligned_allocator<Eigen::Matrix<double, 3, 4> > > vector_mat34;
 
@@ -28,15 +26,14 @@ enum {
 double AngleBetweenVectors(const Eigen::Vector3d &u,
                            const Eigen::Vector3d &v);
 
-bp::object TriangulateReturn(int error, bp::object value);
+bool TriangulateReturn(int error);
 
 
 Eigen::Vector4d TriangulateBearingsDLTSolve(
     const Eigen::Matrix<double, 3, Eigen::Dynamic> &bs,
     const vector_mat34 &Rts);
 
-bp::object TriangulateBearingsDLT(const bp::list &Rts_list,
-                                  const bp::list &bs_list,
+bool TriangulateBearingsDLT(
                                   double threshold,
                                   double min_angle);
 
@@ -50,12 +47,14 @@ Eigen::Vector3d TriangulateBearingsMidpointSolve(
     const Eigen::Matrix<double, 3, Eigen::Dynamic> &os,
     const Eigen::Matrix<double, 3, Eigen::Dynamic> &bs);
 
+typedef double Radians;
 
-bp::object TriangulateBearingsMidpoint(const bp::list &os_list,
-                                       const bp::list &bs_list,
-                                       const bp::list &threshold_list,
-                                       double min_angle);
-
+bool TriangulateBearingsMidpoint(
+    const std::vector<Eigen::Vector3d>& os_list,
+    const std::vector<Eigen::Vector3d>& bs_list,
+    Eigen::Vector3d& x,
+    double treshold = 0.006,
+    Radians min_angle = 1.0 * M_PI / 180
+);
 
 }
-

@@ -11,9 +11,9 @@ private:
 
 public:
   UnionFind():p(), rank(), setSize(), numSets(){};
-  UnionFind(int N):p(N,0),rank(N,0), setSize(N,1), numSets(N)
+  UnionFind(int n):p(n,0),rank(n,0), setSize(n,1), numSets(n)
   {
-    for (std::size_t i = 0; i < N; i++)
+    for (std::size_t i = 0; i < n; i++)
       p[i] = i;
   }
 

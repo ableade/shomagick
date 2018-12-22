@@ -1,19 +1,21 @@
 #include "reconstructor.h"
+#include "multiview.h"
 #include <vector>
 #include <boost/graph/adjacency_iterator.hpp>
+#include <opencv2/core/core.hpp>
+using namespace cv;
+
+#include <Eigen/Core>
 #include <opencv2/core/eigen.hpp>
 
-using cv::countNonZero;
-using cv::Mat;
-using cv::Mat_;
-using cv::Point2f;
-using cv::cv2eigen;
+
 using std::cout;
 using std::map;
 using std::pair;
 using std::set;
 using std::sort;
 using std::vector;
+using csfm::TriangulateBearingsMidpoint;
 
 Reconstructor ::Reconstructor(FlightSession flight, TrackGraph tg, std::map<string, TrackGraph::vertex_descriptor> trackNodes,
                               std::map<string, TrackGraph::vertex_descriptor> imageNodes) : flight(flight), tg(tg), 
@@ -125,6 +127,12 @@ Reconstruction Reconstructor::beginReconstruction(string image1, string image2, 
     auto im2 = imageNodes[image2];
     this->_alignMatchingPoints(im1, im2, tracks, points1, points2);
     Mat r, t, mask, essentialMatrix = cv::findEssentialMat(points1, points2, cameraMatrix);
+
+    if (essentialMatrix.rows != 3) {
+        cout << "Could not compute the essential matrix for this pair" << endl;
+        //Get the first essential Mat;
+        return rec;
+    }
     //Decompose the essential matrix
     cv::recoverPose(essentialMatrix, points1, points2, cameraMatrix, r, t, mask);
 
@@ -138,6 +146,7 @@ Reconstruction Reconstructor::beginReconstruction(string image1, string image2, 
     Reconstruction reconstruction;
     Shot shot1(image1, camera, Pose());
     Shot shot2(image2, camera, Pose(r, t));
+    cout << "Shot 2 pose is " << shot2.getPose() << endl;
     rec.getReconstructionShots()[shot1.getId()] = shot1;
     rec.getReconstructionShots()[shot2.getId()] = shot2;
     this->triangulateShots(image1, rec, camera);
@@ -152,6 +161,7 @@ void Reconstructor::triangulateShots(string image1, Reconstruction &rec, Camera&
     for (; im1Edges.first != im1Edges.second; ++im1Edges.first)
     {
         auto track = this->tg[*im1Edges.first].trackName;
+        cout << "Triangulating track "<< track << endl;
         this->triangulateTrack(track, rec, camera);
     }
 }
@@ -160,13 +170,13 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec, Camera
 {
     auto track = this->trackNodes[trackId];
     std::pair<adjacency_iterator, adjacency_iterator> neighbors = boost::adjacent_vertices(track, this->tg);
-    pair<out_edge_iterator, out_edge_iterator> trackEdges = boost::out_edges(track, this->tg);
     
     vector<Eigen::Vector3d> a, b;
     for (; neighbors.first != neighbors.second; ++neighbors.first)
     {
         auto shotId =  this->tg[*neighbors.first].name;
         if (rec.hasShot(shotId)) {
+            Eigen::Vector3d x;
             auto shot = rec.getReconstructionShots()[shotId];
             auto edgePair = boost::edge(track, this->imageNodes[shotId], this->tg);
             auto edgeDescriptor = edgePair.first;
@@ -174,13 +184,19 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec, Camera
             auto fPoint = this->tg[edgeDescriptor].fProp.coordinates;
             auto fBearing = camera.cvPointToBearingVec(fPoint);
             auto origin = this->getShotOrigin(shot);
+            cout << "Currently at shot " << shot.getId() << endl;
+            cout << "Origin for this shot was " << origin << endl;
             Eigen::Vector3d eOrigin, eRot;
             cv2eigen(origin, eOrigin);
             auto rot = this->getRotationInverse(shot);
             cv2eigen(rot, eRot);
+            cout << "Eigen rotation is " << eRot << endl;
             eRot.dot(fBearing);
             b.push_back(eRot);
             a.push_back(eOrigin);
+            if (TriangulateBearingsMidpoint(a,b,x)) {
+                cout << "Triangulaiton occured succesfully" << endl;
+            }
         }
     }
 }

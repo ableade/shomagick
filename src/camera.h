@@ -3,6 +3,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <opengv/types.hpp>
+#include <ostream>
 
 class Pose {
   private:
@@ -14,6 +15,7 @@ class Pose {
     Pose(cv::Mat rotation, cv::Mat translation) : rotation(rotation), translation(translation) {}
     cv::Mat getRotationMatrix() const;
     cv::Mat getOrigin() const;
+    friend std::ostream & operator << (std::ostream &out, const Pose &p); 
 };
 
 class Camera

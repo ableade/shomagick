@@ -1,4 +1,7 @@
 #include "camera.h"
+#include <ostream>
+
+using std::ostream;
 
 cv::Mat Pose::getRotationMatrix() const
 {
@@ -10,17 +13,24 @@ cv::Mat Pose::getRotationMatrix() const
 cv::Mat Pose::getOrigin() const
 {
     cv::Mat tRot;
-    cv::transpose(this->rotation, tRot);
-    cv::Mat origin = -tRot * this->translation;
+    cv::transpose(- this->rotation, tRot);
+    cv::Mat origin = tRot * this->translation;
     return origin;
 }
+
+ostream & operator << (ostream &out, const Pose &p) 
+{ 
+    out << "Rotation " << p.rotation << std::endl;
+    out << "Translation " << p.translation <<std::endl; 
+    return out; 
+} 
 
 void Camera::_cvPointsToBearingVec(cv::Mat pRect, opengv::bearingVectors_t &bearings)
 {
     double l;
     cv::Vec3f p;
     opengv::bearingVector_t bearing;
-    for (size_t i = 0; i < pRect.rows; ++i)
+    for (auto i = 0; i < pRect.rows; ++i)
     {
         p = cv::Vec3f(pRect.row(i));
         l = std::sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]);

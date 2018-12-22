@@ -59,15 +59,13 @@ int main(int argc, char *argv[])
   }
   FlightSession flight(argv[1]);
   ShoMatcher shoMatcher(flight);
-  cv::Ptr<FeatureDetector> detector = ORB::create();
-  cv::Ptr<DescriptorExtractor> extractor = ORB::create();
 
   //**** Begin Matching Pipeline ******
   shoMatcher.getCandidateMatches();
-  shoMatcher.setFeatureDetector(detector);
-  shoMatcher.setFeatureExtractor(extractor);
+  //shoMatcher.setFeatureDetector(detector);
+  //shoMatcher.setFeatureExtractor(extractor);
   shoMatcher.extractFeatures();
-  shoMatcher.runRobustFeatureDetection();
+  shoMatcher.runRobustFeatureMatching();
   //******End matching pipeline******
 
   //***Begin tracking pipeline *****

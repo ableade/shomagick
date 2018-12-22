@@ -14,7 +14,8 @@ class Shot {
         Shot(std::string image, Camera camera, Pose pose) : image(image), camera(camera), cameraPose(pose) {}
         std::string getId() const {return this->image;}
         Camera getCamera() const {return this->camera;}
-        const Pose& getPose() const {return this->cameraPose;} 
+        const Pose& getPose() const {return this->cameraPose;}
+        friend std::ostream & operator << (std::ostream &out, const Pose &p); 
 };
 
 #endif

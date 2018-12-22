@@ -24,6 +24,7 @@ private:
   FlightSession flight;
   void *kd;
   int dimensions = 2;
+  int featureSize = 5000;
   std::map<string, std::vector<string>> candidateImages;
   cv::Ptr<cv::FeatureDetector> detector_;
   cv::Ptr<cv::DescriptorExtractor> extractor_;
@@ -32,10 +33,17 @@ private:
   bool _extractFeature(string fileName);
 
 public:
-  ShoMatcher(FlightSession flight) : flight(flight), kd(nullptr), candidateImages(), detector_(cv::ORB::create()), extractor_(cv::ORB::create()), matcher_(){};
+  ShoMatcher(FlightSession flight)
+    : flight(flight) 
+    , kd(nullptr)
+    , candidateImages()
+    , detector_(cv::ORB::create(4000))
+    , extractor_(cv::ORB::create(4000))
+    , matcher_()
+  {}
   void getCandidateMatches(double range = 0.000125);
   int extractFeatures();
-  void runRobustFeatureDetection();
+  void runRobustFeatureMatching();
   void buildKdTree();
   std::map<string, std::vector<string>> getCandidateImages() const;
   void setFeatureDetector(const cv::Ptr<cv::FeatureDetector> &detector);

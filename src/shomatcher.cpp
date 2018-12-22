@@ -29,10 +29,10 @@ void ShoMatcher::getCandidateMatches(double range)
 
         double pt[] = {imageSet[i].location.longitude, imageSet[i].location.latitude};
         result_set = kd_nearest_range(static_cast<kdtree *>(kd), pt, range);
-        double pos[this->dimensions];
+        vector<double> pos(this->dimensions);
         while (!kd_res_end(static_cast<kdres *>(result_set)))
         {
-            auto current = kd_res_item(static_cast<kdres *>(result_set), pos);
+            auto current = kd_res_item(static_cast<kdres *>(result_set), pos.data());
             if (current == nullptr)
                 continue;
 
@@ -92,17 +92,17 @@ bool ShoMatcher::_extractFeature(string fileName)
     cv::Mat descriptors;
     this->detector_->detect(modelImg, keypoints);
     this->extractor_->compute(modelImg, keypoints, descriptors);
+    cout << "Extracted "<< descriptors.rows << " points for  " << fileName<< endl;
     for(auto const &keypoint : keypoints) {
         if (channels == 1)
             colors.push_back(modelImg.at<uchar>(keypoint.pt));
         else if (channels == 3) 
             colors.push_back(modelImg.at<Vec3b>(keypoint.pt));
     }   
-    cout << "Extracted features for " << fileName << endl;
     return this->flight.saveImageFeaturesFile(fileName, keypoints, descriptors, colors);
 }
 
-void ShoMatcher::runRobustFeatureDetection()
+void ShoMatcher::runRobustFeatureMatching()
 {
     if (!this->candidateImages.size())
         return;
@@ -128,6 +128,7 @@ void ShoMatcher::runRobustFeatureDetection()
                 matches[i].imgIdx = trainIndex;
             }
             matchSet[*matchIt] = matches;
+            cout << it->first << " - " << *matchIt << " has " << matches.size() << "candidate matches"<<endl;
         }
         this->flight.saveMatches(it->first, matchSet);
     }

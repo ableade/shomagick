@@ -80,7 +80,7 @@ void RobustMatcher::symmetryTest(const std::vector<std::vector<cv::DMatch>> &mat
       // ignore deleted matches
       if (matchIterator2->empty() || matchIterator2->size() < 2)
         continue;
-
+      
       // Match symmetry test
       if ((*matchIterator1)[0].queryIdx ==
               (*matchIterator2)[0].trainIdx &&
@@ -122,6 +122,7 @@ void RobustMatcher::robustMatch(const std::vector<cv::KeyPoint> &keypoints1, con
 
   // 2a. From image 1 to image 2
   matcher_->knnMatch(descriptors1, descriptors2, matches12, 2); // return 2 nearest neighbours
+  cout << "Before symmetry test we got" << matches12.size() << " matches " << endl;
 
   // 2b. From image 2 to image 1
   matcher_->knnMatch(descriptors2, descriptors1, matches21, 2); // return 2 nearest neighbours
@@ -135,33 +136,29 @@ void RobustMatcher::robustMatch(const std::vector<cv::KeyPoint> &keypoints1, con
   symmetryTest(matches12, matches21, matches);
 }
 
-void RobustMatcher::fastRobustMatch(const cv::Mat &frame, std::vector<cv::DMatch> &good_matches,
-                                    std::vector<cv::KeyPoint> &keypoints_frame,
-                                    const cv::Mat &descriptors_model)
+void RobustMatcher::fastRobustMatch(const std::vector<cv::KeyPoint> &keypoints1, 
+const cv::Mat descriptors1, 
+const std::vector<cv::KeyPoint> &keypoints2, 
+const cv::Mat descriptors2, 
+std::vector<cv::DMatch> &matches)
 {
-  good_matches.clear();
-
-  // 1a. Detection of the ORB features
-  this->computeKeyPoints(frame, keypoints_frame);
-
-  // 1b. Extraction of the ORB descriptors
-  cv::Mat descriptors_frame;
-  this->computeDescriptors(frame, keypoints_frame, descriptors_frame);
+  matches.clear();
+  std::vector<std::vector<cv::DMatch>> matches12;
 
   // 2. Match the two image descriptors
-  std::vector<std::vector<cv::DMatch>> matches;
-  matcher_->knnMatch(descriptors_frame, descriptors_model, matches, 2);
+  std::vector<std::vector<cv::DMatch>> kmatches;
+  matcher_->knnMatch(descriptors1, descriptors2, kmatches, 2);
 
   // 3. Remove matches for which NN ratio is > than threshold
-  ratioTest(matches);
+  ratioTest(kmatches);
 
   // 4. Fill good matches container
   for (std::vector<std::vector<cv::DMatch>>::iterator
-           matchIterator = matches.begin();
-       matchIterator != matches.end(); ++matchIterator)
+           matchIterator = kmatches.begin();
+       matchIterator != kmatches.end(); ++matchIterator)
   {
     if (!matchIterator->empty())
-      good_matches.push_back((*matchIterator)[0]);
+      matches.push_back((*matchIterator)[0]);
   }
 }
 #endif
