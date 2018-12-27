@@ -62,8 +62,6 @@ int main(int argc, char *argv[])
 
   //**** Begin Matching Pipeline ******
   shoMatcher.getCandidateMatches();
-  //shoMatcher.setFeatureDetector(detector);
-  //shoMatcher.setFeatureExtractor(extractor);
   shoMatcher.extractFeatures();
   shoMatcher.runRobustFeatureMatching();
   //******End matching pipeline******

@@ -195,7 +195,7 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec, Camera
             b.push_back(eRot);
             a.push_back(eOrigin);
             if (TriangulateBearingsMidpoint(a,b,x)) {
-                cout << "Triangulaiton occured succesfully" << endl;
+                cout << "Triangulation occured succesfully" << endl;
             }
         }
     }

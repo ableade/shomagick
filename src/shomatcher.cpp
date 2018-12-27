@@ -80,8 +80,9 @@ int ShoMatcher::extractFeatures()
 
 bool ShoMatcher::_extractFeature(string fileName)
 {
-    auto modelimageNamePath = this->flight.getImageDirectoryPath() / fileName;
-    Mat modelImg = imread(modelimageNamePath.string(), CV_LOAD_IMAGE_ANYDEPTH);
+   // auto modelimageNamePath = this->flight.getImageDirectoryPath() / fileName;
+    auto modelimageNamePath =  fileName;
+    Mat modelImg = imread(modelimageNamePath, cv::IMREAD_ANYDEPTH | cv::IMREAD_COLOR );
     auto channels = modelImg.channels();
 
     if (modelImg.empty())
@@ -148,16 +149,6 @@ void ShoMatcher::buildKdTree()
 map<string, std::vector<string>> ShoMatcher::getCandidateImages() const
 {
     return this->candidateImages;
-}
-
-void ShoMatcher::setFeatureDetector(const cv::Ptr<cv::FeatureDetector> &detector)
-{
-    this->detector_ = detector;
-}
-
-void ShoMatcher::setFeatureExtractor(const cv::Ptr<cv::DescriptorExtractor> &extractor)
-{
-    this->extractor_ = extractor;
 }
 
 void ShoMatcher::setMatcher(const cv::Ptr<cv::DescriptorMatcher> &matcher)

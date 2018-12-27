@@ -26,7 +26,7 @@ struct Matchdetails
 	int numMatches;
 };
 
-int main(int argc, char *argv[])
+int main_(int argc, char *argv[])
 {
 	if (argc < 3)
 	{

@@ -7,6 +7,10 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846264338327950288
+#endif
+
 inline double dist_sq(double *a1, double *a2, int dims)
 {
   double dist_sq = 0, diff;
@@ -46,8 +50,6 @@ public:
   void runRobustFeatureMatching();
   void buildKdTree();
   std::map<string, std::vector<string>> getCandidateImages() const;
-  void setFeatureDetector(const cv::Ptr<cv::FeatureDetector> &detector);
-  void setFeatureExtractor(const cv::Ptr<cv::DescriptorExtractor> &extractor);
   void setMatcher(const cv::Ptr<cv::DescriptorMatcher> &matcher);
 };
 #endif

@@ -56,7 +56,7 @@ vector<directory_entry> getImages(string path, vector<Mat> &descps)
 	return v;
 }
 
-int main(int argc, char *argv[])
+int main__(int argc, char *argv[])
 {
 	if (argc < 2)
 	{

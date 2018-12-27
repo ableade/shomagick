@@ -5,6 +5,7 @@
 #include <cmath>
 #include <fstream>
 #include <opencv2/core.hpp>
+#include "shompi.h"
 
 using cv::Point3d;
 using std::endl;
