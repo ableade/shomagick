@@ -25,15 +25,20 @@ class Camera
     cv::Mat cameraMatrix;
     cv::Mat distortionCoefficients;
     void _cvPointsToBearingVec(cv::Mat pRect, opengv::bearingVectors_t& );
+	int height;
+	int width;
 
   public:
     Camera();
-    Camera(cv::Mat cameraMatrix, cv::Mat distortion);
+    Camera(cv::Mat cameraMatrix, cv::Mat distortion, int height =0, int width =0);
     double getFocal();
     cv::Mat getKMatrix();
     cv::Mat getDistortionMatrix();
     void cvPointsToBearingVec(
     const std::vector<cv::Point2f>&, opengv::bearingVectors_t& );
     opengv::bearingVector_t  cvPointToBearingVec(cv::Point2f &point);
+	cv::Point2f projectBearing(opengv::bearingVector_t);
+	double getK1();
+	double getk2();
 };
 #endif

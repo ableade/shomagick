@@ -79,13 +79,21 @@ int ShoMatcher::extractFeatures()
     return detected.size();
 }
 
+#ifdef CV_LOAD_IMAGE_COLOR
+#   define SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM    CV_LOAD_IMAGE_COLOR
+#   define SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM CV_LOAD_IMAGE_ANYDEPTH
+#   define SHO_BGR2RGB                         CV_BGR2RGB
+#else
+#   define SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM    cv::IMREAD_COLOR
+#   define SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM cv::IMREAD_ANYDEPTH
+#   define SHO_BGR2RGB                         cv::COLOR_BGR2RGB
+#endif
+
 bool ShoMatcher::_extractFeature(string fileName)
 {
-
-   // auto modelimageNamePath = this->flight.getImageDirectoryPath() / fileName;
-    auto modelimageNamePath =  fileName;
-    Mat modelImg = imread(modelimageNamePath, cv::IMREAD_ANYDEPTH | cv::IMREAD_COLOR );
-
+    auto modelimageNamePath = this->flight.getImageDirectoryPath() / fileName;
+    Mat modelImg = imread(modelimageNamePath.string(), SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM | SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM);
+    cv::cvtColor(modelImg, modelImg, SHO_BGR2RGB);
     auto channels = modelImg.channels();
 
     if (modelImg.empty())
@@ -154,19 +162,3 @@ map<string, std::vector<string>> ShoMatcher::getCandidateImages() const
     return this->candidateImages;
 }
 
-<<<<<<< HEAD
-void ShoMatcher::setMatcher(const cv::Ptr<cv::DescriptorMatcher> &matcher)
-{
-    this->matcher_ = matcher;
-}
-=======
-void ShoMatcher::setFeatureDetector(const cv::Ptr<cv::FeatureDetector> &detector)
-{
-    this->detector_ = detector;
-}
-
-void ShoMatcher::setFeatureExtractor(const cv::Ptr<cv::DescriptorExtractor> &extractor)
-{
-    this->extractor_ = extractor;
-}
->>>>>>> 4b284a0... implement cross platform path check

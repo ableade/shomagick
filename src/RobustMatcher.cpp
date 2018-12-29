@@ -1,5 +1,3 @@
-#ifndef ROBUST_MATCHER_HPP__
-#define ROBUST_MATCHER_HPP__
 /*
  * RobustMatcher.cpp
  *
@@ -160,4 +158,3 @@ std::vector<cv::DMatch> &matches)
       matches.push_back((*matchIterator)[0]);
   }
 }
-#endif

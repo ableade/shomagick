@@ -6,7 +6,6 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
-#include <typeinfo>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846264338327950288
