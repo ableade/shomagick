@@ -121,8 +121,7 @@ void RobustMatcher::robustMatch(const std::vector<cv::KeyPoint> &keypoints1, con
   std::vector<std::vector<cv::DMatch>> matches12, matches21;
 
   // 2a. From image 1 to image 2
-  matcher_->knnMatch(descriptors1, descriptors2, matches12, 2); // return 2 nearest neighbours
-  cout << "Before symmetry test we got" << matches12.size() << " matches " << endl;
+  matcher_->knnMatch(descriptors1, descriptors2, matches12, 2); // return 2 nearest neighbours 
 
   // 2b. From image 2 to image 1
   matcher_->knnMatch(descriptors2, descriptors1, matches21, 2); // return 2 nearest neighbours

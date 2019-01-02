@@ -6,6 +6,7 @@
 #include <fstream>
 #include <opencv2/core.hpp>
 #include "shompi.h"
+#include <boost/filesystem.hpp>
 
 using cv::Point3d;
 using std::endl;
@@ -24,8 +25,7 @@ inline double toRadian(double deg)
 
 inline string parseFileNameFromPath(string path)
 {
-	int index = path.find_last_of('/');
-	return path.substr(index + 1);
+	return boost::filesystem::path{path}.filename().string();
 }
 
 /*

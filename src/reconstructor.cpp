@@ -141,11 +141,13 @@ Reconstruction Reconstructor::beginReconstruction(string image1, string image2, 
     {
         cout << "This pair failed to adequately reconstruct" << endl;
     }
+    cv::Mat rVec;
+    cv::Rodrigues(r, rVec);
     cv::Mat distortion;
     Camera camera(cameraMatrix, distortion);
     Reconstruction reconstruction;
     Shot shot1(image1, camera, Pose());
-    Shot shot2(image2, camera, Pose(r, t));
+    Shot shot2(image2, camera, Pose(rVec, t));
     cout << "Shot 2 pose is " << shot2.getPose() << endl;
     rec.getReconstructionShots()[shot1.getId()] = shot1;
     rec.getReconstructionShots()[shot2.getId()] = shot2;
@@ -170,34 +172,41 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec, Camera
 {
     auto track = this->trackNodes[trackId];
     std::pair<adjacency_iterator, adjacency_iterator> neighbors = boost::adjacent_vertices(track, this->tg);
-    
+    Eigen::Vector3d x;
     vector<Eigen::Vector3d> a, b;
     for (; neighbors.first != neighbors.second; ++neighbors.first)
     {
         auto shotId =  this->tg[*neighbors.first].name;
         if (rec.hasShot(shotId)) {
-            Eigen::Vector3d x;
             auto shot = rec.getReconstructionShots()[shotId];
             auto edgePair = boost::edge(track, this->imageNodes[shotId], this->tg);
             auto edgeDescriptor = edgePair.first;
             auto fCol = this->tg[edgeDescriptor].fProp.color;
             auto fPoint = this->tg[edgeDescriptor].fProp.coordinates;
             auto fBearing = camera.cvPointToBearingVec(fPoint);
+            cout << "F point to f bearing is " << fPoint << " to " << fBearing << endl;
             auto origin = this->getShotOrigin(shot);
             cout << "Currently at shot " << shot.getId() << endl;
             cout << "Origin for this shot was " << origin << endl;
-            Eigen::Vector3d eOrigin, eRot;
+            Eigen::Vector3d eOrigin;
+            Eigen::Matrix3d eigenRotationInverse;
             cv2eigen(origin, eOrigin);
-            auto rot = this->getRotationInverse(shot);
-            cv2eigen(rot, eRot);
-            cout << "Eigen rotation is " << eRot << endl;
-            eRot.dot(fBearing);
-            b.push_back(eRot);
+            auto rotationInverse = this->getRotationInverse(shot);
+            cv2eigen(rotationInverse, eigenRotationInverse);
+            cout << "Rotation inverse is " << eigenRotationInverse << endl;
+            auto eigenRotationBearingProduct = eigenRotationInverse * fBearing;
+            cout << "Rotation inverse times bearing us  " << eigenRotationBearingProduct<< endl;  
+            b.push_back(eigenRotationBearingProduct);
             a.push_back(eOrigin);
             if (TriangulateBearingsMidpoint(a,b,x)) {
                 cout << "Triangulation occured succesfully" << endl;
             }
         }
+    }
+    if (b.size() >= 2) {
+        if (TriangulateBearingsMidpoint(a,b,x)) {
+            cout << "Triangulaiton occured succesfully" << endl;
+            }
     }
 }
 

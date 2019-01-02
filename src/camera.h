@@ -11,7 +11,7 @@ class Pose {
     cv::Mat translation;
 
   public:
-    Pose () : rotation(cv::Mat::zeros(3,3,CV_32F)), translation(cv::Mat::zeros(3,1,CV_32F)) {}
+    Pose () : rotation(cv::Mat::zeros(3,1,CV_32F)), translation(cv::Mat::zeros(3,1,CV_32F)) {}
     Pose(cv::Mat rotation, cv::Mat translation) : rotation(rotation), translation(translation) {}
     cv::Mat getRotationMatrix() const;
     cv::Mat getOrigin() const;

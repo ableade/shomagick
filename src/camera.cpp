@@ -13,8 +13,9 @@ cv::Mat Pose::getRotationMatrix() const
 cv::Mat Pose::getOrigin() const
 {
     cv::Mat tRot;
-    cv::transpose(- this->rotation, tRot);
-    cv::Mat origin = tRot * this->translation;
+    auto origin = this->getRotationMatrix();
+    cv::transpose(-origin , tRot);
+    origin = tRot * this->translation;
     return origin;
 }
 

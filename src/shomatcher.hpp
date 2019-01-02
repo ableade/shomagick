@@ -6,6 +6,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
+#include <typeinfo>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846264338327950288
@@ -32,7 +33,6 @@ private:
   std::map<string, std::vector<string>> candidateImages;
   cv::Ptr<cv::FeatureDetector> detector_;
   cv::Ptr<cv::DescriptorExtractor> extractor_;
-  cv::Ptr<cv::DescriptorMatcher> matcher_;
 
   bool _extractFeature(string fileName);
 
@@ -43,13 +43,11 @@ public:
     , candidateImages()
     , detector_(cv::ORB::create(4000))
     , extractor_(cv::ORB::create(4000))
-    , matcher_()
   {}
   void getCandidateMatches(double range = 0.000125);
   int extractFeatures();
   void runRobustFeatureMatching();
   void buildKdTree();
   std::map<string, std::vector<string>> getCandidateImages() const;
-  void setMatcher(const cv::Ptr<cv::DescriptorMatcher> &matcher);
 };
 #endif

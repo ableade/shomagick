@@ -23,9 +23,10 @@ public:
     // ORB is the default feature
     detector_ = cv::ORB::create(numFeatures);
     extractor_ = cv::ORB::create(numFeatures);
-
+    
+    
     // BruteFroce matcher with Norm Hamming is the default matcher
-    matcher_ = cv::makePtr<cv::BFMatcher>((int)cv::NORM_L1, false);
+    matcher_ = cv::makePtr<cv::BFMatcher>((int)cv::NORM_HAMMING, false);
   }
   virtual ~RobustMatcher();
 

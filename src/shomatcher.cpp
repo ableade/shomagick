@@ -1,6 +1,7 @@
 #include "shomatcher.hpp"
 #include "kdtree.h"
 #include "RobustMatcher.h"
+#include <opencv2/imgproc/imgproc.hpp>
 #include <set>
 
 using cv::DMatch;
@@ -80,9 +81,11 @@ int ShoMatcher::extractFeatures()
 
 bool ShoMatcher::_extractFeature(string fileName)
 {
+
    // auto modelimageNamePath = this->flight.getImageDirectoryPath() / fileName;
     auto modelimageNamePath =  fileName;
     Mat modelImg = imread(modelimageNamePath, cv::IMREAD_ANYDEPTH | cv::IMREAD_COLOR );
+
     auto channels = modelImg.channels();
 
     if (modelImg.empty())
@@ -151,7 +154,19 @@ map<string, std::vector<string>> ShoMatcher::getCandidateImages() const
     return this->candidateImages;
 }
 
+<<<<<<< HEAD
 void ShoMatcher::setMatcher(const cv::Ptr<cv::DescriptorMatcher> &matcher)
 {
     this->matcher_ = matcher;
 }
+=======
+void ShoMatcher::setFeatureDetector(const cv::Ptr<cv::FeatureDetector> &detector)
+{
+    this->detector_ = detector;
+}
+
+void ShoMatcher::setFeatureExtractor(const cv::Ptr<cv::DescriptorExtractor> &extractor)
+{
+    this->extractor_ = extractor;
+}
+>>>>>>> 4b284a0... implement cross platform path check
