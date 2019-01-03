@@ -119,7 +119,6 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker &tracker)
 Reconstruction Reconstructor::beginReconstruction(string image1, string image2, set<string> tracks, const ShoTracker &tracker)
 {
     Reconstruction rec;
-    tracker.getTrackNodes();
     vector<Point2f> points1;
     vector<Point2f> points2;
     Mat cameraMatrix = (Mat_<double>(3, 3) << 3.8123526712521689e+3, 0.2592, 0., 3.8123526712521689e+03, 1944, 0., 0.1);

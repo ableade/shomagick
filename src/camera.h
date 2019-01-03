@@ -40,5 +40,7 @@ class Camera
 	cv::Point2f projectBearing(opengv::bearingVector_t);
 	double getK1();
 	double getk2();
+	cv::Point2f normalizeImageCoordinates(const cv::Point2f) const;
+	cv::Point2f denormalizeImageCoordinates(const cv::Point2f) const;
 };
 #endif

@@ -1,5 +1,6 @@
 #include "shomatcher.hpp"
 #include "kdtree.h"
+#include "camera.h"
 #include "RobustMatcher.h"
 #include <opencv2/imgproc/imgproc.hpp>
 #include <set>
@@ -105,7 +106,10 @@ bool ShoMatcher::_extractFeature(string fileName)
     this->detector_->detect(modelImg, keypoints);
     this->extractor_->compute(modelImg, keypoints, descriptors);
     cout << "Extracted "<< descriptors.rows << " points for  " << fileName<< endl;
-    for(auto const &keypoint : keypoints) {
+
+	Camera testCamera = Camera(cv::Mat(), cv::Mat(), 3888, 5184);
+    for(auto  &keypoint : keypoints) {
+		keypoint.pt = testCamera.normalizeImageCoordinates(keypoint.pt);
         if (channels == 1)
             colors.push_back(modelImg.at<uchar>(keypoint.pt));
         else if (channels == 3) 

@@ -70,7 +70,7 @@ class ShoTracker
 	void createTracks(const std::vector<std::pair<FeatureNode, FeatureNode>>& features);
 	TrackGraph buildTracksGraph(const std::vector<FeatureProperty>& props);
 	void mergeFeatureTracks(FeatureNode feature1, FeatureNode feature2);
-	std::vector<std::pair<FeatureNode, FeatureNode>> createFeatureNodes(std::vector<std::pair<FeatureNode, FeatureNode>>& allFeatures, 
+	void createFeatureNodes(std::vector<std::pair<FeatureNode, FeatureNode>>& allFeatures, 
 	std::vector<FeatureProperty> & props);
 	std::vector<CommonTrack> commonTracks(const TrackGraph &tg) const;
 	std::map <int, std::vector <int>> getTracks();

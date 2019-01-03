@@ -29,7 +29,7 @@ ShoTracker::ShoTracker(
     , trackNodes()
 {}
 
-vector<pair<FeatureNode, FeatureNode>> ShoTracker::createFeatureNodes(vector<pair<FeatureNode, FeatureNode>> &allFeatures,
+void ShoTracker::createFeatureNodes(vector<pair<FeatureNode, FeatureNode>> &allFeatures,
                                                                       vector<FeatureProperty> &props)
 {
     size_t featureIndex = 0;
@@ -67,7 +67,6 @@ vector<pair<FeatureNode, FeatureNode>> ShoTracker::createFeatureNodes(vector<pai
     }
     this->uf = UnionFind(this->features.size());
     cout << "Created a total of " << this->features.size() << " feature nodes " << endl;
-    return allFeatures;
 }
 
 void ShoTracker::createTracks(const vector<pair<FeatureNode, FeatureNode>> &features)

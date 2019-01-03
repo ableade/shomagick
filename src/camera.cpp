@@ -1,7 +1,9 @@
 #include "camera.h"
 #include <ostream>
+#include <algorithm>
 
 using std::ostream;
+using std::max;
 
 cv::Mat Pose::getRotationMatrix() const
 {
@@ -109,6 +111,32 @@ double Camera::getk2() {
 	//return this->getDistortionMatrix().at<double>(1, 0);
 }
 
+cv::Point2f Camera::normalizeImageCoordinates(const cv::Point2f pixelCoords) const
+{
+	const auto size = max(width, height);
+
+	const auto pixelX = pixelCoords.x;
+	const auto pixelY = pixelCoords.y;
+	const auto normX = ( (1.0f * width)  / size ) * (pixelX - width / 2.0f) / width;
+	const auto normY = ( (1.0f * height) / size ) * (pixelY - height / 2.0f) / height;
+	return {
+		normX,
+		normY,
+	};
+}
+
+cv::Point2f Camera::denormalizeImageCoordinates(const cv::Point2f normalizedCoords) const
+{
+	const auto size = max(width, height);
+	auto normX = normalizedCoords.x;
+	auto normY = normalizedCoords.y;
+
+	const auto pixelX = ( normX * width  * size / (1.0f * width) ) + width  / 2.0f;
+	const auto pixelY = ( normY * height * size / (1.0f * height)) + height / 2.0f;
+
+	return {pixelX, pixelY};
+}
+
 cv::Point2f Camera::projectBearing(opengv::bearingVector_t b) {
 	auto x = b[0] / b[2];
 	auto y = b[1] / b[2];
@@ -121,3 +149,5 @@ cv::Point2f Camera::projectBearing(opengv::bearingVector_t b) {
 		static_cast<float>(getFocal() * radialDistortion * y)
 	};
 }
+
+
