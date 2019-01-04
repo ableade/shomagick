@@ -182,7 +182,7 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec, Camera
             auto edgeDescriptor = edgePair.first;
             auto fCol = this->tg[edgeDescriptor].fProp.color;
             auto fPoint = this->tg[edgeDescriptor].fProp.coordinates;
-            auto fBearing = camera.cvPointToBearingVec(fPoint);
+            auto fBearing = camera.normalizedPointToBearingVec(fPoint);
             cout << "F point to f bearing is " << fPoint << " to " << fBearing << endl;
             auto origin = this->getShotOrigin(shot);
             cout << "Currently at shot " << shot.getId() << endl;

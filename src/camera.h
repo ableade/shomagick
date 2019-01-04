@@ -32,11 +32,13 @@ class Camera
     Camera();
     Camera(cv::Mat cameraMatrix, cv::Mat distortion, int height =0, int width =0);
     double getFocal();
+    double getPhysicalFocalLength();
     cv::Mat getKMatrix();
+	cv::Mat getNormalizedKMatrix();
     cv::Mat getDistortionMatrix();
     void cvPointsToBearingVec(
     const std::vector<cv::Point2f>&, opengv::bearingVectors_t& );
-    opengv::bearingVector_t  cvPointToBearingVec(cv::Point2f &point);
+    opengv::bearingVector_t  normalizedPointToBearingVec(cv::Point2f &point);
 	cv::Point2f projectBearing(opengv::bearingVector_t);
 	double getK1();
 	double getk2();
