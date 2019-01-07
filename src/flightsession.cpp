@@ -13,8 +13,14 @@ using std::cout;
 using std::map;
 using std::vector;
 
-FlightSession::FlightSession(string imageDirectory) : imageData(), imageDirectory(imageDirectory), imageDirectoryPath(), imageFeaturesPath(),
-													  imageTracksPath()
+FlightSession::FlightSession() : imageData(), imageDirectory(), imageDirectoryPath(), imageFeaturesPath(),
+													  imageTracksPath(), camera()
+{
+
+}
+
+FlightSession::FlightSession(string imageDirectory, string calibrationFile) : imageData(), imageDirectory(imageDirectory), imageDirectoryPath(), imageFeaturesPath(),
+													  imageTracksPath(), camera()
 {
 	vector<directory_entry> v;
 	assert(is_directory(imageDirectory));
@@ -27,7 +33,7 @@ FlightSession::FlightSession(string imageDirectory) : imageData(), imageDirector
 	boost::filesystem::create_directory(this->imageFeaturesPath);
 	cout << "Creating directory " << this->imageMatchesPath.string() << endl;
 	boost::filesystem::create_directory(this->imageMatchesPath);
-	cout << "Creating directory " << this->imageTracksPath.string();
+	cout << "Creating directory " << this->imageTracksPath.string() << endl;
 	boost::filesystem::create_directory(this->imageTracksPath);
 	copy_if(
 		directory_iterator(imageDirectory),
@@ -43,6 +49,9 @@ FlightSession::FlightSession(string imageDirectory) : imageData(), imageDirector
 		auto loc = this->getCoordinates(entry.path().string());
 		img.location = loc;
 		this->imageData.push_back(img);
+	}
+	if(!calibrationFile.empty()) {
+		this->camera = this->getCameraFromCalibrationFile(calibrationFile);
 	}
 	cout << "Found " << this->imageData.size() << " usable images" << endl;
 }
@@ -193,4 +202,20 @@ ImageFeatures FlightSession::loadFeatures(string imageName)
 	fs["Colors"] >> colors;
 
 	return {keypoints, descriptors, colors};
+}
+
+Camera FlightSession::getCameraFromCalibrationFile(string calibrationFile) {
+	int height, width;
+	cv::Mat cameraMatrix, distortionParameters;
+	assert(boost::filesystem::exists(calibrationFile));
+	cv::FileStorage fs(calibrationFile, cv::FileStorage::READ);
+	fs["image_height"] >> height;
+	fs["image_width"] >> width;
+	fs["camera_matrix"] >> cameraMatrix;
+	fs["distortion_coefficients"] >> distortionParameters;
+	return Camera{cameraMatrix, distortionParameters, height, width};
+}
+
+const Camera& FlightSession::getCamera() const {
+	return this->camera;
 }

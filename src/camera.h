@@ -25,24 +25,26 @@ class Camera
     cv::Mat cameraMatrix;
     cv::Mat distortionCoefficients;
     void _cvPointsToBearingVec(cv::Mat pRect, opengv::bearingVectors_t& );
-	int height;
-	int width;
+    int height;
+    int width;
+    std::string cameraMake;
+    std::string cameraModel;
 
   public:
     Camera();
     Camera(cv::Mat cameraMatrix, cv::Mat distortion, int height =0, int width =0);
-    double getFocal();
-    double getPhysicalFocalLength();
+    double getFocal() const;
+    double getPhysicalFocalLength() const;
     cv::Mat getKMatrix();
-	cv::Mat getNormalizedKMatrix();
-    cv::Mat getDistortionMatrix();
+    cv::Mat getNormalizedKMatrix() const;
+    cv::Mat getDistortionMatrix() const;
     void cvPointsToBearingVec(
     const std::vector<cv::Point2f>&, opengv::bearingVectors_t& );
-    opengv::bearingVector_t  normalizedPointToBearingVec(cv::Point2f &point);
-	cv::Point2f projectBearing(opengv::bearingVector_t);
-	double getK1();
-	double getk2();
-	cv::Point2f normalizeImageCoordinates(const cv::Point2f) const;
-	cv::Point2f denormalizeImageCoordinates(const cv::Point2f) const;
+    opengv::bearingVector_t  normalizedPointToBearingVec(cv::Point2f &point) const;
+    cv::Point2f projectBearing(opengv::bearingVector_t);
+    double getK1() const;
+    double getk2() const;
+    cv::Point2f normalizeImageCoordinates(const cv::Point2f) const;
+    cv::Point2f denormalizeImageCoordinates(const cv::Point2f) const;
 };
 #endif

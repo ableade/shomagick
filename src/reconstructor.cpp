@@ -55,9 +55,8 @@ void Reconstructor::recoverTwoCameraViewPose(void *image1, void *image2, std::se
     vector<Point2f> points1;
     vector<Point2f> points2;
     this->_alignMatchingPoints(image1, image2, tracks, points1, points2);
-
-    Mat cameraMatrix = (Mat_<double>(3, 3) << 3.8123526712521689e+3, 0.2592, 0, 3.8123526712521689e+03, 1944, 0, 0.1);
-    Mat essentialMatrix = cv::findEssentialMat(points1, points2, cameraMatrix, method, tresh, prob, mask);
+    auto kMatrix = this->flight.getCamera().getNormalizedKMatrix();
+    Mat essentialMatrix = cv::findEssentialMat(points1, points2, kMatrix, method, tresh, prob, mask);
 }
 
 float Reconstructor::computeReconstructabilityScore(int tracks, Mat mask, int tresh)
@@ -121,11 +120,11 @@ Reconstruction Reconstructor::beginReconstruction(string image1, string image2, 
     Reconstruction rec;
     vector<Point2f> points1;
     vector<Point2f> points2;
-    Mat cameraMatrix = (Mat_<double>(3, 3) << 3.8123526712521689e+3, 0.2592, 0., 3.8123526712521689e+03, 1944, 0., 0.1);
     auto im1 = imageNodes[image1];
     auto im2 = imageNodes[image2];
     this->_alignMatchingPoints(im1, im2, tracks, points1, points2);
-    Mat r, t, mask, essentialMatrix = cv::findEssentialMat(points1, points2, cameraMatrix);
+    auto kMatrix = this->flight.getCamera().getNormalizedKMatrix();
+    Mat r, t, mask, essentialMatrix = cv::findEssentialMat(points1, points2, kMatrix);
 
     if (essentialMatrix.rows != 3) {
         cout << "Could not compute the essential matrix for this pair" << endl;
@@ -133,7 +132,7 @@ Reconstruction Reconstructor::beginReconstruction(string image1, string image2, 
         return rec;
     }
     //Decompose the essential matrix
-    cv::recoverPose(essentialMatrix, points1, points2, cameraMatrix, r, t, mask);
+    cv::recoverPose(essentialMatrix, points1, points2, kMatrix, r, t, mask);
 
     auto inliers = countNonZero(mask);
     if (inliers <= 5)
@@ -143,18 +142,17 @@ Reconstruction Reconstructor::beginReconstruction(string image1, string image2, 
     cv::Mat rVec;
     cv::Rodrigues(r, rVec);
     cv::Mat distortion;
-    Camera camera(cameraMatrix, distortion);
     Reconstruction reconstruction;
-    Shot shot1(image1, camera, Pose());
-    Shot shot2(image2, camera, Pose(rVec, t));
+    Shot shot1(image1, this->flight.getCamera(), Pose());
+    Shot shot2(image2, this->flight.getCamera(), Pose(rVec, t));
     cout << "Shot 2 pose is " << shot2.getPose() << endl;
     rec.getReconstructionShots()[shot1.getId()] = shot1;
     rec.getReconstructionShots()[shot2.getId()] = shot2;
-    this->triangulateShots(image1, rec, camera);
+    this->triangulateShots(image1, rec);
     return rec;
 }
 
-void Reconstructor::triangulateShots(string image1, Reconstruction &rec, Camera& camera)
+void Reconstructor::triangulateShots(string image1, Reconstruction &rec)
 {
     cout << "Triangulating shots "<<endl;
     auto im1 = this->imageNodes[image1];
@@ -163,11 +161,11 @@ void Reconstructor::triangulateShots(string image1, Reconstruction &rec, Camera&
     {
         auto track = this->tg[*im1Edges.first].trackName;
         cout << "Triangulating track "<< track << endl;
-        this->triangulateTrack(track, rec, camera);
+        this->triangulateTrack(track, rec);
     }
 }
 
-void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec, Camera& camera)
+void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec)
 {
     auto track = this->trackNodes[trackId];
     std::pair<adjacency_iterator, adjacency_iterator> neighbors = boost::adjacent_vertices(track, this->tg);
@@ -182,7 +180,7 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec, Camera
             auto edgeDescriptor = edgePair.first;
             auto fCol = this->tg[edgeDescriptor].fProp.color;
             auto fPoint = this->tg[edgeDescriptor].fProp.coordinates;
-            auto fBearing = camera.normalizedPointToBearingVec(fPoint);
+            auto fBearing = this->flight.getCamera().normalizedPointToBearingVec(fPoint);
             cout << "F point to f bearing is " << fPoint << " to " << fBearing << endl;
             auto origin = this->getShotOrigin(shot);
             cout << "Currently at shot " << shot.getId() << endl;

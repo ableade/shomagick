@@ -53,7 +53,7 @@ width(width) {}
 
 cv::Mat Camera::getKMatrix() { return this->cameraMatrix; }
 
-cv::Mat Camera::getNormalizedKMatrix() {
+cv::Mat Camera::getNormalizedKMatrix() const {
     auto lensSize = this->getPhysicalFocalLength();
     cv::Mat normK = (cv::Mat_<double>(3, 3) <<
         lensSize,   0.,          0.,
@@ -62,7 +62,7 @@ cv::Mat Camera::getNormalizedKMatrix() {
     return normK;
 }
 
-cv::Mat Camera::getDistortionMatrix()
+cv::Mat Camera::getDistortionMatrix() const
 {
     cv::Mat dist = (cv::Mat_<double>(5, 1) << 9.5451901612149271e-3, -5.4949250292936147e-3, 0., 0., 6.0371565989711740e-3);
     //cv::Mat dist = (cv::Mat_<double>(4, 1) << 0, 0, 0., 0);
@@ -88,7 +88,7 @@ void Camera::cvPointsToBearingVec(
     this->_cvPointsToBearingVec(points1_rect, bearings);
 }
 
-opengv::bearingVector_t Camera::normalizedPointToBearingVec(cv::Point2f &point)
+opengv::bearingVector_t Camera::normalizedPointToBearingVec(cv::Point2f &point) const
 {
     std::cout << "Converting point " << point << std::endl;
     double l;
@@ -108,20 +108,20 @@ opengv::bearingVector_t Camera::normalizedPointToBearingVec(cv::Point2f &point)
     return bearing;
 }
 
-double Camera::getFocal() {
+double Camera::getFocal() const{
     return this->cameraMatrix.at<double>(0, 0);
 }
 
-double Camera::getPhysicalFocalLength() {
+double Camera::getPhysicalFocalLength() const {
     return (double)this->getFocal() / (double)max(this->height, this->width);
 }
 
-double Camera::getK1() {
+double Camera::getK1() const {
     return -0.1;
     //return this->getDistortionMatrix().at<double>(0,0);
 }
 
-double Camera::getk2() {
+double Camera::getk2() const{
     return -0.01;
     //return this->getDistortionMatrix().at<double>(1, 0);
 }

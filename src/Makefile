@@ -1,7 +1,7 @@
 # SOURCES = $(wildcard *.cpp)
 
 
-all:  shomagick matcher
+all:  shomagick
 
 
 DEPDIR = deps
@@ -51,8 +51,5 @@ OBJECTS = $(SOURCES:.cpp=.o)
 shomagick : $(SOURCES)
 	$(CXX) $(INCLUDEFLAGS) $(CXXFLAGS) -o $@ $^ $(LFLAGS)
 
-matcher: keypointsmatcher.cpp
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LFLAGS) 
-
 clean:
-	rm -f $(OBJECTS) $(addprefix $(DEPDIR)/, $(DEPS)) shomagick shomagick.exe matcher matcher.exe
+	rm -f $(OBJECTS) $(addprefix $(DEPDIR)/, $(DEPS)) shomagick shomagick.exe

@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "image.hpp"
+#include "camera.h"
 #include <map>
 #include <boost/filesystem.hpp>
 
@@ -23,9 +24,11 @@ class FlightSession
 	boost::filesystem::path imageFeaturesPath;
 	boost::filesystem::path imageMatchesPath;
 	boost::filesystem::path imageTracksPath;
+	Camera camera;
 
   public:
-	FlightSession(string imageDirectory);
+	FlightSession();
+	FlightSession(string imageDirectory, string calibFile=string());
 	Location getCoordinates(string imagePath);
 	std::vector<Img> getImageSet() const;
 	const boost::filesystem::path getImageDirectoryPath() const;
@@ -39,5 +42,8 @@ class FlightSession
 	const std::vector<cv::Scalar>& colors);
 	bool saveMatches(string fileName, const std::map<string, std::vector<cv::DMatch>>& matches);
 	ImageFeatures loadFeatures(string imageName);
+	Camera getCameraFromCalibrationFile(string);
+	void initializeCameraFromExifMetaData();
+	const Camera& getCamera() const;
 };
 #endif

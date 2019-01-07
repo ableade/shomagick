@@ -28,8 +28,8 @@ public:
   void computePlaneHomography(string image1, string image2);
   void runIncrementalReconstruction (const ShoTracker& tracker);
   Reconstruction beginReconstruction (string image1, string image2, std::set<string> tracks, const ShoTracker& tracker);
-  void triangulateShots(string image1, Reconstruction& rec,  Camera& camera);
-  void triangulateTrack(string trackId, Reconstruction& rec, Camera& camera);
+  void triangulateShots(string image1, Reconstruction& rec);
+  void triangulateTrack(string trackId, Reconstruction& rec);
   cv::Mat getShotOrigin(const Shot& shot);
   cv::Mat getRotationInverse(const Shot& shot);
 };

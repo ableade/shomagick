@@ -49,15 +49,15 @@ bool pairCompare(pair<string, double> a, pair<string, double> b)
 
 int main(int argc, char *argv[])
 {
-  std::ofstream outfile;
-  std::ofstream harvFile;
-  std::ofstream wsgFile;
+  string cameraCalibrationFile;
   if (argc < 2)
   {
-    cout << "Program usage: <flight session directory>" << endl;
+    cout << "Program usage: <flight session directory> optional -- <camera calibration file>" << endl;
     exit(1);
   }
-  FlightSession flight(argv[1]);
+  FlightSession flight;
+  argc > 2 ? flight = FlightSession(argv[1], argv[2]) : flight = FlightSession(argv[1]);
+  
   ShoMatcher shoMatcher(flight);
 
   //**** Begin Matching Pipeline ******
