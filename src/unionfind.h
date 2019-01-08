@@ -10,14 +10,10 @@ private:
   int numSets;
 
 public:
-  UnionFind(){};
-  UnionFind(int N)
+  UnionFind():p(), rank(), setSize(), numSets(){};
+  UnionFind(int n):p(n,0),rank(n,0), setSize(n,1), numSets(n)
   {
-    setSize.assign(N, 1);
-    numSets = N;
-    rank.assign(N, 0);
-    p.assign(N, 0);
-    for (int i = 0; i < N; i++)
+    for (std::size_t i = 0; i < n; i++)
       p[i] = i;
   }
 

@@ -1,6 +1,8 @@
 #include "shomatcher.hpp"
 #include "kdtree.h"
+#include "camera.h"
 #include "RobustMatcher.h"
+#include <opencv2/imgproc/imgproc.hpp>
 #include <set>
 
 using cv::DMatch;
@@ -9,6 +11,7 @@ using cv::imread;
 using cv::Mat;
 using cv::ORB;
 using cv::Ptr;
+using cv::Vec3b;
 using std::cout;
 using std::endl;
 using std::map;
@@ -20,7 +23,7 @@ void ShoMatcher::getCandidateMatches(double range)
 {
     this->buildKdTree();
     auto imageSet = this->flight.getImageSet();
-    for (int i = 0; i < imageSet.size(); ++i)
+    for (size_t i = 0; i < imageSet.size(); ++i)
     {
         vector<string> matchSet;
         auto currentImage = imageSet[i].fileName;
@@ -28,17 +31,14 @@ void ShoMatcher::getCandidateMatches(double range)
 
         double pt[] = {imageSet[i].location.longitude, imageSet[i].location.latitude};
         result_set = kd_nearest_range(static_cast<kdtree *>(kd), pt, range);
-        auto resultSetSize = static_cast<kdres *>(result_set)->size;
-        double pos[this->dimensions];
+        vector<double> pos(this->dimensions);
         while (!kd_res_end(static_cast<kdres *>(result_set)))
         {
-            auto count = 0;
-            auto current = kd_res_item(static_cast<kdres *>(result_set), pos);
+            auto current = kd_res_item(static_cast<kdres *>(result_set), pos.data());
             if (current == nullptr)
                 continue;
 
             auto img = static_cast<Img *>(current);
-            double dist = sqrt(dist_sq(pt, pos, this->dimensions));
             if (currentImage != img->fileName)
             {
                 matchSet.push_back(img->fileName);
@@ -80,22 +80,45 @@ int ShoMatcher::extractFeatures()
     return detected.size();
 }
 
+#ifdef CV_LOAD_IMAGE_COLOR
+#   define SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM    CV_LOAD_IMAGE_COLOR
+#   define SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM CV_LOAD_IMAGE_ANYDEPTH
+#   define SHO_BGR2RGB                         CV_BGR2RGB
+#else
+#   define SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM    cv::IMREAD_COLOR
+#   define SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM cv::IMREAD_ANYDEPTH
+#   define SHO_BGR2RGB                         cv::COLOR_BGR2RGB
+#endif
+
 bool ShoMatcher::_extractFeature(string fileName)
 {
     auto modelimageNamePath = this->flight.getImageDirectoryPath() / fileName;
-    Mat modelImg = imread(modelimageNamePath.string());
+    Mat modelImg = imread(modelimageNamePath.string(), SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM | SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM);
+    cv::cvtColor(modelImg, modelImg, SHO_BGR2RGB);
+    auto channels = modelImg.channels();
+
     if (modelImg.empty())
         return false;
 
     std::vector<cv::KeyPoint> keypoints;
+    std::vector<cv::Scalar> colors;
     cv::Mat descriptors;
     this->detector_->detect(modelImg, keypoints);
     this->extractor_->compute(modelImg, keypoints, descriptors);
-    cout << "Extracted features for " << fileName << endl;
-    return this->flight.saveImageFeaturesFile(fileName, keypoints, descriptors);
+    cout << "Extracted "<< descriptors.rows << " points for  " << fileName<< endl;
+
+	Camera testCamera = Camera(cv::Mat(), cv::Mat(), 3888, 5184);
+    for(auto  &keypoint : keypoints) {
+		keypoint.pt = testCamera.normalizeImageCoordinates(keypoint.pt);
+        if (channels == 1)
+            colors.push_back(modelImg.at<uchar>(keypoint.pt));
+        else if (channels == 3) 
+            colors.push_back(modelImg.at<Vec3b>(keypoint.pt));
+    }   
+    return this->flight.saveImageFeaturesFile(fileName, keypoints, descriptors, colors);
 }
 
-void ShoMatcher::runRobustFeatureDetection()
+void ShoMatcher::runRobustFeatureMatching()
 {
     if (!this->candidateImages.size())
         return;
@@ -112,17 +135,18 @@ void ShoMatcher::runRobustFeatureDetection()
             auto queryFeatureSet = this->flight.loadFeatures(*matchIt);
             vector<DMatch> matches;
 
-            rmatcher.robustMatch(trainFeatureSet.first, trainFeatureSet.second, queryFeatureSet.first, queryFeatureSet.second, matches);
-
+            rmatcher.robustMatch(trainFeatureSet.keypoints, trainFeatureSet.descriptors, queryFeatureSet.keypoints, queryFeatureSet.descriptors, matches);
+            
             int trainIndex = this->flight.getImageIndex(*matchIt);
-            for (int i = 0; i < matches.size(); i++)
+            for (size_t i = 0; i < matches.size(); i++)
             {
                 //Update train index so we know what image we matched against when we are running the tracking pipeline
                 matches[i].imgIdx = trainIndex;
             }
             matchSet[*matchIt] = matches;
-            this->flight.saveMatches(it->first, matchSet);
+            cout << it->first << " - " << *matchIt << " has " << matches.size() << "candidate matches"<<endl;
         }
+        this->flight.saveMatches(it->first, matchSet);
     }
 }
 
@@ -131,9 +155,9 @@ void ShoMatcher::buildKdTree()
     kd = kd_create(this->dimensions);
     for (auto &img : this->flight.getImageSet())
     {
-        double pos[this->dimensions] = {img.location.longitude, img.location.latitude};
+        auto pos = vector<double> {img.location.longitude, img.location.latitude};
         void *dt = &img;
-        assert(kd_insert(static_cast<kdtree *>(kd), pos, dt) == 0);
+        assert(kd_insert(static_cast<kdtree *>(kd), pos.data(), dt) == 0);
     }
 }
 
@@ -142,17 +166,3 @@ map<string, std::vector<string>> ShoMatcher::getCandidateImages() const
     return this->candidateImages;
 }
 
-void ShoMatcher::setFeatureDetector(const cv::Ptr<cv::FeatureDetector> &detector)
-{
-    this->detector_ = detector;
-}
-
-void ShoMatcher::setFeatureExtractor(const cv::Ptr<cv::DescriptorExtractor> &extractor)
-{
-    this->extractor_ = extractor;
-}
-
-void ShoMatcher::setMatcher(const cv::Ptr<cv::DescriptorMatcher> &matcher)
-{
-    this->matcher_ = matcher;
-}

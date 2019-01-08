@@ -30,7 +30,6 @@ OF SUCH DAMAGE.
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <pthread.h>
 #include "kdtree.h"
 
 #define SQ(x) ((x) * (x))

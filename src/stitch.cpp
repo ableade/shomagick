@@ -22,6 +22,7 @@
 #include "kdtree.h"
 #include "shomatcher.hpp"
 #include "shotracking.h"
+#include "reconstructor.h"
 
 using namespace boost::filesystem;
 using cv::BFMatcher;
@@ -48,42 +49,36 @@ bool pairCompare(pair<string, double> a, pair<string, double> b)
 
 int main(int argc, char *argv[])
 {
-  std::ofstream outfile;
-  std::ofstream harvFile;
-  std::ofstream wsgFile;
+  string cameraCalibrationFile;
   if (argc < 2)
   {
-    cout << "Program usage: <flight session directory>" << endl;
+    cout << "Program usage: <flight session directory> optional -- <camera calibration file>" << endl;
     exit(1);
   }
-  FlightSession flight(argv[1]);
+  FlightSession flight;
+  argc > 2 ? flight = FlightSession(argv[1], argv[2]) : flight = FlightSession(argv[1]);
+  
   ShoMatcher shoMatcher(flight);
-  cv::Ptr<FeatureDetector> detector = ORB::create();
-  cv::Ptr<DescriptorExtractor> extractor = ORB::create();
 
   //**** Begin Matching Pipeline ******
   shoMatcher.getCandidateMatches();
-  shoMatcher.setFeatureDetector(detector);
-  shoMatcher.setFeatureExtractor(extractor);
   shoMatcher.extractFeatures();
-  shoMatcher.runRobustFeatureDetection();
+  shoMatcher.runRobustFeatureMatching();
   //******End matching pipeline******
 
   //***Begin tracking pipeline *****
   ShoTracker tracker(flight, shoMatcher.getCandidateImages());
-  auto featureNodes = tracker.createFeatureNodes();
+  vector<pair<FeatureNode, FeatureNode>> featureNodes;
+  vector<FeatureProperty> featureProps;
+  tracker.createFeatureNodes(featureNodes, featureProps);
   tracker.createTracks(featureNodes);
-  auto tracksGraph = tracker.buildTracksGraph();
+  auto tracksGraph = tracker.buildTracksGraph(featureProps);
   cout << "Created tracks graph " << endl;
   cout << "Number of vertices is " << tracksGraph.m_vertices.size() << endl;
   cout << "Number of edges is " << tracksGraph.m_edges.size() << endl;
   auto commonTracks = tracker.commonTracks(tracksGraph);
-  cout << commonTracks.size() << endl;
-  for (auto commonTrack : commonTracks)
-  {
-    cout << "This pair has " << commonTrack.second.size() << " tracks" << endl;
-  }
-
+  Reconstructor reconstructor(flight, tracksGraph, tracker.getTrackNodes(), tracker.getImageNodes());
+  reconstructor.runIncrementalReconstruction(tracker);
   /*
 harvFile.open("harv.csv"); wsgFile.open("wsg.csv");
 //Compute nearest neighbors using haversine formula

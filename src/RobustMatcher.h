@@ -14,17 +14,19 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
+const int numFeatures = 4000;
 class RobustMatcher
 {
 public:
-  RobustMatcher() : ratio_(0.8f)
+  RobustMatcher() : detector_(cv::ORB::create(numFeatures)), extractor_ (cv::ORB::create(numFeatures)), ratio_(0.8f)
   {
     // ORB is the default feature
-    detector_ = cv::ORB::create();
-    extractor_ = cv::ORB::create();
-
+    detector_ = cv::ORB::create(numFeatures);
+    extractor_ = cv::ORB::create(numFeatures);
+    
+    
     // BruteFroce matcher with Norm Hamming is the default matcher
-    matcher_ = cv::makePtr<cv::BFMatcher>((int)cv::NORM_L1, false);
+    matcher_ = cv::makePtr<cv::BFMatcher>((int)cv::NORM_HAMMING, false);
   }
   virtual ~RobustMatcher();
 
@@ -67,6 +69,9 @@ public:
   void fastRobustMatch(const cv::Mat &frame, std::vector<cv::DMatch> &good_matches,
                        std::vector<cv::KeyPoint> &keypoints_frame,
                        const cv::Mat &descriptors_model);
+  
+  void fastRobustMatch(const std::vector<cv::KeyPoint> &keypoints1, const cv::Mat descriptors1, 
+  const std::vector<cv::KeyPoint> &keypoints2, const cv::Mat descriptors2, std::vector<cv::DMatch> &matches);
 
 private:
   // pointer to the feature point detector object

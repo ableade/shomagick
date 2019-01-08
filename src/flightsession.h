@@ -3,10 +3,16 @@
 #include <string>
 #include <vector>
 #include "image.hpp"
+#include "camera.h"
 #include <map>
 #include <boost/filesystem.hpp>
 
-typedef std::pair<std::vector<cv::KeyPoint>, cv::Mat> ImageFeatures;
+class ImageFeatures {
+	public:
+		std::vector<cv::KeyPoint> keypoints;
+		cv::Mat descriptors;
+		std::vector<cv::Scalar> colors;
+};
 
 class FlightSession
 {
@@ -18,9 +24,11 @@ class FlightSession
 	boost::filesystem::path imageFeaturesPath;
 	boost::filesystem::path imageMatchesPath;
 	boost::filesystem::path imageTracksPath;
+	Camera camera;
 
   public:
-	FlightSession(string imageDirectory);
+	FlightSession();
+	FlightSession(string imageDirectory, string calibFile=string());
 	Location getCoordinates(string imagePath);
 	std::vector<Img> getImageSet() const;
 	const boost::filesystem::path getImageDirectoryPath() const;
@@ -30,8 +38,10 @@ class FlightSession
 	bool saveTracksFile(std::map<int, std::vector<int>> tracks);
 	int getImageIndex(string imageName) const;
 	std::map<string, std::vector<cv::DMatch>> loadMatches(string fileName);
-	bool saveImageFeaturesFile(string imageName, const std::vector<cv::KeyPoint> &keypoints, const cv::Mat descriptors);
-	bool saveMatches(string fileName, std::map<string, std::vector<cv::DMatch>> matches);
+	bool saveImageFeaturesFile(string imageName, const std::vector<cv::KeyPoint> &keypoints, const cv::Mat& descriptors, 
+	const std::vector<cv::Scalar>& colors);
+	bool saveMatches(string fileName, const std::map<string, std::vector<cv::DMatch>>& matches);
 	ImageFeatures loadFeatures(string imageName);
+	const Camera& getCamera() const;
 };
 #endif

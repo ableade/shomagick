@@ -5,6 +5,8 @@
 #include <cmath>
 #include <fstream>
 #include <opencv2/core.hpp>
+#include "shompi.h"
+#include <boost/filesystem.hpp>
 
 using cv::Point3d;
 using std::endl;
@@ -23,8 +25,7 @@ inline double toRadian(double deg)
 
 inline string parseFileNameFromPath(string path)
 {
-	int index = path.find_last_of('/');
-	return path.substr(index + 1);
+	return boost::filesystem::path{path}.filename().string();
 }
 
 /*
@@ -54,9 +55,8 @@ struct Location
 		auto locLongRad = toRadian(loc.longitude);
 		auto locLatRad = toRadian(loc.latitude);
 
-		auto u = sin((locLatRad - latRad) / 2);
-		auto v = sin((locLongRad - longRad) / 2);
-
+		auto u = sin((locLatRad - latRad) / b);
+		auto v = sin((locLongRad - longRad) / b);
 		return 2.0 * EARTH_RADIUS * asin(sqrt(u * u + cos(latRad) * cos(locLatRad) * v * v));
 	}
 
@@ -103,6 +103,8 @@ struct Img
 {
 	std::string fileName;
 	Location location;
-};
 
+	Img() : fileName(), location() {};
+	Img(string fileName, Location location) : fileName(fileName) , location(location) {};
+};
 #endif

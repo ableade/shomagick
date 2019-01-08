@@ -8,12 +8,22 @@ using cv::FileNode;
 using cv::FileNodeIterator;
 using cv::KeyPoint;
 using cv::Mat;
+using cv::Scalar;
 using std::cout;
 using std::map;
 using std::vector;
+using std::cerr;
 
-FlightSession::FlightSession(string imageDirectory) : imageDirectory(imageDirectory)
+FlightSession::FlightSession() : imageData(), imageDirectory(), imageDirectoryPath(), imageFeaturesPath(),
+													  imageTracksPath(), camera()
 {
+
+}
+
+FlightSession::FlightSession(string imageDirectory, string calibrationFile) : imageData(), imageDirectory(imageDirectory), imageDirectoryPath(), imageFeaturesPath(),
+													  imageTracksPath(), camera()
+{
+	cerr << "Image directory is " << imageDirectory << endl;
 	vector<directory_entry> v;
 	assert(is_directory(imageDirectory));
 	this->imageDirectoryPath = path(imageDirectory);
@@ -21,17 +31,12 @@ FlightSession::FlightSession(string imageDirectory) : imageDirectory(imageDirect
 	this->imageFeaturesPath = this->imageDirectoryPath / "features";
 	this->imageMatchesPath = this->imageDirectoryPath / "matches";
 	this->imageTracksPath = this->imageDirectoryPath / "tracks";
-
-	if (!boost::filesystem::exists(this->imageFeaturesPath) || !boost::filesystem::exists(this->imageMatchesPath) || !boost::filesystem::exists(this->imageTracksPath))
-		;
-	{
-		cout << "Creating directory " << this->imageFeaturesPath.string() << endl;
-		boost::filesystem::create_directory(this->imageFeaturesPath);
-		cout << "Creating directory " << this->imageMatchesPath.string() << endl;
-		boost::filesystem::create_directory(this->imageMatchesPath);
-		cout << "Creating directory " << this->imageTracksPath.string();
-		boost::filesystem::create_directory(this->imageTracksPath);
-	}
+	cout << "Creating directory " << this->imageFeaturesPath.string() << endl;
+	boost::filesystem::create_directory(this->imageFeaturesPath);
+	cout << "Creating directory " << this->imageMatchesPath.string() << endl;
+	boost::filesystem::create_directory(this->imageMatchesPath);
+	cout << "Creating directory " << this->imageTracksPath.string() << endl;
+	boost::filesystem::create_directory(this->imageTracksPath);
 	copy_if(
 		directory_iterator(imageDirectory),
 		directory_iterator(),
@@ -46,6 +51,9 @@ FlightSession::FlightSession(string imageDirectory) : imageDirectory(imageDirect
 		auto loc = this->getCoordinates(entry.path().string());
 		img.location = loc;
 		this->imageData.push_back(img);
+	}
+	if(!calibrationFile.empty()) {
+		this->camera = Camera::getCameraFromCalibrationFile(calibrationFile);
 	}
 	cout << "Found " << this->imageData.size() << " usable images" << endl;
 }
@@ -123,7 +131,7 @@ const path FlightSession::getImageTracksPath() const
 
 int FlightSession::getImageIndex(string imageName) const
 {
-	for (int i = 0; i < this->imageData.size(); ++i)
+	for (size_t i = 0; i < this->imageData.size(); ++i)
 	{
 		if (this->imageData[i].fileName == imageName)
 		{
@@ -133,22 +141,23 @@ int FlightSession::getImageIndex(string imageName) const
 	return -1;
 }
 
-bool FlightSession::saveImageFeaturesFile(string imageName, const std::vector<cv::KeyPoint> &keypoints, const cv::Mat descriptors)
+bool FlightSession::saveImageFeaturesFile(string imageName, const std::vector<cv::KeyPoint> &keypoints, const cv::Mat &descriptors,
+										  const std::vector<cv::Scalar> &colors)
 {
-	auto imageFeaturePath = this->getImageFeaturesPath() / imageName;
+	auto imageFeaturePath = this->getImageFeaturesPath() / (imageName + ".xml");
 	if (!boost::filesystem::exists(imageFeaturePath))
 	{
 		cv::FileStorage file(imageFeaturePath.string(), cv::FileStorage::WRITE);
-		file << "Keypoints " << keypoints;
-		file << "Descriptors " << descriptors;
+		file << "Keypoints" << keypoints;
+		file << "Descriptors" << descriptors;
+		file << "Colors" << colors;
 		file.release();
 	}
 	return boost::filesystem::exists(imageFeaturePath);
 }
 
-bool FlightSession::saveMatches(string fileName, std::map<string, vector<cv::DMatch>> matches)
+bool FlightSession::saveMatches(string fileName, const std::map<string, vector<cv::DMatch>>& matches)
 {
-
 	auto imageMatchesPath = this->getImageMatchesPath() / (fileName + ".xml");
 	cout << "Writing file " << imageMatchesPath.string() << endl;
 	;
@@ -185,12 +194,18 @@ map<string, vector<DMatch>> FlightSession::loadMatches(string fileName)
 
 ImageFeatures FlightSession::loadFeatures(string imageName)
 {
-	auto imageFeaturePath = this->getImageFeaturesPath() / imageName;
+	auto imageFeaturePath = this->getImageFeaturesPath() / (imageName + ".xml");
 	cv::FileStorage fs(imageFeaturePath.string(), cv::FileStorage::READ);
 	vector<KeyPoint> keypoints;
 	Mat descriptors;
+	vector<Scalar> colors;
 	fs["Keypoints"] >> keypoints;
 	fs["Descriptors"] >> descriptors;
+	fs["Colors"] >> colors;
 
-	return make_pair(keypoints, descriptors);
+	return {keypoints, descriptors, colors};
+}
+
+const Camera& FlightSession::getCamera() const {
+	return this->camera;
 }

@@ -1,23 +1,40 @@
-#ifndef RECONSTRUCTION_HPP
-#define RECONSTRUCTION_HPP
+#ifndef RECONSTRUCTION_HPP_
+#define RECONSTRUCTION_HPP_
 
-#include "flightsession.h"
-#include "shotracking.h"
-#include "camera.h"
+#include "shot.h"
 
-class Reconstructor
-{
-private:
-  FlightSession flight;
-  TrackGraph tg;
-  void _alignMatchingPoints(string image1, string image2, std::vector<cv::Point2f> &points1, std::vector<cv::Point2f> &points2);
+class CloudPoint {
 
-public:
-  Reconstructor(FlightSession flight, TrackGraph tg);
-  Reconstructor(FlightSession flight, ShoTracker tracker);
-  void recoverTwoCameraViewPose(string image1, string image2, int method = cv::RANSAC, double tresh = 0.999, double prob = 1.0);
-  float computeReconstructability(int commonPoints, Mat inliers, int treshold = 0.3);
-  void computePlaneHomography(string image1, string image2);
+    private:
+        int id;
+        cv::Point3d position;
+        cv::Scalar color;
+        double projError;
+
+    public:
+        CloudPoint(): id(), position(), color(), projError() {}
+        CloudPoint(int id, cv::Point3d position, cv::Scalar color, double projError): id(id), position(position) , color(color) , 
+        projError(projError) {}
+        int getId() const {return this->id;}
+        double getError() const {return this->projError;}
+        cv::Point3d getPosition() const {return this->position;}
+        void setPosition(cv::Point3d pos) {this->position  = pos;}
+        void setId(int id) {this->id = id;}
+};
+
+class Reconstruction {
+    private:
+        std::map<std::string, Shot> shots;
+        std::map<int, CloudPoint> cloudPoints;
+        Camera camera;
+
+    public:
+        Reconstruction();
+        Reconstruction(std::map<std::string, Shot> shots, std::map<int, CloudPoint> cloudPoints, Camera camera);
+        std::map<std::string, Shot>& getReconstructionShots();
+        bool hasShot(std::string shotId);
+        std::map<int, CloudPoint>& getCloudPoints();
+        void addCloudPoint(CloudPoint cPoint);
 };
 
 #endif
