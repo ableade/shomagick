@@ -40,7 +40,7 @@ class Camera
     cv::Mat getDistortionMatrix() const;
     void cvPointsToBearingVec(
     const std::vector<cv::Point2f>&, opengv::bearingVectors_t& );
-    opengv::bearingVector_t  normalizedPointToBearingVec(cv::Point2f &point) const;
+    opengv::bearingVector_t  normalizedPointToBearingVec(const cv::Point2f &point) const;
     cv::Point2f projectBearing(opengv::bearingVector_t);
     double getK1() const;
     double getk2() const;

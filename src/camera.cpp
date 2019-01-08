@@ -66,10 +66,7 @@ cv::Mat Camera::getNormalizedKMatrix() const {
 
 cv::Mat Camera::getDistortionMatrix() const
 {
-    cv::Mat dist = (cv::Mat_<double>(5, 1) << 9.5451901612149271e-3, -5.4949250292936147e-3, 0., 0., 6.0371565989711740e-3);
-    //cv::Mat dist = (cv::Mat_<double>(4, 1) << 0, 0, 0., 0);
-    //return this->distortionCoefficients;
-    return dist;
+    return this->distortionCoefficients;
 }
 
 void Camera::cvPointsToBearingVec(
@@ -90,10 +87,9 @@ void Camera::cvPointsToBearingVec(
     this->_cvPointsToBearingVec(points1_rect, bearings);
 }
 
-opengv::bearingVector_t Camera::normalizedPointToBearingVec(cv::Point2f &point) const
+opengv::bearingVector_t Camera::normalizedPointToBearingVec(const cv::Point2f &point) const
 {
     std::cout << "Converting point " << point << std::endl;
-    double l;
     std::vector<cv::Point2f> points{ point };
     std::vector<cv::Point3f> hPoints;
     //std::vector<cv::Point2f> uPoints;
@@ -103,7 +99,7 @@ opengv::bearingVector_t Camera::normalizedPointToBearingVec(cv::Point2f &point) 
     opengv::bearingVector_t bearing;
     auto convPoint = hPoints[0];
     auto hPoint = cv::Vec3f(convPoint);
-    l = std::sqrt(hPoint[0] * hPoint[0] + hPoint[1] * hPoint[1] + hPoint[2] * hPoint[2]);
+    const double l = std::sqrt(hPoint[0] * hPoint[0] + hPoint[1] * hPoint[1] + hPoint[2] * hPoint[2]);
     for (int j = 0; j < 3; ++j)
         bearing[j] = hPoint[j] / l;
 
@@ -119,13 +115,11 @@ double Camera::getPhysicalFocalLength() const {
 }
 
 double Camera::getK1() const {
-    return -0.1;
-    //return this->getDistortionMatrix().at<double>(0,0);
+    return this->getDistortionMatrix().at<double>(0,0);
 }
 
 double Camera::getk2() const{
-    return -0.01;
-    //return this->getDistortionMatrix().at<double>(1, 0);
+    return this->getDistortionMatrix().at<double>(1, 0);
 }
 
 cv::Point2f Camera::normalizeImageCoordinates(const cv::Point2f pixelCoords) const

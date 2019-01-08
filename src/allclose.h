@@ -41,3 +41,24 @@ inline bool allClose<Eigen::Vector3d>(
     }
     return true;
 }
+
+#include <opencv2/core.hpp>
+
+namespace detail
+{
+    inline bool approximatelyEqual( const double lhs, const double rhs, const double tolerance )
+    {
+        return fabs(lhs - rhs) <= tolerance;
+    }
+} //namespace detail
+
+template <>
+inline bool allClose<cv::Point2f>(
+    const cv::Point2f& lhs,
+    const cv::Point2f& rhs,
+    const double tolerance
+)
+{
+    return  detail::approximatelyEqual( lhs.x, rhs.x, tolerance ) &&
+            detail::approximatelyEqual( lhs.y, rhs.y, tolerance );
+}
