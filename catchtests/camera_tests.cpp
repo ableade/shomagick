@@ -36,13 +36,7 @@ namespace
 } //namespace
 
 
-Camera getPerspectiveCamera() {
-    const auto physicalLens = 0.6;
-    const auto height = 600;
-    const auto width = 800;
-    const auto dist1 = -0.1;
-    const auto dist2 = 0.01;
-
+Camera getPerspectiveCamera(float physicalLens, int height, int width, float k1, float k2) {
     const auto pixelFocal = physicalLens * width;
 
     cv::Mat cameraMatrix = (cv::Mat_<double>(3, 3) <<
@@ -58,8 +52,8 @@ Camera getPerspectiveCamera() {
     );
 
     cv::Mat dist = (cv::Mat_<double>(4, 1) <<
-        dist1,
-        dist2,
+        k1,
+        k2,
         0.,
         0.
     );
@@ -71,7 +65,14 @@ SCENARIO("Testing the projection for a perspective camera")
 {
     GIVEN("a perspective camera and pixel [0.1,0.2]  ")
     {
-        auto c = getPerspectiveCamera();
+       
+        const auto physicalLens = 0.6;
+        const auto height = 600;
+        const auto width = 800;
+        const auto dist1 = -0.1;
+        const auto dist2 = 0.01;
+   
+        auto c = getPerspectiveCamera(physicalLens, height, width, dist1, dist2);
         WHEN("the camera projects bearing vector for this pixel")
         {
             const auto testPoint = cv::Point2f{ 0.1,0.2 };
@@ -86,6 +87,36 @@ SCENARIO("Testing the projection for a perspective camera")
                 INFO("projected: " << projected);
                 REQUIRE(allClose(testPoint, projected));
     
+            }
+        }
+    }
+}
+
+SCENARIO("Testing the bearing direction of a camera")
+{
+    GIVEN("a perspective camera and pixel [0.0,0.0]  ")
+    {
+        const auto testPoint = cv::Point2f{ 0.0,0.0 };
+        const auto physicalLens = 0.6;
+        const auto height = 600;
+        const auto width = 800;
+        const auto dist1 = -0.1;
+        const auto dist2 = 0.01;
+
+        auto c = getPerspectiveCamera(physicalLens, height, width, dist1, dist2);
+        WHEN("the bearing direction of the center pixel is calculated")
+        {
+            const auto expectedBearing = Eigen::Vector3d{ 0,0,1 };
+            const auto actualBearing = c.normalizedPointToBearingVec(
+                testPoint
+            );
+         
+            THEN("the bearing vector should be [0,0,1]")
+            {
+                INFO("expected: " << expectedBearing);
+                INFO("actual: " << actualBearing);
+                REQUIRE(allClose(expectedBearing, actualBearing));
+
             }
         }
     }

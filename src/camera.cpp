@@ -1,9 +1,12 @@
 #include "camera.h"
 #include <ostream>
 #include <algorithm>
+#include <string>
+#include <boost/filesystem.hpp>
 
 using std::ostream;
 using std::max;
+using std::string;
 
 cv::Mat Pose::getRotationMatrix() const
 {
@@ -159,6 +162,18 @@ cv::Point2f Camera::projectBearing(opengv::bearingVector_t b) {
         static_cast<float>(getPhysicalFocalLength() * radialDistortion * x),
         static_cast<float>(getPhysicalFocalLength() * radialDistortion * y)
     };
+}
+
+Camera Camera::getCameraFromCalibrationFile(string calibrationFile) {
+    int height, width;
+    cv::Mat cameraMatrix, distortionParameters;
+    assert(boost::filesystem::exists(calibrationFile));
+    cv::FileStorage fs(calibrationFile, cv::FileStorage::READ);
+    fs["image_height"] >> height;
+    fs["image_width"] >> width;
+    fs["camera_matrix"] >> cameraMatrix;
+    fs["distortion_coefficients"] >> distortionParameters;
+    return Camera{ cameraMatrix, distortionParameters, height, width };
 }
 
 

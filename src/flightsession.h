@@ -42,8 +42,6 @@ class FlightSession
 	const std::vector<cv::Scalar>& colors);
 	bool saveMatches(string fileName, const std::map<string, std::vector<cv::DMatch>>& matches);
 	ImageFeatures loadFeatures(string imageName);
-	Camera getCameraFromCalibrationFile(string);
-	void initializeCameraFromExifMetaData();
 	const Camera& getCamera() const;
 };
 #endif

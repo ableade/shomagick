@@ -53,7 +53,7 @@ FlightSession::FlightSession(string imageDirectory, string calibrationFile) : im
 		this->imageData.push_back(img);
 	}
 	if(!calibrationFile.empty()) {
-		this->camera = this->getCameraFromCalibrationFile(calibrationFile);
+		this->camera = Camera::getCameraFromCalibrationFile(calibrationFile);
 	}
 	cout << "Found " << this->imageData.size() << " usable images" << endl;
 }
@@ -204,18 +204,6 @@ ImageFeatures FlightSession::loadFeatures(string imageName)
 	fs["Colors"] >> colors;
 
 	return {keypoints, descriptors, colors};
-}
-
-Camera FlightSession::getCameraFromCalibrationFile(string calibrationFile) {
-	int height, width;
-	cv::Mat cameraMatrix, distortionParameters;
-	assert(boost::filesystem::exists(calibrationFile));
-	cv::FileStorage fs(calibrationFile, cv::FileStorage::READ);
-	fs["image_height"] >> height;
-	fs["image_width"] >> width;
-	fs["camera_matrix"] >> cameraMatrix;
-	fs["distortion_coefficients"] >> distortionParameters;
-	return Camera{cameraMatrix, distortionParameters, height, width};
 }
 
 const Camera& FlightSession::getCamera() const {

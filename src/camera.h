@@ -46,5 +46,7 @@ class Camera
     double getk2() const;
     cv::Point2f normalizeImageCoordinates(const cv::Point2f) const;
     cv::Point2f denormalizeImageCoordinates(const cv::Point2f) const;
+    static Camera getCameraFromCalibrationFile(std::string calibFile);
+    static Camera getCameraFromExifMetaData(std::string image);
 };
 #endif
