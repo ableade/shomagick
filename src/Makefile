@@ -18,6 +18,8 @@ CXXFLAGS += -Werror=return-type
 INCLUDEFLAGS += -isystem /usr/include/eigen3
 INCLUDEFLAGS += -isystem /usr/include/python2.7
 
+CXXFLAGS += $(INCLUDEFLAGS)
+
 OPENCV_LINK_FLAGS += -lopencv_core
 OPENCV_LINK_FLAGS += -lopencv_highgui
 OPENCV_LINK_FLAGS += -lopencv_imgcodecs
@@ -47,9 +49,19 @@ SOURCES += reconstruction.cpp
 SOURCES += multiview.cpp
 
 OBJECTS = $(SOURCES:.cpp=.o)
+DEPS = $(OBJECTS:.o=.d)
 
-shomagick : $(SOURCES)
-	$(CXX) $(INCLUDEFLAGS) $(CXXFLAGS) -o $@ $^ $(LFLAGS)
+shomagick : $(OBJECTS)
+	$(CXX) -o $@ $(OBJECTS) $(LFLAGS)
+
+%.o : %.cpp
+	$(CXX) $(CXXFLAGS) -MMD -MF $(DEPDIR)/$*.d -c $< -o $@
 
 clean:
 	rm -f $(OBJECTS) $(addprefix $(DEPDIR)/, $(DEPS)) shomagick shomagick.exe
+
+
+-include $(addprefix $(DEPDIR)/, $(DEPS))
+
+
+

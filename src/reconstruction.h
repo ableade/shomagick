@@ -6,18 +6,20 @@
 class CloudPoint {
 
     private:
+        int id;
         cv::Point3d position;
         cv::Scalar color;
-        int id;
         double projError;
 
     public:
-        CloudPoint():position(), color(), id(), projError() {}
-        CloudPoint(cv::Point3d position, cv::Scalar color, int id, double projError): position(position) , color(color) , id(id),
+        CloudPoint(): id(), position(), color(), projError() {}
+        CloudPoint(int id, cv::Point3d position, cv::Scalar color, double projError): id(id), position(position) , color(color) , 
         projError(projError) {}
         int getId() const {return this->id;}
         double getError() const {return this->projError;}
         cv::Point3d getPosition() const {return this->position;}
+        void setPosition(cv::Point3d pos) {this->position  = pos;}
+        void setId(int id) {this->id = id;}
 };
 
 class Reconstruction {
@@ -32,6 +34,7 @@ class Reconstruction {
         std::map<std::string, Shot>& getReconstructionShots();
         bool hasShot(std::string shotId);
         std::map<int, CloudPoint>& getCloudPoints();
+        void addCloudPoint(CloudPoint cPoint);
 };
 
 #endif

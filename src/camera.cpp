@@ -16,7 +16,9 @@ cv::Mat Pose::getOrigin() const
 {
     cv::Mat tRot;
     auto origin = this->getRotationMatrix();
+    std::cout << "Rotation matrix is " << origin << std::endl;
     cv::transpose(-origin, tRot);
+    std::cout << "Rotation matrix transpose is " << tRot << std::endl;
     origin = tRot * this->translation;
     return origin;
 }

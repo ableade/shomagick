@@ -12,6 +12,7 @@ using cv::Scalar;
 using std::cout;
 using std::map;
 using std::vector;
+using std::cerr;
 
 FlightSession::FlightSession() : imageData(), imageDirectory(), imageDirectoryPath(), imageFeaturesPath(),
 													  imageTracksPath(), camera()
@@ -22,6 +23,7 @@ FlightSession::FlightSession() : imageData(), imageDirectory(), imageDirectoryPa
 FlightSession::FlightSession(string imageDirectory, string calibrationFile) : imageData(), imageDirectory(imageDirectory), imageDirectoryPath(), imageFeaturesPath(),
 													  imageTracksPath(), camera()
 {
+	cerr << "Image directory is " << imageDirectory << endl;
 	vector<directory_entry> v;
 	assert(is_directory(imageDirectory));
 	this->imageDirectoryPath = path(imageDirectory);

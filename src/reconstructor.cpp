@@ -162,7 +162,14 @@ void Reconstructor::triangulateShots(string image1, Reconstruction &rec)
         auto track = this->tg[*im1Edges.first].trackName;
         cout << "Triangulating track "<< track << endl;
         this->triangulateTrack(track, rec);
+        cout << "******************************" << endl;
     }
+    if (rec.getCloudPoints().size() < 20) {
+        cout << "Initial motion did not generate enough points" << endl;
+        return;
+    }
+
+    cout << "Generated " << rec.getCloudPoints().size() << "points from initial motion " << endl;
 }
 
 void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec)
@@ -176,6 +183,7 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec)
         auto shotId =  this->tg[*neighbors.first].name;
         if (rec.hasShot(shotId)) {
             auto shot = rec.getReconstructionShots()[shotId];
+            cout << "Currently at shot " << shot.getId() << endl;
             auto edgePair = boost::edge(track, this->imageNodes[shotId], this->tg);
             auto edgeDescriptor = edgePair.first;
             auto fCol = this->tg[edgeDescriptor].fProp.color;
@@ -183,7 +191,6 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec)
             auto fBearing = this->flight.getCamera().normalizedPointToBearingVec(fPoint);
             cout << "F point to f bearing is " << fPoint << " to " << fBearing << endl;
             auto origin = this->getShotOrigin(shot);
-            cout << "Currently at shot " << shot.getId() << endl;
             cout << "Origin for this shot was " << origin << endl;
             Eigen::Vector3d eOrigin;
             Eigen::Matrix3d eigenRotationInverse;
@@ -195,14 +202,23 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec)
             cout << "Rotation inverse times bearing us  " << eigenRotationBearingProduct<< endl;  
             b.push_back(eigenRotationBearingProduct);
             a.push_back(eOrigin);
+<<<<<<< HEAD
             if (TriangulateBearingsMidpoint(a,b,x)) {
                 cout << "Triangulation occured succesfully" << endl;
             }
+=======
+        } else {
+            cout << "Reconstruction does not have a shot" <<endl;
+>>>>>>> b56b3ef... Implement point cloud functionality
         }
     }
     if (b.size() >= 2) {
         if (TriangulateBearingsMidpoint(a,b,x)) {
-            cout << "Triangulaiton occured succesfully" << endl;
+            cout << "Triangulation occured succesfully" << endl;
+            CloudPoint cp;
+            cp.setId(stoi(trackId));
+            cp.setPosition(Point3d{x(0), x(1), x(2)});
+            rec.addCloudPoint(cp);
             }
     }
 }

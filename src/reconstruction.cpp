@@ -23,3 +23,7 @@ bool Reconstruction::hasShot(string shotId)
 {
     return this->shots.find(shotId) != this->shots.end();
 }
+
+void Reconstruction::addCloudPoint(CloudPoint cp) {
+    this->cloudPoints[cp.getId()] = cp;
+}
