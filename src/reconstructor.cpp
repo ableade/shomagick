@@ -23,7 +23,6 @@ Reconstructor ::Reconstructor(FlightSession flight, TrackGraph tg, std::map<stri
 
 void Reconstructor::_alignMatchingPoints(void *img1, void *img2, const set<string> &tracks, vector<cv::Point2f> &points1, vector<cv::Point2f> &points2)
 {
-    Mat cameraMatrix = (Mat_<double>(3, 3) << 3.8123526712521689e+3, 0.2592, 0, 3.8123526712521689e+03, 1944, 0, 0.1);
     map<string, Point2f> aPoints1, aPoints2;
     pair<out_edge_iterator, out_edge_iterator> im1Edges = boost::out_edges(img1, this->tg);
     pair<out_edge_iterator, out_edge_iterator> im2Edges = boost::out_edges(img2, this->tg);
@@ -164,7 +163,10 @@ void Reconstructor::triangulateShots(string image1, Reconstruction &rec)
         this->triangulateTrack(track, rec);
         cout << "******************************" << endl;
     }
-    if (rec.getCloudPoints().size() < 20) {
+
+    constexpr auto minInliers = 20;
+
+    if (rec.getCloudPoints().size() < minInliers) {
         cout << "Initial motion did not generate enough points" << endl;
         return;
     }
@@ -177,11 +179,12 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec)
     auto track = this->trackNodes[trackId];
     std::pair<adjacency_iterator, adjacency_iterator> neighbors = boost::adjacent_vertices(track, this->tg);
     Eigen::Vector3d x;
-    vector<Eigen::Vector3d> a, b;
+    vector<Eigen::Vector3d> originList, bearingList;
     for (; neighbors.first != neighbors.second; ++neighbors.first)
     {
         auto shotId =  this->tg[*neighbors.first].name;
-        if (rec.hasShot(shotId)) {
+        if (rec.hasShot(shotId))
+        {
             auto shot = rec.getReconstructionShots()[shotId];
             cout << "Currently at shot " << shot.getId() << endl;
             auto edgePair = boost::edge(track, this->imageNodes[shotId], this->tg);
@@ -200,26 +203,18 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec)
             cout << "Rotation inverse is " << eigenRotationInverse << endl;
             auto eigenRotationBearingProduct = eigenRotationInverse * fBearing;
             cout << "Rotation inverse times bearing us  " << eigenRotationBearingProduct<< endl;  
-            b.push_back(eigenRotationBearingProduct);
-            a.push_back(eOrigin);
-<<<<<<< HEAD
-            if (TriangulateBearingsMidpoint(a,b,x)) {
-                cout << "Triangulation occured succesfully" << endl;
-            }
-=======
-        } else {
-            cout << "Reconstruction does not have a shot" <<endl;
->>>>>>> b56b3ef... Implement point cloud functionality
+            bearingList.push_back(eigenRotationBearingProduct);
+            originList.push_back(eOrigin);
         }
     }
-    if (b.size() >= 2) {
-        if (TriangulateBearingsMidpoint(a,b,x)) {
+    if (bearingList.size() >= 2) {
+        if (TriangulateBearingsMidpoint(originList,bearingList,x)) {
             cout << "Triangulation occured succesfully" << endl;
             CloudPoint cp;
             cp.setId(stoi(trackId));
             cp.setPosition(Point3d{x(0), x(1), x(2)});
             rec.addCloudPoint(cp);
-            }
+        }
     }
 }
 

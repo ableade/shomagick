@@ -51,8 +51,13 @@ Eigen::Vector3d TriangulateBearingsMidpointSolve(const Eigen::Matrix<double, 3, 
   return (Eigen::Matrix3d::Identity() + BBt * Cinv) * A / nviews - Cinv * BBtA;
 }
 
-bool TriangulateBearingsMidpoint(const std::vector<Eigen::Vector3d> &os_list,
-                                 const std::vector<Eigen::Vector3d> &bs_list, Eigen::Vector3d &x, double threshold, double min_angle)
+bool TriangulateBearingsMidpoint(
+    const std::vector<Eigen::Vector3d> &os_list,
+    const std::vector<Eigen::Vector3d> &bs_list,
+    Eigen::Vector3d &result,
+    double threshold,
+    Radians min_angle
+)
 {
   int n = os_list.size();
 
@@ -96,13 +101,13 @@ bool TriangulateBearingsMidpoint(const std::vector<Eigen::Vector3d> &os_list,
   std::cout << "Angle was Ok" << std::endl;
 
   // Triangulate
-  x = TriangulateBearingsMidpointSolve(os, bs);
-  std::cout << "X is " << x << std::endl;
+  result = TriangulateBearingsMidpointSolve(os, bs);
+  std::cout << "X is " << result << std::endl;
 
   // Check reprojection error
   for (int i = 0; i < n; ++i)
   {
-    Eigen::Vector3d x_reproj = x - os.col(i);
+    Eigen::Vector3d x_reproj = result - os.col(i);
     Eigen::Vector3d b = bs.col(i);
 
     double error = AngleBetweenVectors(x_reproj, b);

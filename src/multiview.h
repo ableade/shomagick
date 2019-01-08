@@ -53,9 +53,9 @@ typedef double Radians;
 bool TriangulateBearingsMidpoint(
     const std::vector<Eigen::Vector3d>& os_list,
     const std::vector<Eigen::Vector3d>& bs_list,
-    Eigen::Vector3d& x,
+    Eigen::Vector3d& result,
     double treshold = 0.006,
     Radians min_angle = 1.0 * M_PI / 180
 );
 
-}
+} //namespace csfm
