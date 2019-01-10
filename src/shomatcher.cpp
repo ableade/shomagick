@@ -2,7 +2,9 @@
 #include "kdtree.h"
 #include "camera.h"
 #include "RobustMatcher.h"
+#include <fstream>
 #include <opencv2/imgproc/imgproc.hpp>
+#include "json.hpp"
 #include <set>
 
 using cv::DMatch;
@@ -18,8 +20,9 @@ using std::map;
 using std::pair;
 using std::set;
 using std::vector;
+using json = nlohmann::json;
 
-void ShoMatcher::getCandidateMatches(double range)
+void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
 {
     this->buildKdTree();
     auto imageSet = this->flight.getImageSet();
@@ -53,6 +56,17 @@ void ShoMatcher::getCandidateMatches(double range)
     }
 }
 
+void ShoMatcher::getCandidateMatchesFromFile(string candidatesFile) {
+    assert(boost::filesystem::exists(candidatesFile));
+    std::ifstream infile(candidatesFile);
+    json matchesReport;
+    infile >> matchesReport;
+    const auto pairs = matchesReport["pairs"];
+    for (auto aPair : pairs) {
+        this->candidateImages[aPair[0]].push_back(aPair[1]);
+    }
+}
+
 int ShoMatcher::extractFeatures()
 {
     set<string> detected;
@@ -80,16 +94,6 @@ int ShoMatcher::extractFeatures()
     return detected.size();
 }
 
-#ifdef CV_LOAD_IMAGE_COLOR
-#   define SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM    CV_LOAD_IMAGE_COLOR
-#   define SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM CV_LOAD_IMAGE_ANYDEPTH
-#   define SHO_BGR2RGB                         CV_BGR2RGB
-#else
-#   define SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM    cv::IMREAD_COLOR
-#   define SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM cv::IMREAD_ANYDEPTH
-#   define SHO_BGR2RGB                         cv::COLOR_BGR2RGB
-#endif
-
 bool ShoMatcher::_extractFeature(string fileName)
 {
     auto modelimageNamePath = this->flight.getImageDirectoryPath() / fileName;
@@ -107,9 +111,8 @@ bool ShoMatcher::_extractFeature(string fileName)
     this->extractor_->compute(modelImg, keypoints, descriptors);
     cout << "Extracted "<< descriptors.rows << " points for  " << fileName<< endl;
 
-	Camera testCamera = Camera(cv::Mat(), cv::Mat(), 3888, 5184);
     for(auto  &keypoint : keypoints) {
-		keypoint.pt = testCamera.normalizeImageCoordinates(keypoint.pt);
+		keypoint.pt = this->flight.getCamera().normalizeImageCoordinates(keypoint.pt);
         if (channels == 1)
             colors.push_back(modelImg.at<uchar>(keypoint.pt));
         else if (channels == 3) 

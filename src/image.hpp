@@ -5,7 +5,7 @@
 #include <cmath>
 #include <fstream>
 #include <opencv2/core.hpp>
-#include "shompi.h"
+#include "bootstrap.h"
 #include <boost/filesystem.hpp>
 
 using cv::Point3d;

@@ -167,7 +167,7 @@ void Reconstructor::triangulateShots(string image1, Reconstruction &rec)
     constexpr auto minInliers = 20;
 
     if (rec.getCloudPoints().size() < minInliers) {
-        cout << "Initial motion did not generate enough points" << endl;
+        cout << "Initial motion did not generate enough points : "<<rec.getCloudPoints().size() << endl;
         return;
     }
 
@@ -238,9 +238,9 @@ cv::Mat Reconstructor::getRotationInverse(const Shot& shot) {
 }
 
 void Reconstructor::singleCameraBundleAdjustment(std::string shotId, Reconstruction& rec) {
-    auto bundleAdjuster = BundleAdjuster();
+    BundleAdjuster bundleAdjuster;
     auto shot = rec.getReconstructionShots()[shotId];
     auto camera = shot.getCamera();
-    bundleAdjuster.AddPerspectiveCamera(1, camera.getPhysicalFocalLength(), camera.getK1(), camera.getK2(),
+    bundleAdjuster.AddPerspectiveCamera("1", camera.getPhysicalFocalLength(), camera.getK1(), camera.getK2(),
         camera.getInitialPhysicalFocal(), camera.getInitialK1(), camera.getInitialK2(), true);
 }

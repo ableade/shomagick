@@ -8,11 +8,11 @@
 
 struct VertexProperty
 {
-	string name;
+	std::string name;
 	bool is_image;
 
 	VertexProperty() : name() , is_image() {};
-	VertexProperty(string name, bool is_image) : name(name), is_image(is_image) {};
+	VertexProperty(std::string name, bool is_image) : name(name), is_image(is_image) {};
 
 };
 
@@ -27,23 +27,23 @@ struct FeatureProperty
 
 struct EdgeProperty {
 	FeatureProperty fProp;
-	string trackName;
-	string imageName;
+	std::string trackName;
+	std::string imageName;
 
 	EdgeProperty() : fProp(), trackName(), imageName() {}
-	EdgeProperty(FeatureProperty fProp, string trackName, string imageName) : fProp(fProp), trackName(trackName), imageName(imageName) {} 
+	EdgeProperty(FeatureProperty fProp, std::string trackName, string imageName) : fProp(fProp), trackName(trackName), imageName(imageName) {} 
 };
 
 typedef boost::adjacency_list<boost::listS, boost::setS, boost::undirectedS, VertexProperty, EdgeProperty> TrackGraph;
 typedef boost::graph_traits <TrackGraph>::out_edge_iterator out_edge_iterator;
 typedef boost::graph_traits <TrackGraph>::adjacency_iterator adjacency_iterator;
-typedef std::pair<string, int> FeatureNode;
+typedef std::pair<std::string, int> FeatureNode;
 
 class CommonTrack {
 	public:
-		std::pair<string, string> imagePair;
+		std::pair<std::string, std::string> imagePair;
 		float rScore;
-		std::set <string> commonTracks;
+		std::set <std::string> commonTracks;
 
 		CommonTrack() : imagePair(), rScore(), commonTracks() {};
 		CommonTrack(std::pair<string, string> imagePair, float rScore, std::set<string> commonTracks) : imagePair
@@ -60,13 +60,13 @@ class ShoTracker
 	UnionFind uf;
 	int minTrackLength = 2;
 	bool addFeatureToIndex(std::pair<string, int> feature, int featureIndex);
-	std::map<string, TrackGraph::vertex_descriptor> imageNodes;
-	std::map<string, TrackGraph::vertex_descriptor> trackNodes;
-	std::set<std::pair<string, string>> _getCombinations(const std::vector<string>& images) const;
+	std::map<std::string, TrackGraph::vertex_descriptor> imageNodes;
+	std::map<std::string, TrackGraph::vertex_descriptor> trackNodes;
+	std::set<std::pair<std::string, std::string>> _getCombinations(const std::vector<std::string>& images) const;
 	FeatureProperty _getFeatureProperty (const ImageFeatures& imageFeatures, int featureIndex);
 
   public:
-	ShoTracker(FlightSession flight, std::map<string, std::vector<string>> candidateImages);
+	ShoTracker(FlightSession flight, std::map<string, std::vector<std::string>> candidateImages);
 	void createTracks(const std::vector<std::pair<FeatureNode, FeatureNode>>& features);
 	TrackGraph buildTracksGraph(const std::vector<FeatureProperty>& props);
 	void mergeFeatureTracks(FeatureNode feature1, FeatureNode feature2);

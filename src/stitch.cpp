@@ -57,11 +57,19 @@ int main(int argc, char *argv[])
   }
   FlightSession flight;
   argc > 2 ? flight = FlightSession(argv[1], argv[2]) : flight = FlightSession(argv[1]);
+
   
   ShoMatcher shoMatcher(flight);
 
   //**** Begin Matching Pipeline ******
-  shoMatcher.getCandidateMatches();
+  if (argc > 3) {
+    //A candidate file was provided 
+    const auto candidateFile = argv[3];
+    cout << "Using candidate file " << candidateFile << std::endl;
+    shoMatcher.getCandidateMatchesFromFile(candidateFile);
+  } else {
+      shoMatcher.getCandidateMatchesUsingSpatialSearch();
+  }
   shoMatcher.extractFeatures();
   shoMatcher.runRobustFeatureMatching();
   //******End matching pipeline******

@@ -9,7 +9,7 @@ This code is taken from OpenSFM see License at
 #include <Eigen/LU>
 #include <Eigen/QR>
 #include <Eigen/StdVector>
-#include "shompi.h"
+#include "bootstrap.h"
 
 namespace csfm
 {

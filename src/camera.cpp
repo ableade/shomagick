@@ -47,14 +47,28 @@ void Camera::_cvPointsToBearingVec(cv::Mat pRect, opengv::bearingVectors_t &bear
         bearings.push_back(bearing);
     }
 }
-Camera::Camera() : cameraMatrix(), distortionCoefficients(), height(), width()
+Camera::Camera() : cameraMatrix(), distortionCoefficients(), height(), width(),  cameraMake(),
+    cameraModel(), initialK1(), initialK2(), initialPhysicalFocal()
 {
     int dimension = 3;
     this->cameraMatrix = cv::Mat::eye(dimension, dimension, CV_32F);
+    this->cameraMake = "";
+    this->cameraModel = "";
+    this->initialPhysicalFocal = 0.0;
+    this->initialK1 = 0.0;
+    this->initialK2 = 0.0;
 }
 
 Camera::Camera(cv::Mat cameraMatrix, cv::Mat distortion, int height, int width) : cameraMatrix(cameraMatrix), distortionCoefficients(distortion), height(height),
-width(width) {}
+width(width),cameraMake(),
+cameraModel(),  initialK1(),  initialK2(), initialPhysicalFocal() {
+    assert (!cameraMatrix.empty());
+    assert(!distortionCoefficients.empty());
+    assert(height !=0 && width != 0);
+    this->initialK1 = this->getK1();
+    this->initialK2 = this->getK2();
+    this->initialPhysicalFocal = this->getPhysicalFocalLength();
+}
 
 cv::Mat Camera::getKMatrix() { return this->cameraMatrix; }
 
@@ -109,20 +123,32 @@ opengv::bearingVector_t Camera::normalizedPointToBearingVec(const cv::Point2f &p
     return bearing;
 }
 
-double Camera::getFocal() const{
+double Camera::getPixelFocal() const{
     return this->cameraMatrix.at<double>(0, 0);
 }
 
 double Camera::getPhysicalFocalLength() const {
-    return (double)this->getFocal() / (double)max(this->height, this->width);
+    return (double)this->getPixelFocal() / (double)max(this->height, this->width);
 }
 
 double Camera::getK1() const {
     return this->getDistortionMatrix().at<double>(0,0);
 }
 
-double Camera::getk2() const{
+double Camera::getK2() const{
     return this->getDistortionMatrix().at<double>(1, 0);
+}
+
+double Camera::getInitialK1() const {
+    return this->initialK1;
+}
+
+double Camera::getInitialK2() const {
+    return this->initialK2;
+}
+
+double Camera::getInitialPhysicalFocal() const {
+    return this->initialPhysicalFocal;
 }
 
 cv::Point2f Camera::normalizeImageCoordinates(const cv::Point2f pixelCoords) const
@@ -156,7 +182,7 @@ cv::Point2f Camera::projectBearing(opengv::bearingVector_t b) {
     auto y = b[1] / b[2];
 
     auto r = x * x + y * y;
-    auto radialDistortion = 1.0 + r * (getK1() + getk2() * r);
+    auto radialDistortion = 1.0 + r * (getK1() + getK2() * r);
 
     return cv::Point2f{
         static_cast<float>(getPhysicalFocalLength() * radialDistortion * x),
