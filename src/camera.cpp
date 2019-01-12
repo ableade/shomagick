@@ -2,7 +2,7 @@
 #include <ostream>
 #include <algorithm>
 #include <string>
-#include <boost/filesystem.hpp>
+//#include <boost/filesystem.hpp>
 
 using std::ostream;
 using std::max;
@@ -24,6 +24,47 @@ cv::Mat Pose::getOrigin() const
     std::cout << "Rotation matrix transpose is " << tRot << std::endl;
     origin = tRot * this->translation;
     return origin;
+}
+
+cv::Mat Pose::getTranslation() const{
+    return translation;
+}
+
+void Pose::setTranslation(cv::Mat t) {
+    translation = t;
+}
+
+void Pose::setRotationVector(cv::Mat src) {
+    cv::Mat rotationVector;
+    rotationVector = src;
+    if (src.rows == 3 && src.cols == 3) {
+        //src is currently a rotation matrix
+        cv::Rodrigues(src, rotationVector);
+    }
+    CV_Assert((rotationVector.cols == 1 && rotationVector.rows == 3) || (rotationVector.cols == 3 && rotationVector.rows == 1));
+    rotation = rotationVector;
+}
+
+Pose Pose::inverse() const {
+    auto inv = Pose{};
+    auto r = getRotationMatrix();
+    cv::Mat transposedRotation;
+    cv::transpose(r, transposedRotation);
+    cv::Mat transposedRotationVector;
+    //cv::Rodrigues()
+    inv.setRotationVector(transposedRotation);
+    cv::transpose(-r, transposedRotation);
+    inv.setTranslation(transposedRotation * translation);
+    return inv;
+}
+
+Pose Pose::compose(const Pose& other) const {
+    auto r = getRotationMatrix();
+    auto otherR = other.getRotationMatrix();
+    auto nR = (r * otherR);
+    auto nT = (r * other.getTranslation()) + getTranslation();
+    
+    return { nR, nT };
 }
 
 ostream & operator << (ostream &out, const Pose &p)
@@ -193,7 +234,7 @@ cv::Point2f Camera::projectBearing(opengv::bearingVector_t b) {
 Camera Camera::getCameraFromCalibrationFile(string calibrationFile) {
     int height, width;
     cv::Mat cameraMatrix, distortionParameters;
-    assert(boost::filesystem::exists(calibrationFile));
+    //assert(boost::filesystem::exists(calibrationFile));
     cv::FileStorage fs(calibrationFile, cv::FileStorage::READ);
     fs["image_height"] >> height;
     fs["image_width"] >> width;

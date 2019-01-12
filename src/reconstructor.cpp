@@ -7,7 +7,7 @@ using namespace cv;
 
 #include <Eigen/Core>
 #include <opencv2/core/eigen.hpp>
-#include "bundle.h"
+//#include "bundle.h"
 
 using std::cout;
 using std::map;
@@ -238,9 +238,9 @@ cv::Mat Reconstructor::getRotationInverse(const Shot& shot) {
 }
 
 void Reconstructor::singleCameraBundleAdjustment(std::string shotId, Reconstruction& rec) {
-    BundleAdjuster bundleAdjuster;
+    //BundleAdjuster bundleAdjuster;
     auto shot = rec.getReconstructionShots()[shotId];
     auto camera = shot.getCamera();
-    bundleAdjuster.AddPerspectiveCamera("1", camera.getPhysicalFocalLength(), camera.getK1(), camera.getK2(),
-        camera.getInitialPhysicalFocal(), camera.getInitialK1(), camera.getInitialK2(), true);
+    //bundleAdjuster.AddPerspectiveCamera("1", camera.getPhysicalFocalLength(), camera.getK1(), camera.getK2(),
+       // camera.getInitialPhysicalFocal(), camera.getInitialK1(), camera.getInitialK2(), true);
 }

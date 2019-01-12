@@ -42,21 +42,21 @@ Camera getPerspectiveCamera(float physicalLens, int height, int width, float k1,
     cv::Mat cameraMatrix = (cv::Mat_<double>(3, 3) <<
         pixelFocal,
         0.,
-        width/2,
+        width / 2,
         0.,
         pixelFocal,
-        height/2,
+        height / 2,
         0.,
         0.,
         1
-    );
+        );
 
     cv::Mat dist = (cv::Mat_<double>(4, 1) <<
         k1,
         k2,
         0.,
         0.
-    );
+        );
 
     return { cameraMatrix, dist, height, width };
 }
@@ -65,13 +65,13 @@ SCENARIO("Testing the projection for a perspective camera")
 {
     GIVEN("a perspective camera and pixel [0.1,0.2]  ")
     {
-       
+
         const auto physicalLens = 0.6;
         const auto height = 600;
         const auto width = 800;
         const auto dist1 = -0.1;
         const auto dist2 = 0.01;
-   
+
         auto c = getPerspectiveCamera(physicalLens, height, width, dist1, dist2);
         WHEN("the camera projects bearing vector for this pixel")
         {
@@ -86,7 +86,7 @@ SCENARIO("Testing the projection for a perspective camera")
                 INFO("testPoint: " << testPoint);
                 INFO("projected: " << projected);
                 REQUIRE(allClose(testPoint, projected));
-    
+
             }
         }
     }
@@ -110,12 +110,35 @@ SCENARIO("Testing the bearing direction of a camera")
             const auto actualBearing = c.normalizedPointToBearingVec(
                 testPoint
             );
-         
+
             THEN("the bearing vector should be [0,0,1]")
             {
                 INFO("expected: " << expectedBearing);
                 INFO("actual: " << actualBearing);
                 REQUIRE(allClose(expectedBearing, actualBearing));
+
+            }
+        }
+    }
+}
+
+SCENARIO("Testing the inverse of a pose")
+{
+    GIVEN("a pose with rotation vector [1,2,3] and translation vector [4,5,6]")
+    {
+        cv::Mat rotation = (cv::Mat_<double>(3, 1) << 1,2,3);
+        cv::Mat translation = (cv::Mat_<double>(3, 1) << 4, 5, 6);
+        Pose p{rotation, translation };
+        
+        WHEN("the inverse of this pose is calculated")
+        {
+            const auto inv = p.inverse();
+            std::cout << "Inverse "<< inv << std::endl;
+            const auto identity = p.compose(inv);
+            std::cout << "Identity " << identity << std::endl;
+            THEN("the inverted pose should be as expected")
+            {
+                REQUIRE(false);
 
             }
         }

@@ -12,10 +12,15 @@ class Pose {
 
   public:
     Pose () : rotation(cv::Mat::zeros(3,1,CV_32F)), translation(cv::Mat::zeros(3,1,CV_32F)) {}
-    Pose(cv::Mat rotation, cv::Mat translation) : rotation(rotation), translation(translation) {}
+    Pose(cv::Mat rotation, cv::Mat translation) : rotation(rotation), translation(translation) { setRotationVector(rotation); }
     cv::Mat getRotationMatrix() const;
+    void setRotationVector(cv::Mat rot);
+    void setTranslation(cv::Mat rot);
     cv::Mat getOrigin() const;
-    friend std::ostream & operator << (std::ostream &out, const Pose &p); 
+    friend std::ostream & operator << (std::ostream& out, const Pose& p);
+    Pose inverse() const;
+    Pose compose(const Pose& p) const;
+    cv::Mat getTranslation() const;
 };
 
 class Camera

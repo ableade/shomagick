@@ -26,7 +26,10 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="allClose_tests.cpp">
+    <ClCompile Include="unittest1.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="allclose_tests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="triangulation_tests.cpp">

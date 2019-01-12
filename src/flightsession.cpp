@@ -69,7 +69,7 @@ Location FlightSession::getCoordinates(string imagePath)
 	{
 		std::string error(imagePath);
 		error += ": No Exif data found in the file";
-		throw Exiv2::Error(1, error);
+        throw Exiv2::Error(1, error);
 	}
 
 	Exiv2::ExifData::const_iterator end = exifData.end();
@@ -80,7 +80,7 @@ Location FlightSession::getCoordinates(string imagePath)
 	auto latPos = exifData.findKey(latitudeKey);
 	auto longPos = exifData.findKey(longitudeKey);
 	if (latPos == exifData.end() || longPos == exifData.end())
-		throw Exiv2::Error(1, "Key not found");
+        throw Exiv2::Error(1, "Key not found");
 	// Get a pointer to a copy of the value
 	latV = latPos->getValue();
 	longV = longPos->getValue();

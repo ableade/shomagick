@@ -59,10 +59,14 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\..\visual studio property sheets\catch2.props" />
-    <Import Project="..\..\visual studio property sheets\opengv.props" />
-    <Import Project="..\..\visual studio property sheets\ceres_debug_x64.props" />
-    <Import Project="glog_debug_x64.props" />
+    <Import Project="..\..\..\OneDrive\Documents\Visual Studio 2017\Property Sheets\boost_debug_X64.props" />
+    <Import Project="..\..\..\OneDrive\Documents\Visual Studio 2017\Property Sheets\opengv.props" />
+    <Import Project="gflags_debug_x64.props" />
+    <Import Project="..\..\..\OneDrive\Documents\Visual Studio 2017\Property Sheets\ceres_debug_x64.props" />
+    <Import Project="..\..\..\OneDrive\Documents\Visual Studio 2017\Property Sheets\glog_debug_x64.props" />
+    <Import Project="..\..\..\OneDrive\Documents\Visual Studio 2017\Property Sheets\OpenCVDebug_X64.props" />
+    <Import Project="..\..\..\OneDrive\Documents\Visual Studio 2017\Property Sheets\exiv2_debug_x64.props" />
+    <Import Project="..\..\..\OneDrive\Documents\Visual Studio 2017\Property Sheets\Eigen.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -118,7 +122,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\boost_1_68_0\boost_1_68_0;C:\eigen;C:\Exiv-2015\x64\dll\Release\include;C:\opencv\modules\xfeatures2d\include;$(OPENCV_DIR)\..\..\include;C:\Users\sola\libs\opengv\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
   </ItemDefinitionGroup>
@@ -133,7 +137,6 @@
     <ClCompile Include="src\RobustMatcher.cpp" />
     <ClCompile Include="src\shomatcher.cpp" />
     <ClCompile Include="src\shotracking.cpp" />
-    <ClCompile Include="src\stitch.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shompi.h" />
