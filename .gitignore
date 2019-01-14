@@ -247,6 +247,9 @@ UpgradeLog*.htm
 ServiceFabricBackup/
 *.rptproj.bak
 
+#Proerty sheets
+*.props
+
 # SQL Server files
 *.mdf
 *.ldf
