@@ -5,9 +5,11 @@
 
 #include <vector>
 #include <ostream>
+#include <iostream>
 #include <string>
 
 using std::vector;
+using std::cerr;
 
 namespace
 {
@@ -65,10 +67,13 @@ namespace catchtests
 
                 THEN("the results shoud be as expected")
                 {
-                    const auto expected = true;
+                    constexpr auto expected = true;
                     INFO("collection1: " << makePrintable(collection1));
                     INFO("collection2: " << makePrintable(collection2));
-                    REQUIRE(expected == actual);
+
+                    cerr << "expected = " << expected << ", actual = " << actual << "\n";
+                    
+                    REQUIRE( expected == actual );
                 }
             }
         }
@@ -107,4 +112,4 @@ namespace catchtests
             }
         }
     }
-}
+} //namespace catchtests

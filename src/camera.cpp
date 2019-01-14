@@ -15,13 +15,18 @@ cv::Mat Pose::getRotationMatrix() const
     return rods;
 }
 
+cv::Mat Pose::getRotationVector() const
+{
+    return this->rotation;
+}
+
 cv::Mat Pose::getOrigin() const
 {
     cv::Mat tRot;
     auto origin = this->getRotationMatrix();
-    std::cout << "Rotation matrix is " << origin << std::endl;
+   // std::cout << "Rotation matrix is " << origin << std::endl;
     cv::transpose(-origin, tRot);
-    std::cout << "Rotation matrix transpose is " << tRot << std::endl;
+    //std::cout << "Rotation matrix transpose is " << tRot << std::endl;
     origin = tRot * this->translation;
     return origin;
 }

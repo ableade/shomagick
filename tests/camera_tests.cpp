@@ -6,6 +6,7 @@
 #include "../src/allclose.h"
 
 using std::vector;
+
 namespace
 {
     template <typename T>
@@ -35,7 +36,6 @@ namespace
     }
 } //namespace
 
-
 Camera getPerspectiveCamera(float physicalLens, int height, int width, float k1, float k2) {
     const auto pixelFocal = physicalLens * width;
 
@@ -49,14 +49,14 @@ Camera getPerspectiveCamera(float physicalLens, int height, int width, float k1,
         0.,
         0.,
         1
-        );
+     );
 
     cv::Mat dist = (cv::Mat_<double>(4, 1) <<
         k1,
         k2,
         0.,
         0.
-        );
+     );
 
     return { cameraMatrix, dist, height, width };
 }
@@ -65,7 +65,6 @@ SCENARIO("Testing the projection for a perspective camera")
 {
     GIVEN("a perspective camera and pixel [0.1,0.2]  ")
     {
-
         const auto physicalLens = 0.6;
         const auto height = 600;
         const auto width = 800;
@@ -129,7 +128,7 @@ SCENARIO("Testing the inverse of a pose")
         cv::Mat rotation = (cv::Mat_<double>(3, 1) << 1,2,3);
         cv::Mat translation = (cv::Mat_<double>(3, 1) << 4, 5, 6);
         Pose p{rotation, translation };
-        
+        const cv::Mat expected =  (cv::Mat_<double>(3, 1) << 0, 0, 0);
         WHEN("the inverse of this pose is calculated")
         {
             const auto inv = p.inverse();
@@ -138,8 +137,31 @@ SCENARIO("Testing the inverse of a pose")
             std::cout << "Identity " << identity << std::endl;
             THEN("the inverted pose should be as expected")
             {
-                REQUIRE(false);
+                const bool result = allClose(identity.getRotationVector(), expected);
+                REQUIRE(allClose(identity.getRotationVector(), expected));
 
+            }
+        }
+    }
+}
+
+SCENARIO("Testing the origin of a pose")
+{
+    GIVEN("a pose with rotation vector [1,2,3] and translation vector [4,5,6]")
+    {
+        cv::Mat rotation = (cv::Mat_<double>(3, 1) << 1, 2, 3);
+        cv::Mat translation = (cv::Mat_<double>(3, 1) << 4, 5, 6);
+        Pose p{rotation, translation};
+        WHEN("the inverse of this pose is calculated")
+        {
+            const auto actual = p.getOrigin();
+            THEN("the inverted pose should be as expected")
+            {
+                cv::Mat expected = (cv::Mat_<double>(3, 1) << -0.41815191, -5.12325694, -7.11177807);
+                std::cout << "Origin of this pose is " << p.getOrigin()<< std::endl;
+                WARN("expected: " << expected);
+                WARN("actual: " << actual);
+                REQUIRE(allClose(expected, actual));
             }
         }
     }

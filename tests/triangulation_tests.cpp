@@ -6,7 +6,6 @@
 #include "../src/bootstrap.h"
 #include "../src/multiview.h"
 
-
 namespace
 {
     Eigen::Vector3d unitVector(const Eigen::Vector3d& x)
