@@ -113,6 +113,7 @@
       <AdditionalIncludeDirectories>C:\boost_1_68_0\boost_1_68_0;C:\eigen;C:\Exiv-2015\x64\dll\Release\include;C:\opencv\modules\xfeatures2d\include;$(OPENCV_DIR)\..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <ConformanceMode>true</ConformanceMode>
+      <TreatSpecificWarningsAsErrors>4715;4176;%(TreatSpecificWarningsAsErrors)</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>C:\Exiv-2015\x64\dll\Debug\lib;$(OPENCV_DIR)\lib;C:\boost_1_68_0\boost_1_68_0\stage\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -124,9 +125,11 @@
     <ClCompile>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <TreatSpecificWarningsAsErrors>4715;4176;%(TreatSpecificWarningsAsErrors)</TreatSpecificWarningsAsErrors>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\allclose.cpp" />
     <ClCompile Include="src\camera.cpp" />
     <ClCompile Include="src\flightsession.cpp" />
     <ClCompile Include="src\kdtree.cpp" />

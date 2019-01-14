@@ -45,6 +45,9 @@
     <ClCompile Include="src\shotracking.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\allclose.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\camera.h">
