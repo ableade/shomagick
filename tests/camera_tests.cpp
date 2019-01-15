@@ -3,7 +3,9 @@
 #include "catch.hpp"
 #include <vector>
 #include "../src/camera.h"
+#include "../src/shot.h"
 #include "../src/allclose.h"
+#include <opencv2/core/eigen.hpp>
 
 using std::vector;
 
@@ -162,6 +164,80 @@ SCENARIO("Testing the origin of a pose")
                 WARN("expected: " << expected);
                 WARN("actual: " << actual);
                 REQUIRE(allClose(expected, actual));
+            }
+        }
+    }
+}
+
+SCENARIO("Testing the rotation inverse of a shot")
+{
+    GIVEN("a shot and pose with rotation vector [1,2,3] and translation vector [4,5,6] and \
+        a test camera")
+    {
+        const auto testPoint = cv::Point2f{ 0.23,0.678 };
+        const auto physicalLens = 0.6;
+        const auto height = 600;
+        const auto width = 800;
+        const auto dist1 = -0.1;
+        const auto dist2 = 0.01;
+
+        cv::Mat rotation = (cv::Mat_<double>(3, 1) << 1, 2, 3);
+        cv::Mat translation = (cv::Mat_<double>(3, 1) << 4, 5, 6);
+        Pose p{ rotation, translation };
+        const std::string image = "im1";
+        const auto camera = getPerspectiveCamera(physicalLens, height, width, dist1, dist2);
+        Shot shot{ image, camera, p };
+        WHEN("the inverse of this pose is calculated")
+        {
+            Eigen::Matrix3d eigenRotationInverse;
+            const auto bearing = shot.getCamera().normalizedPointToBearingVec(testPoint);
+            const auto rotationInverse = shot.getPose().getRotationMatrixInverse();
+            cv2eigen(rotationInverse, eigenRotationInverse);
+            cv::Mat expectedRotationInverse = (cv::Mat_<double>(3,3) <<
+                -0.6949205576413117, -0.1920069727919994, 0.6929781677417702,
+                 0.7135209905277877, -0.3037850443394704, 0.6313496993837179,
+                 0.0892928588619122,  0.933192353823647,  0.3481074778302649
+            );
+            THEN("the inverted pose should be as expected")
+            {
+                CAPTURE(expectedRotationInverse);
+                CAPTURE(rotationInverse);
+                REQUIRE(allClose(expectedRotationInverse, rotationInverse));
+            }
+        }
+    }
+}
+
+SCENARIO("Testing the rotation inverse times bearing of a shot")
+{
+    GIVEN("a shot and pose with rotation vector [1,2,3] and translation vector [4,5,6] and a test camera")
+    {
+        const auto testPoint = cv::Point2f{ 0.23,0.678 };
+        const auto physicalLens = 0.6;
+        const auto height = 600;
+        const auto width = 800;
+        const auto dist1 = -0.1;
+        const auto dist2 = 0.01;
+
+        cv::Mat rotation = (cv::Mat_<double>(3, 1) << 1, 2, 3);
+        cv::Mat translation = (cv::Mat_<double>(3, 1) << 4, 5, 6);
+        Pose p{ rotation, translation };
+        const std::string image = "im1";
+        const auto camera = getPerspectiveCamera(physicalLens, height, width, dist1, dist2);
+        Shot shot{ image, camera, p };
+        WHEN("the inverse of this pose is calculated")
+        {
+            Eigen::Matrix3d eigenRotationInverse;
+            const auto bearing = shot.getCamera().normalizedPointToBearingVec(testPoint);
+            const auto rotationInverse = shot.getPose().getRotationMatrixInverse();
+            cv2eigen(rotationInverse, eigenRotationInverse);
+            THEN("the inverted pose should be as expected")
+            {
+                const auto actual = eigenRotationInverse * bearing;
+                Eigen::Vector3d expected (0.06710956564396,  0.3152355286551768,  0.9466376644062762);
+                CAPTURE(expected);
+                CAPTURE(actual);
+                REQUIRE(allClose(expected, actual, 1e-7));
             }
         }
     }

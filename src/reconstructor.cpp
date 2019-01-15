@@ -229,10 +229,8 @@ cv::Mat Reconstructor::getShotOrigin(const Shot& shot) {
 cv::Mat Reconstructor::getRotationInverse(const Shot& shot) {
     auto shotId = shot.getId();
     if(this->rInverses.find(shotId) == this->rInverses.end()) {
-        auto r = shot.getPose().getRotationMatrix();
-        cv::Mat tR;
-        cv::transpose(r, tR );
-        this->rInverses[shotId] =  tR;
+        auto rotationInverse = shot.getPose().getRotationMatrixInverse();
+        this->rInverses[shotId] =  rotationInverse;
     }
     return this->rInverses[shotId];
 }

@@ -15,6 +15,7 @@ class Pose {
     Pose(cv::Mat rotation, cv::Mat translation) : rotation(rotation), translation(translation) { setRotationVector(rotation); }
     cv::Mat getRotationMatrix() const;
     cv::Mat getRotationVector() const;
+    cv::Mat getRotationMatrixInverse() const;
     void setRotationVector(cv::Mat rot);
     void setTranslation(cv::Mat rot);
     cv::Mat getOrigin() const;

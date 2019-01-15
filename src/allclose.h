@@ -29,20 +29,19 @@ bool allClose_(
     const double tolerance = defaultTolerance
 );
 
-#if 0
 
 template<typename DerivedA, typename DerivedB>
-bool allclose(
+bool allCloseEigen(
     const Eigen::DenseBase<DerivedA>& a,
     const Eigen::DenseBase<DerivedB>& b,
     const typename DerivedA::RealScalar& rtol
-    = Eigen::NumTraits<typename DerivedA::RealScalar>::dummy_precision(),
+        = Eigen::NumTraits<typename DerivedA::RealScalar>::dummy_precision(),
     const typename DerivedA::RealScalar& atol
-    = Eigen::NumTraits<typename DerivedA::RealScalar>::epsilon()
+        = Eigen::NumTraits<typename DerivedA::RealScalar>::epsilon()
 )
 {
+    std::cerr << "r tolerance " << rtol << "\n";
+    std::cerr << "a tolerance " << atol << "\n";
     return ((a.derived() - b.derived()).array().abs()
         <= (atol + rtol * b.derived().array().abs())).all();
 }
-
-#endif

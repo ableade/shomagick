@@ -63,18 +63,12 @@ bool allClose_(
     const cv::Mat_<T>& b,
     const double tolerance
 ) {
-    std::cout << "a column count " << a.cols << std::endl;
-    std::cout << "b column count " << b.cols << std::endl;
-
     for (int i = 0; i < a.cols; i++) {
         const auto lhsElem = a.at<T>(i);
         const auto rhsElem = b.at<T>(i);
 
         if (fabs(lhsElem - rhsElem) > tolerance)
         {
-            std::cout << "tolerance " << tolerance << std::endl;
-            std::cout << "lhs " << lhsElem << std::endl;
-            std::cout << "rhs " << rhsElem << std::endl;
             return false;
         }
     }

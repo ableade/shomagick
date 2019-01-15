@@ -2,6 +2,7 @@
 #include <ostream>
 #include <algorithm>
 #include <string>
+#include <Eigen/Core>
 //#include <boost/filesystem.hpp>
 
 using std::ostream;
@@ -18,6 +19,13 @@ cv::Mat Pose::getRotationMatrix() const
 cv::Mat Pose::getRotationVector() const
 {
     return this->rotation;
+}
+
+cv::Mat Pose::getRotationMatrixInverse() const {
+    auto r = getRotationMatrix();
+    cv::Mat tR;
+    cv::transpose(r, tR);
+    return tR;
 }
 
 cv::Mat Pose::getOrigin() const
@@ -152,12 +160,10 @@ void Camera::cvPointsToBearingVec(
 
 opengv::bearingVector_t Camera::normalizedPointToBearingVec(const cv::Point2f &point) const
 {
-    std::cout << "Converting point " << point << std::endl;
     std::vector<cv::Point2f> points{ point };
     std::vector<cv::Point3f> hPoints;
     //std::vector<cv::Point2f> uPoints;
     cv::undistortPoints(points, points, this->getNormalizedKMatrix(), this->getDistortionMatrix());
-    std::cout << "Undistorted points were " << points[0] << std::endl;
     cv::convertPointsHomogeneous(points, hPoints);
     opengv::bearingVector_t bearing;
     auto convPoint = hPoints[0];
