@@ -112,7 +112,7 @@ bool ShoMatcher::_extractFeature(string fileName)
     cout << "Extracted "<< descriptors.rows << " points for  " << fileName<< endl;
 
     for(auto  &keypoint : keypoints) {
-		keypoint.pt = this->flight.getCamera().normalizeImageCoordinates(keypoint.pt);
+		keypoint.pt = this->flight.getCamera().normalizeImageCoordinate(keypoint.pt);
         if (channels == 1)
             colors.push_back(modelImg.at<uchar>(keypoint.pt));
         else if (channels == 3) 

@@ -242,3 +242,48 @@ SCENARIO("Testing the rotation inverse times bearing of a shot")
         }
     }
 }
+SCENARIO("Testing normalized point conversion")
+{
+    GIVEN("a point, test camera with width 800 and height 600")
+    {
+        const std::vector<cv::Point2f> inputPoints {
+            {   0, 0 },
+            { 319, 240 },
+            { 800, 600 }
+        };
+
+
+        const std::vector<cv::Point2f> expectedPoints{
+            { -0.4993750000000, -0.3743750000000 },
+            { -0.1006250000000, -0.0743750000000 },
+            {  0.5006250000000,	 0.3756250000000 }
+        };
+
+        using InputPoint = cv::Point2f;
+        using ExpectedPoint = cv::Point2f;
+        using InputWithExpectedPoint = std::pair<InputPoint, ExpectedPoint>;
+        const auto inputsWithExpected = std::vector<InputWithExpectedPoint>{
+            { {   0,   0 }, { -0.4993750000000, -0.3743750000000 } },
+            { { 319, 240 }, { -0.1006250000000, -0.0743750000000 } },
+            { { 800, 600 }, {  0.5006250000000,	 0.3756250000000 } },
+        };
+
+        const auto physicalLens = 0.6;
+        const auto height = 600;
+        const auto width = 800;
+        const auto dist1 = -0.1;
+        const auto dist2 = 0.01;
+        const auto camera = getPerspectiveCamera(physicalLens, height, width, dist1, dist2);
+
+        WHEN("the normalized point coordinate is calculated") {
+            const auto normalizedPoints = camera.normalizeImageCoordinates(inputPoints);
+            THEN("The result should be as expected") {
+                CAPTURE(expectedPoints);
+                CAPTURE(normalizedPoints);
+                REQUIRE(allClose(expectedPoints, normalizedPoints));
+            }
+           
+        }
+    }
+    
+}

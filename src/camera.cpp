@@ -203,18 +203,30 @@ double Camera::getInitialPhysicalFocal() const {
     return this->initialPhysicalFocal;
 }
 
-cv::Point2f Camera::normalizeImageCoordinates(const cv::Point2f pixelCoords) const
+cv::Point2f Camera::normalizeImageCoordinate(const cv::Point2f pixelCoords) const
 {
     const auto size = max(width, height);
 
-    const auto pixelX = pixelCoords.x;
-    const auto pixelY = pixelCoords.y;
+    float step = 0.5;
+    const auto pixelX = pixelCoords.x + step;
+    const auto pixelY = pixelCoords.y + step;
     const auto normX = ((1.0f * width) / size) * (pixelX - width / 2.0f) / width;
     const auto normY = ((1.0f * height) / size) * (pixelY - height / 2.0f) / height;
     return {
         normX,
         normY,
     };
+}
+
+std::vector<cv::Point2f> Camera::normalizeImageCoordinates(const std::vector<cv::Point2f>& points) const
+{
+    std::vector<cv::Point2f> results;
+
+    for (const auto& point : points) {
+        results.push_back(normalizeImageCoordinate(point));
+    }
+    
+    return results;
 }
 
 cv::Point2f Camera::denormalizeImageCoordinates(const cv::Point2f normalizedCoords) const
