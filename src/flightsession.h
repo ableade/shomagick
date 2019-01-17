@@ -43,5 +43,6 @@ class FlightSession
 	bool saveMatches(string fileName, const std::map<string, std::vector<cv::DMatch>>& matches);
 	ImageFeatures loadFeatures(string imageName);
 	const Camera& getCamera() const;
+    void setCamera(Camera camera);
 };
 #endif

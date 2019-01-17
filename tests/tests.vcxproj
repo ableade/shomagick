@@ -75,6 +75,7 @@
     <Import Project="..\..\..\..\OneDrive\Documents\Visual Studio 2017\Property Sheets\Eigen.props" />
     <Import Project="..\..\..\..\OneDrive\Documents\Visual Studio 2017\Property Sheets\opengv.props" />
     <Import Project="..\..\..\..\OneDrive\Documents\Visual Studio 2017\Property Sheets\OpenCVDebug_X64.props" />
+    <Import Project="..\..\..\..\OneDrive\Documents\Visual Studio 2017\Property Sheets\exiv2_debug_x64.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -162,6 +163,7 @@
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="utilities.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="allclose_tests.cpp" />
@@ -173,7 +175,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="triangulation_tests.cpp" />
+    <ClCompile Include="two_view_reconstruction_test.cpp" />
     <ClCompile Include="unittest1.cpp" />
+    <ClCompile Include="utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\shomagick.vcxproj">

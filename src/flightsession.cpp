@@ -209,3 +209,8 @@ ImageFeatures FlightSession::loadFeatures(string imageName)
 const Camera& FlightSession::getCamera() const {
 	return this->camera;
 }
+
+void FlightSession::setCamera(Camera camera)
+{
+    this->camera = camera;
+}

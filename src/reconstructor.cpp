@@ -49,13 +49,16 @@ void Reconstructor::_alignMatchingPoints(void *img1, void *img2, const set<strin
     assert(points1.size() == tracks.size() && points2.size() == tracks.size());
 }
 
-void Reconstructor::recoverTwoCameraViewPose(void *image1, void *image2, std::set<string> tracks, Mat &mask, int method, double tresh, double prob)
+TwoViewPose Reconstructor::recoverTwoCameraViewPose(void *image1, void *image2, std::set<string> tracks, cv::Mat& mask)
 {
     vector<Point2f> points1;
     vector<Point2f> points2;
     this->_alignMatchingPoints(image1, image2, tracks, points1, points2);
     auto kMatrix = this->flight.getCamera().getNormalizedKMatrix();
-    Mat essentialMatrix = cv::findEssentialMat(points1, points2, kMatrix, method, tresh, prob, mask);
+    Mat essentialMatrix = cv::findEssentialMat(points1, points2, kMatrix);
+    Mat r, t;
+    cv::recoverPose(essentialMatrix, points1, points2, kMatrix, r, t, mask);
+    return std::make_tuple(essentialMatrix, r, t);
 }
 
 float Reconstructor::computeReconstructabilityScore(int tracks, Mat mask, int tresh)
@@ -117,21 +120,19 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker &tracker)
 Reconstruction Reconstructor::beginReconstruction(string image1, string image2, set<string> tracks, const ShoTracker &tracker)
 {
     Reconstruction rec;
-    vector<Point2f> points1;
-    vector<Point2f> points2;
     auto im1 = imageNodes[image1];
     auto im2 = imageNodes[image2];
-    this->_alignMatchingPoints(im1, im2, tracks, points1, points2);
-    auto kMatrix = this->flight.getCamera().getNormalizedKMatrix();
-    Mat r, t, mask, essentialMatrix = cv::findEssentialMat(points1, points2, kMatrix);
+    Mat  mask;
+    TwoViewPose poseParameters = this->recoverTwoCameraViewPose(im1, im2, tracks, mask);
+    Mat essentialMat = std::get<0>(poseParameters);
+    Mat r = std::get<1>(poseParameters);
+    Mat t = std::get<2>(poseParameters);
 
-    if (essentialMatrix.rows != 3) {
+    if (essentialMat.rows != 3) {
         cout << "Could not compute the essential matrix for this pair" << endl;
         //Get the first essential Mat;
         return rec;
     }
-    //Decompose the essential matrix
-    cv::recoverPose(essentialMatrix, points1, points2, kMatrix, r, t, mask);
 
     auto inliers = countNonZero(mask);
     if (inliers <= 5)
