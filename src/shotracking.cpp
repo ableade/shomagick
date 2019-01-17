@@ -26,6 +26,7 @@ ShoTracker::ShoTracker(
     , tracks()
     , uf()
     , imageNodes()
+    , imageFeatures ()
     , trackNodes()
 {}
 
@@ -39,7 +40,7 @@ void ShoTracker::createFeatureNodes(vector<pair<FeatureNode, FeatureNode>> &allF
     {
         auto allPairMatches = this->flight.loadMatches(it->first);
         auto leftImageName = it->first;
-        auto leftImageFeatures = this->flight.loadFeatures(leftImageName);
+        auto leftImageFeatures = this->_loadImageFeatures(leftImageName);
         for (auto matchIt = allPairMatches.begin(); matchIt != allPairMatches.end(); ++matchIt)
         {
             auto matchImageName = matchIt->first;
@@ -47,7 +48,7 @@ void ShoTracker::createFeatureNodes(vector<pair<FeatureNode, FeatureNode>> &allF
             {
                 auto leftFeature = make_pair(leftImageName, matchIt->second[k].trainIdx);
                 auto rightFeature = make_pair(matchImageName, matchIt->second[k].queryIdx);
-                auto rightImageFeature = this->flight.loadFeatures(matchImageName);
+                auto rightImageFeature = this->_loadImageFeatures(matchImageName);
                 if (this->addFeatureToIndex(leftFeature, featureIndex))
                 {
                     featureIndex++;
@@ -67,6 +68,13 @@ void ShoTracker::createFeatureNodes(vector<pair<FeatureNode, FeatureNode>> &allF
     }
     this->uf = UnionFind(this->features.size());
     cout << "Created a total of " << this->features.size() << " feature nodes " << endl;
+}
+
+ImageFeatures ShoTracker::_loadImageFeatures(const string fileName) {
+    if (this->imageFeatures.find(fileName) == this->imageFeatures.end()) {
+        this->imageFeatures[fileName] = this->flight.loadFeatures(fileName);
+    }
+    return this->imageFeatures[fileName];
 }
 
 void ShoTracker::createTracks(const vector<pair<FeatureNode, FeatureNode>> &features)
@@ -131,13 +139,19 @@ vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
 {
     vector<CommonTrack> commonTracks;
     map<pair<string, string>, std::vector<string>> _commonTracks;
+#if 0
     for (auto it = this->trackNodes.begin(); it != this->trackNodes.end(); ++it)
+#endif
+    for (auto& trackNode : trackNodes )
     {
+        std::string vertexName;
+        TrackGraph::vertex_descriptor pVertexDescriptor;
+        std::tie(vertexName, pVertexDescriptor) = trackNode;
         vector<string> imageNeighbours;
-        if (it->second == nullptr) {
+        if ( pVertexDescriptor == nullptr) {
             cout << "We have a dangling pointer. seriously boost...." << endl;
         }
-        auto neighbours = boost::adjacent_vertices(it->second, tg);
+        auto neighbours = boost::adjacent_vertices(pVertexDescriptor, tg);
         for (auto vd : make_iterator_range(neighbours))
         {
             imageNeighbours.push_back(tg[vd].name);
@@ -146,7 +160,7 @@ vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
         
         for (auto combination : combinations)
         {
-            _commonTracks[combination].push_back(it->first);
+            _commonTracks[combination].push_back(vertexName);
         }
     }
     commonTracks.reserve(_commonTracks.size());

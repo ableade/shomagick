@@ -117,7 +117,7 @@ bool FlightSession::saveTracksFile(std::map <int, std::vector <int>> tracks) {
     if (! tracks.size())
         return false;
     
-    auto imageTracksFile = this->getImageTracksPath() / "tracks.xml";
+    auto imageTracksFile = this->getImageTracksPath() / "tracks.yaml";
     cv::FileStorage fs(imageTracksFile.string(), cv::FileStorage::WRITE);
     fs << "Tracks" << tracks;
     return boost::filesystem::exists(imageTracksFile);
@@ -144,7 +144,7 @@ int FlightSession::getImageIndex(string imageName) const
 bool FlightSession::saveImageFeaturesFile(string imageName, const std::vector<cv::KeyPoint> &keypoints, const cv::Mat &descriptors,
 										  const std::vector<cv::Scalar> &colors)
 {
-	auto imageFeaturePath = this->getImageFeaturesPath() / (imageName + ".xml");
+	auto imageFeaturePath = this->getImageFeaturesPath() / (imageName + ".yaml");
 	if (!boost::filesystem::exists(imageFeaturePath))
 	{
 		cv::FileStorage file(imageFeaturePath.string(), cv::FileStorage::WRITE);
@@ -158,27 +158,27 @@ bool FlightSession::saveImageFeaturesFile(string imageName, const std::vector<cv
 
 bool FlightSession::saveMatches(string fileName, const std::map<string, vector<cv::DMatch>>& matches)
 {
-	auto imageMatchesPath = this->getImageMatchesPath() / (fileName + ".xml");
+	auto imageMatchesPath = this->getImageMatchesPath() / (fileName + ".yaml");
 	cout << "Writing file " << imageMatchesPath.string() << endl;
-	;
 	cv::FileStorage fs(imageMatchesPath.string(), cv::FileStorage::WRITE);
 	fs << "MatchCount" << (int)matches.size();
-	fs << "candidateImageMatches"
-	   << "[";
+	fs << "candidateImageMatches"<< "[";
 	for (auto it = matches.begin(); it != matches.end(); ++it)
 	{
-		fs << "{:"
-		   << "imageName" << it->first << "matches" << it->second << "}";
+        fs << "{" << "imageName" << it->first;
+        fs<< "matches" << it->second << "}";
 	}
+    fs << "]";
 	fs.release();
 	return boost::filesystem::exists(imageMatchesPath);
 }
 
 map<string, vector<DMatch>> FlightSession::loadMatches(string fileName)
 {
+    cout << "Loading matches for " << fileName << endl;
 	map<string, vector<DMatch>> allPairMatches;
 
-	auto imageMatchesPath = this->getImageMatchesPath() / (fileName + ".xml");
+	auto imageMatchesPath = this->getImageMatchesPath() / (fileName + ".yaml");
 	cv::FileStorage fs(imageMatchesPath.string(), cv::FileStorage::READ);
 	FileNode cMatches = fs["candidateImageMatches"];
 	FileNodeIterator it = cMatches.begin(), it_end = cMatches.end();
@@ -194,7 +194,8 @@ map<string, vector<DMatch>> FlightSession::loadMatches(string fileName)
 
 ImageFeatures FlightSession::loadFeatures(string imageName)
 {
-	auto imageFeaturePath = this->getImageFeaturesPath() / (imageName + ".xml");
+    cout << "Loading features for " << imageName << endl;
+	auto imageFeaturePath = this->getImageFeaturesPath() / (imageName + ".yaml");
 	cv::FileStorage fs(imageFeaturePath.string(), cv::FileStorage::READ);
 	vector<KeyPoint> keypoints;
 	Mat descriptors;

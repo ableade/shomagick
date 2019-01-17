@@ -62,8 +62,10 @@ class ShoTracker
 	bool addFeatureToIndex(std::pair<string, int> feature, int featureIndex);
 	std::map<std::string, TrackGraph::vertex_descriptor> imageNodes;
 	std::map<std::string, TrackGraph::vertex_descriptor> trackNodes;
+    std::map<std::string, ImageFeatures> imageFeatures;
 	std::set<std::pair<std::string, std::string>> _getCombinations(const std::vector<std::string>& images) const;
 	FeatureProperty _getFeatureProperty (const ImageFeatures& imageFeatures, int featureIndex);
+    ImageFeatures _loadImageFeatures(const std::string fileName);
 
   public:
 	ShoTracker(FlightSession flight, std::map<string, std::vector<std::string>> candidateImages);
