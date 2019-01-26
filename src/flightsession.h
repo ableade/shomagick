@@ -12,6 +12,8 @@ class ImageFeatures {
 		std::vector<cv::KeyPoint> keypoints;
 		cv::Mat descriptors;
 		std::vector<cv::Scalar> colors;
+        std::vector<cv::KeyPoint> getKeypoints() const { return keypoints; }
+        cv::Mat getDescriptors() const { return descriptors;  }
 };
 
 class FlightSession
@@ -37,11 +39,11 @@ class FlightSession
 	const boost::filesystem::path getImageTracksPath() const;
 	bool saveTracksFile(std::map<int, std::vector<int>> tracks);
 	int getImageIndex(string imageName) const;
-	std::map<string, std::vector<cv::DMatch>> loadMatches(string fileName);
+	std::map<string, std::vector<cv::DMatch>> loadMatches(string fileName) const;
 	bool saveImageFeaturesFile(string imageName, const std::vector<cv::KeyPoint> &keypoints, const cv::Mat& descriptors, 
 	const std::vector<cv::Scalar>& colors);
 	bool saveMatches(string fileName, const std::map<string, std::vector<cv::DMatch>>& matches);
-	ImageFeatures loadFeatures(string imageName);
+	ImageFeatures loadFeatures(string imageName) const;
 	const Camera& getCamera() const;
     void setCamera(Camera camera);
 };

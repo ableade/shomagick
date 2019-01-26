@@ -14,6 +14,11 @@ using cv::Mat;
 using cv::ORB;
 using cv::Ptr;
 using cv::Vec3b;
+using cv::Scalar;
+using cv::drawMatches;
+using cv::imshow;
+using cv::waitKey;
+using cv::DrawMatchesFlags;
 using std::cout;
 using std::endl;
 using std::map;
@@ -167,5 +172,33 @@ void ShoMatcher::buildKdTree()
 map<string, std::vector<string>> ShoMatcher::getCandidateImages() const
 {
     return this->candidateImages;
+}
+
+void ShoMatcher::plotMatches(string img1, string img2) const{
+    Mat imageMatches;
+    Mat image1 = imread((this->flight.getImageDirectoryPath() / img1).string(),
+        cv::IMREAD_GRAYSCALE);
+    Mat image2 = imread((this->flight.getImageDirectoryPath() / img2).string(), 
+        cv::IMREAD_GRAYSCALE);
+    auto img1Matches = this->flight.loadMatches(img1);
+    auto kp1 = this->flight.loadFeatures(img1).getKeypoints();
+    auto kp2 = this->flight.loadFeatures(img2).getKeypoints();
+    for (auto& kp : kp1) {
+        kp.pt = this->flight.getCamera().denormalizeImageCoordinates(kp.pt);
+    }
+
+    for (auto& kp : kp2) {
+        kp.pt = this->flight.getCamera().denormalizeImageCoordinates(kp.pt);
+    }
+    if (img1Matches.find(img2) != img1Matches.end()) {
+        auto matches = img1Matches[img2];
+        drawMatches(image1, kp1, image2, kp2, matches, imageMatches, Scalar::all(-1), Scalar::all(-1),
+            vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+    }
+    
+    const auto frameName = img1 + " - " + img2;
+    cv::namedWindow(frameName, cv::WINDOW_NORMAL);
+    imshow(frameName, imageMatches);
+    waitKey(0);
 }
 

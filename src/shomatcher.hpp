@@ -44,5 +44,6 @@ public:
     void runRobustFeatureMatching();
     void buildKdTree();
     std::map<std::string, std::vector<std::string>> getCandidateImages() const;
+    void plotMatches(std::string img1, std::string img2) const;
 };
 #endif

@@ -173,7 +173,7 @@ bool FlightSession::saveMatches(string fileName, const std::map<string, vector<c
 	return boost::filesystem::exists(imageMatchesPath);
 }
 
-map<string, vector<DMatch>> FlightSession::loadMatches(string fileName)
+map<string, vector<DMatch>> FlightSession::loadMatches(string fileName) const
 {
     cout << "Loading matches for " << fileName << endl;
 	map<string, vector<DMatch>> allPairMatches;
@@ -192,7 +192,7 @@ map<string, vector<DMatch>> FlightSession::loadMatches(string fileName)
 	return allPairMatches;
 }
 
-ImageFeatures FlightSession::loadFeatures(string imageName)
+ImageFeatures FlightSession::loadFeatures(string imageName) const
 {
     cout << "Loading features for " << imageName << endl;
 	auto imageFeaturePath = this->getImageFeaturesPath() / (imageName + ".yaml");

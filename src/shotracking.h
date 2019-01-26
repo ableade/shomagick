@@ -34,10 +34,29 @@ struct EdgeProperty {
 	EdgeProperty(FeatureProperty fProp, std::string trackName, string imageName) : fProp(fProp), trackName(trackName), imageName(imageName) {} 
 };
 
-typedef boost::adjacency_list<boost::listS, boost::setS, boost::undirectedS, VertexProperty, EdgeProperty> TrackGraph;
-typedef boost::graph_traits <TrackGraph>::out_edge_iterator out_edge_iterator;
-typedef boost::graph_traits <TrackGraph>::adjacency_iterator adjacency_iterator;
-typedef std::pair<std::string, int> FeatureNode;
+using ShoOutEdgeListS = boost::listS;
+using ShoVertexListS = boost::setS;
+using ShoUndirectedS = boost::undirectedS;
+using ShoVertexProperty = VertexProperty;
+using ShoEdgeProperty = EdgeProperty;
+using ShoGraphProperty = boost::no_property;
+using ShoEdgeListS = boost::listS;
+
+using TrackGraph = boost::adjacency_list<
+    ShoOutEdgeListS,
+    ShoVertexListS,
+    ShoUndirectedS,
+    ShoVertexProperty,
+    ShoEdgeProperty,
+    ShoGraphProperty,
+    ShoEdgeListS
+>;
+
+typedef boost::graph_traits<TrackGraph>::out_edge_iterator out_edge_iterator;
+typedef boost::graph_traits<TrackGraph>::edge_iterator edge_iterator;
+typedef boost::graph_traits<TrackGraph>::adjacency_iterator adjacency_iterator;
+typedef boost::graph_traits<TrackGraph>::vertex_iterator vertex_iterator;
+typedef std::pair<std::string, int> ImageFeatureNode;
 
 class CommonTrack {
 	public:
@@ -55,7 +74,7 @@ class ShoTracker
   private:
 	FlightSession flight;
 	std::map<string, std::vector<string>> candidateImages;
-	std::map<FeatureNode, int> features;
+	std::map<ImageFeatureNode, int> features;
 	std::map<int, std::vector<int>> tracks;
 	UnionFind uf;
 	int minTrackLength = 2;
@@ -69,14 +88,14 @@ class ShoTracker
 
   public:
 	ShoTracker(FlightSession flight, std::map<string, std::vector<std::string>> candidateImages);
-	void createTracks(const std::vector<std::pair<FeatureNode, FeatureNode>>& features);
+	void createTracks(const std::vector<std::pair<ImageFeatureNode, ImageFeatureNode>>& features);
 	TrackGraph buildTracksGraph(const std::vector<FeatureProperty>& props);
-	void mergeFeatureTracks(FeatureNode feature1, FeatureNode feature2);
-	void createFeatureNodes(std::vector<std::pair<FeatureNode, FeatureNode>>& allFeatures, 
+	void mergeFeatureTracks(ImageFeatureNode feature1, ImageFeatureNode feature2);
+	void createFeatureNodes(std::vector<std::pair<ImageFeatureNode, ImageFeatureNode>>& allFeatures, 
 	std::vector<FeatureProperty> & props);
 	std::vector<CommonTrack> commonTracks(const TrackGraph &tg) const;
 	std::map <int, std::vector <int>> getTracks();
-	FeatureNode retrieveFeatureByIndexValue(int index);
+	ImageFeatureNode retrieveFeatureByIndexValue(int index);
 	const std::map<string, TrackGraph::vertex_descriptor> getTrackNodes() const;
 	const std::map<string, TrackGraph::vertex_descriptor> getImageNodes() const;
 };

@@ -8,7 +8,7 @@
 #include <boost/filesystem.hpp>
 #include "../src/shomatcher.hpp"
 #include "../src/reconstructor.h"
-#include "utilities.h"
+#include "../src/utilities.h"
 
 using std::vector;
 using  std::pair;
@@ -29,7 +29,7 @@ SCENARIO("Testing the two view reconstruction between two images")
     shoMatcher.extractFeatures();
     shoMatcher.runRobustFeatureMatching();
     ShoTracker tracker(flight, shoMatcher.getCandidateImages());
-    vector<pair<FeatureNode, FeatureNode>> featureNodes;
+    vector<pair<ImageFeatureNode, ImageFeatureNode>> featureNodes;
     vector<FeatureProperty> featureProps;
     tracker.createFeatureNodes(featureNodes, featureProps);
     tracker.createTracks(featureNodes);

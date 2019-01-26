@@ -2,6 +2,7 @@
 #include "string"
 #include <vector>
 #include <iostream>
+#include "utilities.h"
 #include <set>
 
 using cv::DMatch;
@@ -30,8 +31,8 @@ ShoTracker::ShoTracker(
     , trackNodes()
 {}
 
-void ShoTracker::createFeatureNodes(vector<pair<FeatureNode, FeatureNode>> &allFeatures,
-                                                                      vector<FeatureProperty> &props)
+void ShoTracker::createFeatureNodes(vector<pair<ImageFeatureNode, ImageFeatureNode>> &allFeatures,
+    vector<FeatureProperty> &props)
 {
     size_t featureIndex = 0;
     cout << "Creating feature nodes" << endl;
@@ -77,7 +78,7 @@ ImageFeatures ShoTracker::_loadImageFeatures(const string fileName) {
     return this->imageFeatures[fileName];
 }
 
-void ShoTracker::createTracks(const vector<pair<FeatureNode, FeatureNode>> &features)
+void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNode>> &features)
 {
     cout << "Creating tracks" << endl;
     for (size_t i = 0; i < features.size(); ++i)
@@ -145,13 +146,15 @@ vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
     for (auto& trackNode : trackNodes )
     {
         std::string vertexName;
-        TrackGraph::vertex_descriptor pVertexDescriptor;
-        std::tie(vertexName, pVertexDescriptor) = trackNode;
+        TrackGraph::vertex_descriptor trackDescriptor;
+        std::tie(vertexName, trackDescriptor) = trackNode;
         vector<string> imageNeighbours;
-        if ( pVertexDescriptor == nullptr) {
+        if ( trackDescriptor == nullptr) {
             cout << "We have a dangling pointer. seriously boost...." << endl;
         }
-        auto neighbours = boost::adjacent_vertices(pVertexDescriptor, tg);
+        std::cerr << "Printing graph \n";
+        printGraph(tg);
+        auto neighbours = boost::adjacent_vertices(trackDescriptor, tg);
         for (auto vd : make_iterator_range(neighbours))
         {
             imageNeighbours.push_back(tg[vd].name);
@@ -174,6 +177,7 @@ vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
 
 FeatureProperty ShoTracker::_getFeatureProperty(const ImageFeatures &imageFeatures, int featureIndex)
 {
+    assert(featureIndex < imageFeatures.keypoints.size());
     return {imageFeatures.keypoints[featureIndex].pt, imageFeatures.colors[featureIndex]};
 }
 

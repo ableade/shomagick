@@ -5,7 +5,7 @@
 #include "../src/camera.h"
 #include "../src/shot.h"
 #include "../src/allclose.h"
-#include "utilities.h"
+#include "../src/utilities.h"
 #include <opencv2/core/eigen.hpp>
 
 using std::vector;
