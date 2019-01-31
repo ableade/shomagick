@@ -56,6 +56,7 @@ typedef boost::graph_traits<TrackGraph>::out_edge_iterator out_edge_iterator;
 typedef boost::graph_traits<TrackGraph>::edge_iterator edge_iterator;
 typedef boost::graph_traits<TrackGraph>::adjacency_iterator adjacency_iterator;
 typedef boost::graph_traits<TrackGraph>::vertex_iterator vertex_iterator;
+typedef boost::graph_traits<TrackGraph>::vertex_descriptor vertex_descriptor;
 typedef std::pair<std::string, int> ImageFeatureNode;
 
 class CommonTrack {

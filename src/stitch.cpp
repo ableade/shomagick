@@ -58,17 +58,19 @@ int main(int argc, char *argv[])
   FlightSession flight;
   argc > 2 ? flight = FlightSession(argv[1], argv[2]) : flight = FlightSession(argv[1]);
 
-  
   ShoMatcher shoMatcher(flight);
 
   //**** Begin Matching Pipeline ******
-  if (argc > 3) {
-    //A candidate file was provided 
+  if (argc > 3)
+  {
+    //A candidate file was provided
     const auto candidateFile = argv[3];
     cout << "Using candidate file " << candidateFile << std::endl;
     shoMatcher.getCandidateMatchesFromFile(candidateFile);
-  } else {
-      shoMatcher.getCandidateMatchesUsingSpatialSearch();
+  }
+  else
+  {
+    shoMatcher.getCandidateMatchesUsingSpatialSearch();
   }
   shoMatcher.extractFeatures();
   shoMatcher.runRobustFeatureMatching();
@@ -76,7 +78,7 @@ int main(int argc, char *argv[])
 
   //***Begin tracking pipeline *****
   ShoTracker tracker(flight, shoMatcher.getCandidateImages());
-  vector<pair<FeatureNode, FeatureNode>> featureNodes;
+  vector<pair<ImageFeatureNode, ImageFeatureNode>> featureNodes;
   vector<FeatureProperty> featureProps;
   tracker.createFeatureNodes(featureNodes, featureProps);
   tracker.createTracks(featureNodes);
@@ -86,14 +88,36 @@ int main(int argc, char *argv[])
   cout << "Number of edges is " << tracksGraph.m_edges.size() << endl;
   auto commonTracks = tracker.commonTracks(tracksGraph);
   Reconstructor reconstructor(flight, tracksGraph, tracker.getTrackNodes(), tracker.getImageNodes());
-  reconstructor.runIncrementalReconstruction(tracker);
+
+  string image1 = "0061_SONY.jpg";
+  string image2 = "0062_SONY.jpg";
+
+  auto imageNodes = tracker.getImageNodes();
+
+  auto im1 = imageNodes[image1];
+  auto im2 = imageNodes[image2];
+
+  TwoViewPose t;
+  cv::Mat mask;
+  for (const auto &track : commonTracks)
+  {
+    if (track.imagePair.first == image1 && track.imagePair.second == image2) 
+    {
+      t = reconstructor.recoverTwoCameraViewPose(im1, im2, track.commonTracks, mask);
+      cout << "Pose beween these two images is Essential matrix: " << get<0>(t)<< " Rotation: "
+       << get<1>(t)<< " Translation:"<<get<2>(t)<<endl;
+
+       reconstructor.computePlaneHomography(track);
+    }
+  }
+  //reconstructor.runIncrementalReconstruction(tracker);
   /*
 harvFile.open("harv.csv"); wsgFile.open("wsg.csv");
 //Compute nearest neighbors using haversine formula
 harvFile << "Image name, Neighboring image name, Distance,"<<endl;
 wsgFile << "Image name, Neighboring image name, Distance,"<<endl;
 for(auto i =0; i< v.size();++i) {
- vector<pair<string,double > > harvDistances;
+ vector<pair<string,double > > harvDistances; 
  vector<pair<string,double > > wsgDistances;
  auto currentImage = parseFileNameFromPath(v[i].path().string());
  cout<<std::fixed<<std::setprecision(7);

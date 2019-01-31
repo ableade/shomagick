@@ -9,19 +9,19 @@ using namespace cv;
 #include <opencv2/core/eigen.hpp>
 //#include "bundle.h"
 
+using csfm::TriangulateBearingsMidpoint;
 using std::cout;
 using std::map;
 using std::pair;
 using std::set;
 using std::sort;
 using std::vector;
-using csfm::TriangulateBearingsMidpoint;
 
 Reconstructor ::Reconstructor(FlightSession flight, TrackGraph tg, std::map<string, TrackGraph::vertex_descriptor> trackNodes,
-                              std::map<string, TrackGraph::vertex_descriptor> imageNodes) : flight(flight), tg(tg), 
-                              trackNodes(trackNodes), imageNodes(imageNodes), shotOrigins(), rInverses(){}
+                              std::map<string, TrackGraph::vertex_descriptor> imageNodes) : flight(flight), tg(tg),
+                                                                                            trackNodes(trackNodes), imageNodes(imageNodes), shotOrigins(), rInverses() {}
 
-void Reconstructor::_alignMatchingPoints(void *img1, void *img2, const set<string> &tracks, vector<cv::Point2f> &points1, vector<cv::Point2f> &points2)
+void Reconstructor::_alignMatchingPoints(const vertex_descriptor img1, const vertex_descriptor img2, const set<string> &tracks, vector<cv::Point2f> &points1, vector<cv::Point2f> &points2) const
 {
     map<string, Point2f> aPoints1, aPoints2;
     pair<out_edge_iterator, out_edge_iterator> im1Edges = boost::out_edges(img1, this->tg);
@@ -49,7 +49,7 @@ void Reconstructor::_alignMatchingPoints(void *img1, void *img2, const set<strin
     assert(points1.size() == tracks.size() && points2.size() == tracks.size());
 }
 
-TwoViewPose Reconstructor::recoverTwoCameraViewPose(void *image1, void *image2, std::set<string> tracks, cv::Mat& mask)
+TwoViewPose Reconstructor::recoverTwoCameraViewPose(const vertex_descriptor image1, const vertex_descriptor image2, std::set<string> tracks, cv::Mat &mask)
 {
     vector<Point2f> points1;
     vector<Point2f> points2;
@@ -86,14 +86,16 @@ void Reconstructor::computeReconstructability(const ShoTracker &tracker, vector<
 }
 
 //“Motion and Structure from Motion in a Piecewise Planar Environment. See paper by brown ”
-void Reconstructor::computePlaneHomography(string image1, string image2)
+void Reconstructor::computePlaneHomography(CommonTrack commonTrack) const
 {
+    cout << "computing homography" << endl;
+    const vertex_descriptor im1 = this->getImageNode(commonTrack.imagePair.first);
+    const vertex_descriptor im2 = this->getImageNode(commonTrack.imagePair.second);
     vector<Point2f> points1;
     vector<Point2f> points2;
-    //this->_alignMatchingPoints(image1, image2, points1, points2);
-    // auto h = cv::findHomography(points1, points2);
-
-    //Decompose the recovered homography
+    this->_alignMatchingPoints(im1, im2, commonTrack.commonTracks, points1, points2);
+    Mat h = cv::findHomography(points1, points2);
+    cout << "Homography found was " << h << endl;
 }
 
 void Reconstructor::runIncrementalReconstruction(const ShoTracker &tracker)
@@ -108,8 +110,7 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker &tracker)
     this->computeReconstructability(tracker, commonTracks);
     for (auto track : commonTracks)
     {
-        if (reconstructionImages.find(track.imagePair.first) != reconstructionImages.end()
-         && reconstructionImages.find(track.imagePair.second) != reconstructionImages.end())
+        if (reconstructionImages.find(track.imagePair.first) != reconstructionImages.end() && reconstructionImages.find(track.imagePair.second) != reconstructionImages.end())
         {
             Reconstruction rec = this->beginReconstruction(track.imagePair.first, track.imagePair.second, track.commonTracks, tracker);
         }
@@ -122,13 +123,14 @@ Reconstruction Reconstructor::beginReconstruction(string image1, string image2, 
     Reconstruction rec;
     auto im1 = imageNodes[image1];
     auto im2 = imageNodes[image2];
-    Mat  mask;
+    Mat mask;
     TwoViewPose poseParameters = this->recoverTwoCameraViewPose(im1, im2, tracks, mask);
     Mat essentialMat = std::get<0>(poseParameters);
     Mat r = std::get<1>(poseParameters);
     Mat t = std::get<2>(poseParameters);
 
-    if (essentialMat.rows != 3) {
+    if (essentialMat.rows != 3)
+    {
         cout << "Could not compute the essential matrix for this pair" << endl;
         //Get the first essential Mat;
         return rec;
@@ -154,28 +156,29 @@ Reconstruction Reconstructor::beginReconstruction(string image1, string image2, 
 
 void Reconstructor::triangulateShots(string image1, Reconstruction &rec)
 {
-    cout << "Triangulating shots "<<endl;
+    cout << "Triangulating shots " << endl;
     auto im1 = this->imageNodes[image1];
     pair<out_edge_iterator, out_edge_iterator> im1Edges = boost::out_edges(im1, this->tg);
     for (; im1Edges.first != im1Edges.second; ++im1Edges.first)
     {
         auto track = this->tg[*im1Edges.first].trackName;
-        cout << "Triangulating track "<< track << endl;
+        cout << "Triangulating track " << track << endl;
         this->triangulateTrack(track, rec);
         cout << "******************************" << endl;
     }
 
     constexpr auto minInliers = 20;
 
-    if (rec.getCloudPoints().size() < minInliers) {
-        cout << "Initial motion did not generate enough points : "<<rec.getCloudPoints().size() << endl;
+    if (rec.getCloudPoints().size() < minInliers)
+    {
+        cout << "Initial motion did not generate enough points : " << rec.getCloudPoints().size() << endl;
         return;
     }
 
     cout << "Generated " << rec.getCloudPoints().size() << "points from initial motion " << endl;
 }
 
-void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec)
+void Reconstructor::triangulateTrack(string trackId, Reconstruction &rec)
 {
     auto track = this->trackNodes[trackId];
     std::pair<adjacency_iterator, adjacency_iterator> neighbors = boost::adjacent_vertices(track, this->tg);
@@ -183,7 +186,7 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec)
     vector<Eigen::Vector3d> originList, bearingList;
     for (; neighbors.first != neighbors.second; ++neighbors.first)
     {
-        auto shotId =  this->tg[*neighbors.first].name;
+        auto shotId = this->tg[*neighbors.first].name;
         if (rec.hasShot(shotId))
         {
             auto shot = rec.getReconstructionShots()[shotId];
@@ -203,13 +206,15 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec)
             cv2eigen(rotationInverse, eigenRotationInverse);
             cout << "Rotation inverse is " << eigenRotationInverse << endl;
             auto eigenRotationBearingProduct = eigenRotationInverse * fBearing;
-            cout << "Rotation inverse times bearing us  " << eigenRotationBearingProduct<< endl;  
+            cout << "Rotation inverse times bearing us  " << eigenRotationBearingProduct << endl;
             bearingList.push_back(eigenRotationBearingProduct);
             originList.push_back(eOrigin);
         }
     }
-    if (bearingList.size() >= 2) {
-        if (TriangulateBearingsMidpoint(originList,bearingList,x)) {
+    if (bearingList.size() >= 2)
+    {
+        if (TriangulateBearingsMidpoint(originList, bearingList, x))
+        {
             cout << "Triangulation occured succesfully" << endl;
             CloudPoint cp;
             cp.setId(stoi(trackId));
@@ -219,27 +224,42 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec)
     }
 }
 
-cv::Mat Reconstructor::getShotOrigin(const Shot& shot) {
+cv::Mat Reconstructor::getShotOrigin(const Shot &shot)
+{
     auto shotId = shot.getId();
-    if(this->shotOrigins.find(shotId) == this->shotOrigins.end()) {
+    if (this->shotOrigins.find(shotId) == this->shotOrigins.end())
+    {
         this->shotOrigins[shotId] = shot.getPose().getOrigin();
     }
     return this->shotOrigins[shotId];
 }
 
-cv::Mat Reconstructor::getRotationInverse(const Shot& shot) {
+cv::Mat Reconstructor::getRotationInverse(const Shot &shot)
+{
     auto shotId = shot.getId();
-    if(this->rInverses.find(shotId) == this->rInverses.end()) {
+    if (this->rInverses.find(shotId) == this->rInverses.end())
+    {
         auto rotationInverse = shot.getPose().getRotationMatrixInverse();
-        this->rInverses[shotId] =  rotationInverse;
+        this->rInverses[shotId] = rotationInverse;
     }
     return this->rInverses[shotId];
 }
 
-void Reconstructor::singleCameraBundleAdjustment(std::string shotId, Reconstruction& rec) {
+void Reconstructor::singleCameraBundleAdjustment(std::string shotId, Reconstruction &rec)
+{
     //BundleAdjuster bundleAdjuster;
     auto shot = rec.getReconstructionShots()[shotId];
     auto camera = shot.getCamera();
     //bundleAdjuster.AddPerspectiveCamera("1", camera.getPhysicalFocalLength(), camera.getK1(), camera.getK2(),
-       // camera.getInitialPhysicalFocal(), camera.getInitialK1(), camera.getInitialK2(), true);
+    // camera.getInitialPhysicalFocal(), camera.getInitialK1(), camera.getInitialK2(), true);
+}
+
+const vertex_descriptor Reconstructor::getImageNode(string imageName) const
+{
+    return imageNodes.at(imageName);
+}
+
+const vertex_descriptor Reconstructor::getTrackNode(string trackId) const
+{
+    return trackNodes.at(trackId);
 }

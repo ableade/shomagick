@@ -27,8 +27,8 @@ ShoTracker::ShoTracker(
     , tracks()
     , uf()
     , imageNodes()
-    , imageFeatures ()
     , trackNodes()
+    , imageFeatures ()
 {}
 
 void ShoTracker::createFeatureNodes(vector<pair<ImageFeatureNode, ImageFeatureNode>> &allFeatures,
@@ -152,8 +152,6 @@ vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
         if ( trackDescriptor == nullptr) {
             cout << "We have a dangling pointer. seriously boost...." << endl;
         }
-        std::cerr << "Printing graph \n";
-        printGraph(tg);
         auto neighbours = boost::adjacent_vertices(trackDescriptor, tg);
         for (auto vd : make_iterator_range(neighbours))
         {
