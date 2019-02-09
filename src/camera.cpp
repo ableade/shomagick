@@ -137,7 +137,9 @@ cv::Mat Camera::getNormalizedKMatrix() const {
 
 cv::Mat Camera::getDistortionMatrix() const
 {
-    return this->distortionCoefficients;
+    cv::Mat C = (cv::Mat_<double>(4,1) << 0., 0., 0., 0.);
+    return C;
+    //return this->distortionCoefficients;
 }
 
 void Camera::cvPointsToBearingVec(
@@ -235,11 +237,19 @@ cv::Point2f Camera::denormalizeImageCoordinates(const cv::Point2f normalizedCoor
     auto normX = normalizedCoords.x;
     auto normY = normalizedCoords.y;
 
-    const auto pixelX = (normX * width  * size / (1.0f * width)) + width / 2.0f;
-    const auto pixelY = (normY * height * size / (1.0f * height)) + height / 2.0f;
+    const auto pixelX = ((normX * width  * size / (1.0f * width)) + width / 2.0f) - 0.5;
+    const auto pixelY = ((normY * height * size / (1.0f * height)) + height / 2.0f) -0.5;
 
     return { pixelX, pixelY };
 }
+
+ std::vector<cv::Point2f> Camera::denormalizeImageCoordinates(const std::vector<cv::Point2f>& points) const {
+     std::vector<cv::Point2f> results;
+     for(const auto point: points) {
+         results.push_back(denormalizeImageCoordinates(point));
+     }
+     return results;
+ }
 
 cv::Point2f Camera::projectBearing(opengv::bearingVector_t b) {
     auto x = b[0] / b[2];

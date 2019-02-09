@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
   auto commonTracks = tracker.commonTracks(tracksGraph);
   Reconstructor reconstructor(flight, tracksGraph, tracker.getTrackNodes(), tracker.getImageNodes());
 
-  string image1 = "0061_SONY.jpg";
+  string image1 = "0060_SONY.jpg";
   string image2 = "0062_SONY.jpg";
 
   auto imageNodes = tracker.getImageNodes();
@@ -103,11 +103,31 @@ int main(int argc, char *argv[])
   {
     if (track.imagePair.first == image1 && track.imagePair.second == image2) 
     {
+      cout << "Number of common tracks is " << track.commonTracks.size() << endl;
       t = reconstructor.recoverTwoCameraViewPose(im1, im2, track.commonTracks, mask);
-      cout << "Pose beween these two images is Essential matrix: " << get<0>(t)<< " Rotation: "
-       << get<1>(t)<< " Translation:"<<get<2>(t)<<endl;
+      cout << "Essential matrix: \n" << get<0>(t) << "*******\n";
+      auto rotation = get<1>(t);
+      cv::Rodrigues(rotation, rotation);
+      cout << "Rotation: \n " << rotation << "*******\n";
+      cout << " Translation: \n"<<get<2>(t)<<endl;
+      cv::Mat hom = reconstructor.computePlaneHomography(track);
+      cout << "The homography found was " << hom << endl;
 
-       reconstructor.computePlaneHomography(track);
+
+    vector<cv::Mat> Rs_decomp, ts_decomp, normals_decomp;
+    int solutions = decomposeHomographyMat(hom, flight.getCamera().getNormalizedKMatrix(), Rs_decomp, ts_decomp, normals_decomp);
+    cout << "Decompose homography matrix computed from the camera displacement:" << endl << endl;
+    for (int i = 0; i < solutions; i++)
+    {
+      cv::Mat rvec_decomp;
+      Rodrigues(Rs_decomp[i], rvec_decomp);
+      cout << "Solution " << i << ":" << endl;
+      cout << "rvec from homography decomposition: " << rvec_decomp.t() << endl;
+      //cout << "rvec from camera displacement: " << rvec_1to2.t() << endl;
+      cout << "tvec from homography decomposition: " << ts_decomp.at(i).t() <<endl;
+      //cout << "tvec from camera displacement: " << t_1to2.t() << endl;
+      cout << "plane normal from homography decomposition: " << normals_decomp.at(i).t() << endl;
+    }
     }
   }
   //reconstructor.runIncrementalReconstruction(tracker);

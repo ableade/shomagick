@@ -104,6 +104,7 @@ bool ShoMatcher::_extractFeature(string fileName)
     auto modelimageNamePath = this->flight.getImageDirectoryPath() / fileName;
     Mat modelImg = imread(modelimageNamePath.string(), SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM | SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM);
     cv::cvtColor(modelImg, modelImg, SHO_BGR2RGB);
+    Mat featureImage  =  imread(modelimageNamePath.string(), SHO_GRAYSCALE);
     auto channels = modelImg.channels();
 
     if (modelImg.empty())
@@ -112,8 +113,8 @@ bool ShoMatcher::_extractFeature(string fileName)
     std::vector<cv::KeyPoint> keypoints;
     std::vector<cv::Scalar> colors;
     cv::Mat descriptors;
-    this->detector_->detect(modelImg, keypoints);
-    this->extractor_->compute(modelImg, keypoints, descriptors);
+    this->detector_->detect(featureImage, keypoints);
+    this->extractor_->compute(featureImage, keypoints, descriptors);
     cout << "Extracted "<< descriptors.rows << " points for  " << fileName<< endl;
 
     for(auto  &keypoint : keypoints) {

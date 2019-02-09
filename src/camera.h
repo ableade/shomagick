@@ -60,6 +60,7 @@ class Camera
     cv::Point2f normalizeImageCoordinate(const cv::Point2f) const;
     std::vector<cv::Point2f> normalizeImageCoordinates(const std::vector<cv::Point2f>&) const;
     cv::Point2f denormalizeImageCoordinates(const cv::Point2f) const;
+    std::vector<cv::Point2f> denormalizeImageCoordinates(const std::vector<cv::Point2f>&) const;
     static Camera getCameraFromCalibrationFile(std::string calibFile);
     static Camera getCameraFromExifMetaData(std::string image);
 };

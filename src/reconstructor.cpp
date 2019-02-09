@@ -86,16 +86,29 @@ void Reconstructor::computeReconstructability(const ShoTracker &tracker, vector<
 }
 
 //“Motion and Structure from Motion in a Piecewise Planar Environment. See paper by brown ”
-void Reconstructor::computePlaneHomography(CommonTrack commonTrack) const
+cv::Mat Reconstructor::computePlaneHomography(CommonTrack commonTrack) const
 {
-    cout << "computing homography" << endl;
     const vertex_descriptor im1 = this->getImageNode(commonTrack.imagePair.first);
     const vertex_descriptor im2 = this->getImageNode(commonTrack.imagePair.second);
     vector<Point2f> points1;
     vector<Point2f> points2;
     this->_alignMatchingPoints(im1, im2, commonTrack.commonTracks, points1, points2);
-    Mat h = cv::findHomography(points1, points2);
-    cout << "Homography found was " << h << endl;
+    
+   // points1 = this->flight.getCamera().denormalizeImageCoordinates(points1);
+    //points2 = this->flight.getCamera().denormalizeImageCoordinates(points2);
+
+    cout << "Points " << endl;
+    for(auto p : points1) {
+        cout << p << endl;
+    }
+
+    for(auto p : points2) {
+        cout << p << endl;
+    }
+
+    Mat mask;
+    return cv::findHomography(points1, points2, mask, cv::RANSAC);
+    
 }
 
 void Reconstructor::runIncrementalReconstruction(const ShoTracker &tracker)

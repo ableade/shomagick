@@ -28,7 +28,7 @@ public:
   TwoViewPose recoverTwoCameraViewPose(const vertex_descriptor image1, const vertex_descriptor image2, std::set<string> tracks, cv::Mat& mask);
   float computeReconstructabilityScore(int tracks, cv::Mat inliers, int treshold = 0.3);
   void computeReconstructability(const ShoTracker& tracker, std::vector<CommonTrack>& commonTracks);
-  void computePlaneHomography(CommonTrack commonTrack) const;
+  cv::Mat computePlaneHomography(CommonTrack commonTrack) const;
   void runIncrementalReconstruction (const ShoTracker& tracker);
   Reconstruction beginReconstruction (string image1, string image2, std::set<string> tracks, const ShoTracker& tracker);
   void triangulateShots(std::string image1, Reconstruction& rec);
