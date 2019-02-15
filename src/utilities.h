@@ -46,3 +46,25 @@ inline Camera getPerspectiveCamera(float physicalLens, int height, int width, fl
 
     return { cameraMatrix, dist, height, width };
 }
+
+template<typename AssociativeContainer, typename Predicate>
+void erase_if_impl(AssociativeContainer& container, Predicate shouldRemove)
+{
+    for (auto it = begin(container); it != end(container); /* nothing here, the increment in dealt with inside the loop */)
+    {
+        if (shouldRemove(*it))
+        {
+            it = container.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+}
+
+template<typename Key, typename Value, typename Comparator, typename Predicate>
+void erase_if(std::map<Key, Value, Comparator>& container, Predicate shouldRemove)
+{
+    return erase_if_impl(container, shouldRemove);
+}
