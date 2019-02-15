@@ -1,5 +1,4 @@
-#ifndef RECONSTRUCTION_HPP
-#define RECONSTRUCTION_HPP
+#pragma once
 
 #include "flightsession.h"
 #include "shotracking.h"
@@ -34,7 +33,7 @@ const double RADIAL_DISTORTION_K3_SD = 0.01;
 // Number of threads to use
 const int NUM_PROCESESS = 1;
 const int MAX_ITERATIONS = 10;
-const string LINEAR_SOLVER_TYPE = "DENSE_QR";
+const auto LINEAR_SOLVER_TYPE = "DENSE_QR";
 const int MIN_INLIERS = 20;
 const int BUNDLE_OUTLIER_THRESHOLD = 0.006;
 
@@ -57,10 +56,11 @@ private:
   std::vector<cv::DMatch> _getTrackDMatchesForImagePair(const CommonTrack track) const;
   void _addCameraToBundle(BundleAdjuster& ba, const Camera camera);
   void _getCameraFromBundle(BundleAdjuster& ba, Camera& cam);
+  void _alignReconstructionWithHorizontalOrientation(Reconstruction& rec);
 
 public:
-  Reconstructor(FlightSession flight, TrackGraph tg, std::map<string, TrackGraph::vertex_descriptor> trackNodes, 
-  std::map<string, TrackGraph::vertex_descriptor> imageNodes);
+  Reconstructor(FlightSession flight, TrackGraph tg, std::map<std::string, TrackGraph::vertex_descriptor> trackNodes, 
+  std::map<std::string, TrackGraph::vertex_descriptor> imageNodes);
 
   TwoViewPose recoverTwoCameraViewPose(CommonTrack track, cv::Mat& mask);
   float computeReconstructabilityScore(int tracks, cv::Mat inliers, int treshold = 0.3);
@@ -83,5 +83,3 @@ public:
   void bundle(Reconstruction& rec);
   void removeOutliers(Reconstruction & rec);
 };
-
-#endif

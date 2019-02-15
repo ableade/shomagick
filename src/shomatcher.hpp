@@ -25,7 +25,7 @@ private:
     void *kd;
     int dimensions = 2;
     int featureSize = 5000;
-    std::map<string, std::vector<string>> candidateImages;
+    std::map<std::string, std::vector<std::string>> candidateImages;
     cv::Ptr<cv::FeatureDetector> detector_;
     cv::Ptr<cv::DescriptorExtractor> extractor_;
     bool _extractFeature(std::string fileName);

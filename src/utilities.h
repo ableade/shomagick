@@ -3,6 +3,7 @@
 #include "camera.h"
 
 inline void printGraph(TrackGraph tracksGraph) {
+    using std::endl;
     std::cerr << "Number of vertices is " << tracksGraph.m_vertices.size() << endl;
     std::cerr << "Number of edges is " << tracksGraph.m_edges.size() << endl;
 

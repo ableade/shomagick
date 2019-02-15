@@ -13,6 +13,8 @@ using std::cout;
 using std::map;
 using std::vector;
 using std::cerr;
+using std::string;
+using std::endl;
 
 FlightSession::FlightSession() : imageData(), imageDirectory(), imageDirectoryPath(), imageFeaturesPath(),
 imageTracksPath(), camera()
@@ -48,8 +50,9 @@ imageTracksPath(), camera()
     {
         Img img;
         img.fileName = parseFileNameFromPath(entry.path().string());
-        auto loc = this->getCoordinates(entry.path().string());
-        img.location = loc;
+       
+        auto metadata = _extractExifFromImage(entry.path().string());
+        img.metadata = metadata;
         this->imageData.push_back(img);
     }
     if (!calibrationFile.empty()) {
@@ -58,9 +61,9 @@ imageTracksPath(), camera()
     cout << "Found " << this->imageData.size() << " usable images" << endl;
 }
 
-Location FlightSession::getCoordinates(string imagePath)
+ImageMetadata FlightSession::_extractExifFromImage(std::string imagePath) const
 {
-    Location loc;
+    ImageMetadata imageExif;
     auto image = Exiv2::ImageFactory::open(imagePath);
     assert(image.get() != 0);
     image->readMetadata();
@@ -71,10 +74,17 @@ Location FlightSession::getCoordinates(string imagePath)
         error += ": No Exif data found in the file";
         throw Exiv2::Error(Exiv2::ErrorCode::kerGeneralError, error);
     }
+    const auto loc = _extractCoordinates(exifData);
+    const auto[make, model] = _extractMakeAndModel(exifData);
 
+    return imageExif;
+}
+
+Location FlightSession::_extractCoordinates(const Exiv2::ExifData exifData) const
+{
     Exiv2::ExifData::const_iterator end = exifData.end();
-    auto latV = Exiv2::Value::create(Exiv2::signedRational);
-    auto longV = Exiv2::Value::create(Exiv2::signedRational);
+    Exiv2::Value::UniquePtr latV = Exiv2::Value::create(Exiv2::signedRational);
+    Exiv2::Value::UniquePtr longV = Exiv2::Value::create(Exiv2::signedRational);
     auto longitudeKey = Exiv2::ExifKey("Exif.GPSInfo.GPSLongitude");
     auto latitudeKey = Exiv2::ExifKey("Exif.GPSInfo.GPSLatitude");
     auto latPos = exifData.findKey(latitudeKey);
@@ -87,9 +97,19 @@ Location FlightSession::getCoordinates(string imagePath)
     auto latitude = latV->toFloat() + (latV->toFloat(1) / 60.0) + (latV->toFloat(2) / 3600.0);
     auto longitude = longV->toFloat() + (longV->toFloat(1) / 60.0) + (longV->toFloat(2) / 3600.0);
 
-    loc.longitude = longitude;
-    loc.latitude = latitude;
-    return loc;
+    return {longitude, latitude, 0};
+}
+
+FlightSession::CameraMakeAndModel FlightSession::_extractMakeAndModel(const Exiv2::ExifData exifData) const
+{
+    auto makeKey = Exiv2::ExifKey("Exif.Image.Make");
+    auto modelKey = Exiv2::ExifKey("Exif.Image.Model");
+
+    Exiv2::Value::UniquePtr makeV = Exiv2::Value::create(Exiv2::string);
+    Exiv2::Value::UniquePtr modelV = Exiv2::Value::create(Exiv2::string);
+
+    return make_tuple(makeV->toString(), modelV->toString());
+
 }
 
 vector<Img> FlightSession::getImageSet() const

@@ -15,6 +15,8 @@ using std::pair;
 using std::set;
 using std::to_string;
 using std::vector;
+using std::string;
+using std::endl;
 
 ShoTracker::ShoTracker(
     FlightSession flight,

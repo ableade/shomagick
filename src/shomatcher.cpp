@@ -25,6 +25,7 @@ using std::map;
 using std::pair;
 using std::set;
 using std::vector;
+using std::string;
 using json = nlohmann::json;
 
 void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
@@ -37,7 +38,7 @@ void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
         auto currentImage = imageSet[i].fileName;
         void *result_set;
 
-        double pt[] = { imageSet[i].location.longitude, imageSet[i].location.latitude };
+        double pt[] = { imageSet[i].metadata.location.longitude, imageSet[i].metadata.location.latitude };
         result_set = kd_nearest_range(static_cast<kdtree *>(kd), pt, range);
         vector<double> pos(this->dimensions);
         while (!kd_res_end(static_cast<kdres *>(result_set)))
@@ -163,7 +164,7 @@ void ShoMatcher::buildKdTree()
     kd = kd_create(this->dimensions);
     for (auto &img : this->flight.getImageSet())
     {
-        auto pos = vector<double>{ img.location.longitude, img.location.latitude };
+        auto pos = vector<double>{ img.metadata.location.longitude, img.metadata.location.latitude };
         void *dt = &img;
         assert(kd_insert(static_cast<kdtree *>(kd), pos.data(), dt) == 0);
     }

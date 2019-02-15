@@ -19,6 +19,8 @@ using std::set;
 using std::sort;
 using std::vector;
 using std::cerr;
+using std::string;
+using std::endl;
 
 Reconstructor ::Reconstructor(FlightSession flight, TrackGraph tg, std::map<string, TrackGraph::vertex_descriptor> trackNodes,
                               std::map<string, TrackGraph::vertex_descriptor> imageNodes) : flight(flight), tg(tg),
@@ -262,7 +264,6 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction &rec)
     for (; neighbors.first != neighbors.second; ++neighbors.first)
     {
         auto shotId = this->tg[*neighbors.first].name;
-        cout << "shot id is " << shotId << endl;
         if (rec.hasShot(shotId))
         {
             auto shot = rec.getReconstructionShots()[shotId];
@@ -508,11 +509,6 @@ void Reconstructor::bundle(Reconstruction & rec)
 
 void Reconstructor::removeOutliers(Reconstruction & rec)
 {
-    set<CloudPoint> badPoints;
-    rec.getCloudPoints().erase(std::remove(rec.getCloudPoints().begin(),
-        rec.getCloudPoints().end(), auto pair,  ), rec.getCloudPoints().end());
-    for (auto[pointId, cloudPoint] : rec.getCloudPoints()) {
-        if (cloudPoint.getError() > BUNDLE_OUTLIER_THRESHOLD )
-    }
+
 }
 

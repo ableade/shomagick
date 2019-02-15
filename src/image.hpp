@@ -1,5 +1,4 @@
-#ifndef SHOIMAGE_HPP_
-#define SHOIMAGE_HPP_
+#pragma once
 
 #include <string>
 #include <cmath>
@@ -7,11 +6,6 @@
 #include <opencv2/core.hpp>
 #include "bootstrap.h"
 #include <boost/filesystem.hpp>
-
-using cv::Point3d;
-using std::endl;
-using std::ostream;
-using std::string;
 
 const int DEG = 180;
 const float WGS84_A = 6378137.0;
@@ -23,10 +17,11 @@ inline double toRadian(double deg)
 	return deg * M_PI / DEG;
 }
 
-inline string parseFileNameFromPath(string path)
+inline std::string parseFileNameFromPath(std::string path)
 {
 	return boost::filesystem::path{path}.filename().string();
 }
+
 
 /*
 double distanceEarth(double lat1d, double lon1d, double lat2d, double lon2d) {
@@ -76,7 +71,7 @@ struct Location
 	 * CHeck results for ecef function here http://
 	 * www.oc.nps.edu/oc2902w/coord/llhxyz.htm
 	 */
-	Point3d ecef()
+	cv::Point3d ecef()
 	{
 		auto b = 2.0;
 		auto a2 = pow(WGS84_A, b);
@@ -89,22 +84,33 @@ struct Location
 		auto y = (a2 * l + this->altitude) * cos(latRad) * sin(longRad);
 		auto z = (b2 * l + this->altitude) * sin(latRad);
 
-		return Point3d(x, y, z);
+		return cv::Point3d(x, y, z);
 	}
 
-	friend ostream &operator<<(ostream &os, const Location &loc)
+	friend std::ostream &operator<<(std::ostream &os, const Location &loc)
 	{
 		os << loc.latitude << " " << loc.longitude << " " << loc.altitude;
 		return os;
 	}
 };
 
+struct ImageMetadata
+{
+    Location location;
+    int height;
+    int width;
+    std::string projectionType;
+    std::string cameraMake;
+    std::string cameraModel;
+    std::string orientation;
+};
+
 struct Img
 {
 	std::string fileName;
-	Location location;
+    ImageMetadata metadata;
 
-	Img() : fileName(), location() {};
-	Img(string fileName, Location location) : fileName(fileName) , location(location) {};
+	Img() : fileName(), metadata() {};
+	Img(std::string fileName, ImageMetadata metadata) : fileName(fileName) ,  metadata(metadata) {};
 };
-#endif
+
