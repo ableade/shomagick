@@ -39,11 +39,15 @@ class Camera
     float initialK1;
     float initialK2;
     float initialPhysicalFocal;
+    double& getPixelFocal();
+    double& getK1();
+    double&  getK2();
 
   public:
     Camera();
     Camera(cv::Mat cameraMatrix, cv::Mat distortion, int height =0, int width =0);
-    double getPixelFocal() const;
+    const double& getPixelFocal() const;
+
     double getPhysicalFocalLength() const;
     cv::Mat getKMatrix();
     cv::Mat getNormalizedKMatrix() const;
@@ -52,8 +56,8 @@ class Camera
     const std::vector<cv::Point2f>&, opengv::bearingVectors_t& );
     opengv::bearingVector_t  normalizedPointToBearingVec(const cv::Point2f &point) const;
     cv::Point2f projectBearing(opengv::bearingVector_t);
-    double getK1() const;
-    double getK2() const;
+    const double& getK1() const;
+    const double& getK2() const;
     double getInitialK1() const;
     double getInitialK2() const;
     double getInitialPhysicalFocal() const;
@@ -63,5 +67,8 @@ class Camera
     std::vector<cv::Point2f> denormalizeImageCoordinates(const std::vector<cv::Point2f>&) const;
     static Camera getCameraFromCalibrationFile(std::string calibFile);
     static Camera getCameraFromExifMetaData(std::string image);
+    void setFocalWithPhysical(double physicalFocal);
+    void setK1(double k1);
+    void setK2(double k2);
 };
 #endif

@@ -177,19 +177,34 @@ opengv::bearingVector_t Camera::normalizedPointToBearingVec(const cv::Point2f &p
     return bearing;
 }
 
-double Camera::getPixelFocal() const{
+const double& Camera::getPixelFocal() const{
     return this->cameraMatrix.at<double>(0, 0);
+}
+
+double & Camera::getPixelFocal()
+{
+    return this->cameraMatrix.at<double>(0, 0);
+}
+
+double & Camera::getK1()
+{
+    return this->getDistortionMatrix().at<double>(0, 0);
+}
+
+double & Camera::getK2()
+{
+    return this->getDistortionMatrix().at<double>(1, 0);
 }
 
 double Camera::getPhysicalFocalLength() const {
     return (double)this->getPixelFocal() / (double)max(this->height, this->width);
 }
 
-double Camera::getK1() const {
+const double& Camera::getK1() const {
     return this->getDistortionMatrix().at<double>(0,0);
 }
 
-double Camera::getK2() const{
+const double& Camera::getK2() const{
     return this->getDistortionMatrix().at<double>(1, 0);
 }
 
@@ -237,8 +252,8 @@ cv::Point2f Camera::denormalizeImageCoordinates(const cv::Point2f normalizedCoor
     auto normX = normalizedCoords.x;
     auto normY = normalizedCoords.y;
 
-    const auto pixelX = ((normX * width  * size / (1.0f * width)) + width / 2.0f) - 0.5;
-    const auto pixelY = ((normY * height * size / (1.0f * height)) + height / 2.0f) -0.5;
+    float pixelX = ((normX * width  * size / (1.0f * width)) + width / 2.0f) - 0.5;
+    float pixelY = ((normY * height * size / (1.0f * height)) + height / 2.0f) -0.5;
 
     return { pixelX, pixelY };
 }
@@ -274,6 +289,22 @@ Camera Camera::getCameraFromCalibrationFile(string calibrationFile) {
     fs["camera_matrix"] >> cameraMatrix;
     fs["distortion_coefficients"] >> distortionParameters;
     return Camera{ cameraMatrix, distortionParameters, height, width };
+}
+
+void Camera::setFocalWithPhysical(double physicalFocal)
+{
+   auto pixelFocal =  (double)this->getPixelFocal() * (double)max(this->height, this->width);
+   getPixelFocal() = pixelFocal;
+}
+
+void Camera::setK1(double k1)
+{
+    getK1() = k1;
+}
+
+void Camera::setK2(double k2)
+{
+    getK2() = k2;
 }
 
 

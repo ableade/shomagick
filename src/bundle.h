@@ -781,7 +781,7 @@ struct PointPositionPriorError {
     double scale_;
 };
 
-ceres::LossFunction *CreateLossFunction(std::string name, double threshold) {
+inline ceres::LossFunction *CreateLossFunction(std::string name, double threshold) {
     if (name.compare("TrivialLoss") == 0) {
         return new ceres::TrivialLoss();
     }
@@ -804,7 +804,7 @@ ceres::LossFunction *CreateLossFunction(std::string name, double threshold) {
 }
 
 
-ceres::LinearSolverType LinearSolverTypeFromNamae(std::string name) {
+inline ceres::LinearSolverType LinearSolverTypeFromName(std::string name) {
     if (name.compare("DENSE_QR") == 0) {
         return ceres::DENSE_QR;
     }
@@ -1409,7 +1409,7 @@ public:
 
         // Solve
         ceres::Solver::Options options;
-        options.linear_solver_type = LinearSolverTypeFromNamae(linear_solver_type_);
+        options.linear_solver_type = LinearSolverTypeFromName(linear_solver_type_);
         options.num_threads = num_threads_;
         options.max_num_iterations = max_num_iterations_;
 

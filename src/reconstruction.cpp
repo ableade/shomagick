@@ -1,4 +1,5 @@
 #include "reconstruction.h"
+#include "reconstructor.h"
 #include "map"
 #include "string"
 
@@ -9,17 +10,27 @@ Reconstruction::Reconstruction() : shots(), cloudPoints(), camera() {}
 
 Reconstruction::Reconstruction(std::map<std::string, Shot> shots, std::map<int, CloudPoint> cloudPoints, Camera camera) : shots(shots), cloudPoints(cloudPoints), camera(camera) {}
 
-map<string, Shot> &Reconstruction::getReconstructionShots()
+map<string, Shot>& Reconstruction::getReconstructionShots()
 {
-    return this->shots;
+    return shots;
 }
 
-map<int, CloudPoint> &Reconstruction::getCloudPoints()
+const map<string, Shot>& Reconstruction::getReconstructionShots() const
 {
-    return this->cloudPoints;
+    return shots;
 }
 
-bool Reconstruction::hasShot(string shotId)
+const map<int, CloudPoint>& Reconstruction::getCloudPoints() const
+{
+    return cloudPoints;
+}
+
+std::map<int, CloudPoint>& Reconstruction::getCloudPoints()
+{
+    return cloudPoints;
+}
+
+bool Reconstruction::hasShot(string shotId) const
 {
     return this->shots.find(shotId) != this->shots.end();
 }
@@ -27,3 +38,18 @@ bool Reconstruction::hasShot(string shotId)
 void Reconstruction::addCloudPoint(CloudPoint cp) {
     this->cloudPoints[cp.getId()] = cp;
 }
+
+bool Reconstruction::hasTrack(std::string trackId) const
+{
+    return cloudPoints.find(stoi(trackId)) != cloudPoints.end();
+}
+
+const Camera& Reconstruction::getCamera() const
+{
+    return camera;
+}
+
+Camera& Reconstruction::getCamera() {
+    return camera;
+}
+

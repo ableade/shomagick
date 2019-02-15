@@ -22,7 +22,7 @@ ShoTracker::ShoTracker(
     std::vector<string>> candidateImages
 )
     : flight(flight)
-    , candidateImages(candidateImages)
+    , mapOfImageNamesToCandidateImages(candidateImages)
     , features()
     , tracks()
     , uf()
@@ -37,29 +37,29 @@ void ShoTracker::createFeatureNodes(vector<pair<ImageFeatureNode, ImageFeatureNo
     size_t featureIndex = 0;
     cout << "Creating feature nodes" << endl;
     //Image name and corresponding keypoint index form a single node
-    for (auto it = this->candidateImages.begin(); it != this->candidateImages.end(); ++it)
+    for (const auto& [ imageName, candidateImages ] : mapOfImageNamesToCandidateImages )
     {
-        auto allPairMatches = this->flight.loadMatches(it->first);
-        auto leftImageName = it->first;
+        auto allPairMatches = this->flight.loadMatches(imageName);
+        auto leftImageName = imageName;
         auto leftImageFeatures = this->_loadImageFeatures(leftImageName);
-        for (auto matchIt = allPairMatches.begin(); matchIt != allPairMatches.end(); ++matchIt)
+        for ( const auto& [ matchImageName, dMatches ] : allPairMatches )
         {
-            auto matchImageName = matchIt->first;
-            for (size_t k = 0; k < matchIt->second.size(); ++k)
+            for ( const auto& dMatch : dMatches )
             {
-                auto leftFeature = make_pair(leftImageName, matchIt->second[k].trainIdx);
-                auto rightFeature = make_pair(matchImageName, matchIt->second[k].queryIdx);
+                //The left image is the query image and the right image is the train image
+                auto leftFeature = make_pair(leftImageName, dMatch.queryIdx);
+                auto rightFeature = make_pair(matchImageName, dMatch.trainIdx);
                 auto rightImageFeature = this->_loadImageFeatures(matchImageName);
                 if (this->addFeatureToIndex(leftFeature, featureIndex))
                 {
                     featureIndex++;
-                    FeatureProperty leftProp = this->_getFeatureProperty(leftImageFeatures, matchIt->second[k].trainIdx);
+                    FeatureProperty leftProp = this->getFeatureProperty_(leftImageFeatures, leftFeature);
                     props.push_back(leftProp);
                     if (this->addFeatureToIndex(rightFeature, featureIndex))
                     {
                         featureIndex++;
                         allFeatures.push_back(make_pair(leftFeature, rightFeature));
-                        FeatureProperty rightProp = this->_getFeatureProperty(rightImageFeature, matchIt->second[k].queryIdx);
+                        FeatureProperty rightProp = this->getFeatureProperty_(rightImageFeature, rightFeature);
                         props.push_back(rightProp);
                     }
                 }
@@ -173,10 +173,10 @@ vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
     return commonTracks;
 }
 
-FeatureProperty ShoTracker::_getFeatureProperty(const ImageFeatures &imageFeatures, int featureIndex)
+FeatureProperty ShoTracker::getFeatureProperty_(const ImageFeatures &imageFeatures, ImageFeatureNode fNode) const
 {
-    assert(featureIndex < imageFeatures.keypoints.size());
-    return {imageFeatures.keypoints[featureIndex].pt, imageFeatures.colors[featureIndex]};
+    assert(fNode.second < imageFeatures.keypoints.size());
+    return {fNode, imageFeatures.keypoints[fNode.second].pt, imageFeatures.colors[fNode.second]};
 }
 
 set<pair<string, string>> ShoTracker::_getCombinations(const vector<string> &images) const
