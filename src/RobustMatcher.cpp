@@ -113,7 +113,13 @@ void RobustMatcher::robustMatch(const cv::Mat &image1, const cv::Mat &trainImage
   this->robustMatch(keypoints1, descriptors1, keypoints2, descriptors2, matches);
 }
 
-void RobustMatcher::robustMatch(const std::vector<cv::KeyPoint> &keypoints1, const cv::Mat descriptors1, const std::vector<cv::KeyPoint> &keypoints2, const cv::Mat descriptors2, std::vector<cv::DMatch> &matches)
+void RobustMatcher::robustMatch(
+    const std::vector<cv::KeyPoint>& keypoints1,
+    const cv::Mat descriptors1,
+    const std::vector<cv::KeyPoint>& keypoints2,
+    const cv::Mat descriptors2,
+    std::vector<cv::DMatch>& matches
+)
 {
   // 2. Match the two image descriptors
   std::vector<std::vector<cv::DMatch>> matches12, matches21;

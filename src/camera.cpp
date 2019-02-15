@@ -2,7 +2,8 @@
 #include <ostream>
 #include <algorithm>
 #include <string>
-#include <boost/filesystem.hpp>
+#include <Eigen/Core>
+//#include <boost/filesystem.hpp>
 
 using std::ostream;
 using std::max;
@@ -15,15 +16,68 @@ cv::Mat Pose::getRotationMatrix() const
     return rods;
 }
 
+cv::Mat Pose::getRotationVector() const
+{
+    return this->rotation;
+}
+
+cv::Mat Pose::getRotationMatrixInverse() const {
+    auto r = getRotationMatrix();
+    cv::Mat tR;
+    cv::transpose(r, tR);
+    return tR;
+}
+
 cv::Mat Pose::getOrigin() const
 {
     cv::Mat tRot;
     auto origin = this->getRotationMatrix();
-    std::cout << "Rotation matrix is " << origin << std::endl;
+   // std::cout << "Rotation matrix is " << origin << std::endl;
     cv::transpose(-origin, tRot);
-    std::cout << "Rotation matrix transpose is " << tRot << std::endl;
+    //std::cout << "Rotation matrix transpose is " << tRot << std::endl;
     origin = tRot * this->translation;
     return origin;
+}
+
+cv::Mat Pose::getTranslation() const{
+    return translation;
+}
+
+void Pose::setTranslation(cv::Mat t) {
+    translation = t;
+}
+
+void Pose::setRotationVector(cv::Mat src) {
+    cv::Mat rotationVector;
+    rotationVector = src;
+    if (src.rows == 3 && src.cols == 3) {
+        //src is currently a rotation matrix
+        cv::Rodrigues(src, rotationVector);
+    }
+    CV_Assert((rotationVector.cols == 1 && rotationVector.rows == 3) || (rotationVector.cols == 3 && rotationVector.rows == 1));
+    rotation = rotationVector;
+}
+
+Pose Pose::inverse() const {
+    auto inv = Pose{};
+    auto r = getRotationMatrix();
+    cv::Mat transposedRotation;
+    cv::transpose(r, transposedRotation);
+    cv::Mat transposedRotationVector;
+    //cv::Rodrigues()
+    inv.setRotationVector(transposedRotation);
+    cv::transpose(-r, transposedRotation);
+    inv.setTranslation(transposedRotation * translation);
+    return inv;
+}
+
+Pose Pose::compose(const Pose& other) const {
+    auto r = getRotationMatrix();
+    auto otherR = other.getRotationMatrix();
+    auto nR = (r * otherR);
+    auto nT = (r * other.getTranslation()) + getTranslation();
+    
+    return { nR, nT };
 }
 
 ostream & operator << (ostream &out, const Pose &p)
@@ -47,14 +101,28 @@ void Camera::_cvPointsToBearingVec(cv::Mat pRect, opengv::bearingVectors_t &bear
         bearings.push_back(bearing);
     }
 }
-Camera::Camera() : cameraMatrix(), distortionCoefficients(), height(), width()
+Camera::Camera() : cameraMatrix(), distortionCoefficients(), height(), width(),  cameraMake(),
+    cameraModel(), initialK1(), initialK2(), initialPhysicalFocal()
 {
     int dimension = 3;
     this->cameraMatrix = cv::Mat::eye(dimension, dimension, CV_32F);
+    this->cameraMake = "";
+    this->cameraModel = "";
+    this->initialPhysicalFocal = 0.0;
+    this->initialK1 = 0.0;
+    this->initialK2 = 0.0;
 }
 
 Camera::Camera(cv::Mat cameraMatrix, cv::Mat distortion, int height, int width) : cameraMatrix(cameraMatrix), distortionCoefficients(distortion), height(height),
-width(width) {}
+width(width),cameraMake(),
+cameraModel(),  initialK1(),  initialK2(), initialPhysicalFocal() {
+    assert (!cameraMatrix.empty());
+    assert(!distortionCoefficients.empty());
+    assert(height !=0 && width != 0);
+    this->initialK1 = this->getK1();
+    this->initialK2 = this->getK2();
+    this->initialPhysicalFocal = this->getPhysicalFocalLength();
+}
 
 cv::Mat Camera::getKMatrix() { return this->cameraMatrix; }
 
@@ -69,7 +137,9 @@ cv::Mat Camera::getNormalizedKMatrix() const {
 
 cv::Mat Camera::getDistortionMatrix() const
 {
-    return this->distortionCoefficients;
+    cv::Mat C = (cv::Mat_<double>(4,1) << 0., 0., 0., 0.);
+    return C;
+    //return this->distortionCoefficients;
 }
 
 void Camera::cvPointsToBearingVec(
@@ -92,12 +162,10 @@ void Camera::cvPointsToBearingVec(
 
 opengv::bearingVector_t Camera::normalizedPointToBearingVec(const cv::Point2f &point) const
 {
-    std::cout << "Converting point " << point << std::endl;
     std::vector<cv::Point2f> points{ point };
     std::vector<cv::Point3f> hPoints;
     //std::vector<cv::Point2f> uPoints;
     cv::undistortPoints(points, points, this->getNormalizedKMatrix(), this->getDistortionMatrix());
-    std::cout << "Undistorted points were " << points[0] << std::endl;
     cv::convertPointsHomogeneous(points, hPoints);
     opengv::bearingVector_t bearing;
     auto convPoint = hPoints[0];
@@ -109,28 +177,56 @@ opengv::bearingVector_t Camera::normalizedPointToBearingVec(const cv::Point2f &p
     return bearing;
 }
 
-double Camera::getFocal() const{
+const double& Camera::getPixelFocal() const{
     return this->cameraMatrix.at<double>(0, 0);
 }
 
-double Camera::getPhysicalFocalLength() const {
-    return (double)this->getFocal() / (double)max(this->height, this->width);
+double & Camera::getPixelFocal()
+{
+    return this->cameraMatrix.at<double>(0, 0);
 }
 
-double Camera::getK1() const {
-    return this->getDistortionMatrix().at<double>(0,0);
+double & Camera::getK1()
+{
+    return this->getDistortionMatrix().at<double>(0, 0);
 }
 
-double Camera::getk2() const{
+double & Camera::getK2()
+{
     return this->getDistortionMatrix().at<double>(1, 0);
 }
 
-cv::Point2f Camera::normalizeImageCoordinates(const cv::Point2f pixelCoords) const
+double Camera::getPhysicalFocalLength() const {
+    return (double)this->getPixelFocal() / (double)max(this->height, this->width);
+}
+
+const double& Camera::getK1() const {
+    return this->getDistortionMatrix().at<double>(0,0);
+}
+
+const double& Camera::getK2() const{
+    return this->getDistortionMatrix().at<double>(1, 0);
+}
+
+double Camera::getInitialK1() const {
+    return this->initialK1;
+}
+
+double Camera::getInitialK2() const {
+    return this->initialK2;
+}
+
+double Camera::getInitialPhysicalFocal() const {
+    return this->initialPhysicalFocal;
+}
+
+cv::Point2f Camera::normalizeImageCoordinate(const cv::Point2f pixelCoords) const
 {
     const auto size = max(width, height);
 
-    const auto pixelX = pixelCoords.x;
-    const auto pixelY = pixelCoords.y;
+    float step = 0.5;
+    const auto pixelX = pixelCoords.x + step;
+    const auto pixelY = pixelCoords.y + step;
     const auto normX = ((1.0f * width) / size) * (pixelX - width / 2.0f) / width;
     const auto normY = ((1.0f * height) / size) * (pixelY - height / 2.0f) / height;
     return {
@@ -139,24 +235,43 @@ cv::Point2f Camera::normalizeImageCoordinates(const cv::Point2f pixelCoords) con
     };
 }
 
+std::vector<cv::Point2f> Camera::normalizeImageCoordinates(const std::vector<cv::Point2f>& points) const
+{
+    std::vector<cv::Point2f> results;
+
+    for (const auto& point : points) {
+        results.push_back(normalizeImageCoordinate(point));
+    }
+    
+    return results;
+}
+
 cv::Point2f Camera::denormalizeImageCoordinates(const cv::Point2f normalizedCoords) const
 {
     const auto size = max(width, height);
     auto normX = normalizedCoords.x;
     auto normY = normalizedCoords.y;
 
-    const auto pixelX = (normX * width  * size / (1.0f * width)) + width / 2.0f;
-    const auto pixelY = (normY * height * size / (1.0f * height)) + height / 2.0f;
+    float pixelX = ((normX * width  * size / (1.0f * width)) + width / 2.0f) - 0.5;
+    float pixelY = ((normY * height * size / (1.0f * height)) + height / 2.0f) -0.5;
 
     return { pixelX, pixelY };
 }
+
+ std::vector<cv::Point2f> Camera::denormalizeImageCoordinates(const std::vector<cv::Point2f>& points) const {
+     std::vector<cv::Point2f> results;
+     for(const auto point: points) {
+         results.push_back(denormalizeImageCoordinates(point));
+     }
+     return results;
+ }
 
 cv::Point2f Camera::projectBearing(opengv::bearingVector_t b) {
     auto x = b[0] / b[2];
     auto y = b[1] / b[2];
 
     auto r = x * x + y * y;
-    auto radialDistortion = 1.0 + r * (getK1() + getk2() * r);
+    auto radialDistortion = 1.0 + r * (getK1() + getK2() * r);
 
     return cv::Point2f{
         static_cast<float>(getPhysicalFocalLength() * radialDistortion * x),
@@ -167,13 +282,29 @@ cv::Point2f Camera::projectBearing(opengv::bearingVector_t b) {
 Camera Camera::getCameraFromCalibrationFile(string calibrationFile) {
     int height, width;
     cv::Mat cameraMatrix, distortionParameters;
-    assert(boost::filesystem::exists(calibrationFile));
+    //assert(boost::filesystem::exists(calibrationFile));
     cv::FileStorage fs(calibrationFile, cv::FileStorage::READ);
     fs["image_height"] >> height;
     fs["image_width"] >> width;
     fs["camera_matrix"] >> cameraMatrix;
     fs["distortion_coefficients"] >> distortionParameters;
     return Camera{ cameraMatrix, distortionParameters, height, width };
+}
+
+void Camera::setFocalWithPhysical(double physicalFocal)
+{
+   auto pixelFocal =  (double)this->getPixelFocal() * (double)max(this->height, this->width);
+   getPixelFocal() = pixelFocal;
+}
+
+void Camera::setK1(double k1)
+{
+    getK1() = k1;
+}
+
+void Camera::setK2(double k2)
+{
+    getK2() = k2;
 }
 
 

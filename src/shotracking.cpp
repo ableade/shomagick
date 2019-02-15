@@ -2,6 +2,7 @@
 #include "string"
 #include <vector>
 #include <iostream>
+#include "utilities.h"
 #include <set>
 
 using cv::DMatch;
@@ -21,43 +22,44 @@ ShoTracker::ShoTracker(
     std::vector<string>> candidateImages
 )
     : flight(flight)
-    , candidateImages(candidateImages)
+    , mapOfImageNamesToCandidateImages(candidateImages)
     , features()
     , tracks()
     , uf()
     , imageNodes()
     , trackNodes()
+    , imageFeatures ()
 {}
 
-void ShoTracker::createFeatureNodes(vector<pair<FeatureNode, FeatureNode>> &allFeatures,
-                                                                      vector<FeatureProperty> &props)
+void ShoTracker::createFeatureNodes(vector<pair<ImageFeatureNode, ImageFeatureNode>> &allFeatures,
+    vector<FeatureProperty> &props)
 {
     size_t featureIndex = 0;
     cout << "Creating feature nodes" << endl;
     //Image name and corresponding keypoint index form a single node
-    for (auto it = this->candidateImages.begin(); it != this->candidateImages.end(); ++it)
+    for (const auto& [ imageName, candidateImages ] : mapOfImageNamesToCandidateImages )
     {
-        auto allPairMatches = this->flight.loadMatches(it->first);
-        auto leftImageName = it->first;
-        auto leftImageFeatures = this->flight.loadFeatures(leftImageName);
-        for (auto matchIt = allPairMatches.begin(); matchIt != allPairMatches.end(); ++matchIt)
+        auto allPairMatches = this->flight.loadMatches(imageName);
+        auto leftImageName = imageName;
+        auto leftImageFeatures = this->_loadImageFeatures(leftImageName);
+        for ( const auto& [ matchImageName, dMatches ] : allPairMatches )
         {
-            auto matchImageName = matchIt->first;
-            for (size_t k = 0; k < matchIt->second.size(); ++k)
+            for ( const auto& dMatch : dMatches )
             {
-                auto leftFeature = make_pair(leftImageName, matchIt->second[k].trainIdx);
-                auto rightFeature = make_pair(matchImageName, matchIt->second[k].queryIdx);
-                auto rightImageFeature = this->flight.loadFeatures(matchImageName);
+                //The left image is the query image and the right image is the train image
+                auto leftFeature = make_pair(leftImageName, dMatch.queryIdx);
+                auto rightFeature = make_pair(matchImageName, dMatch.trainIdx);
+                auto rightImageFeature = this->_loadImageFeatures(matchImageName);
                 if (this->addFeatureToIndex(leftFeature, featureIndex))
                 {
                     featureIndex++;
-                    FeatureProperty leftProp = this->_getFeatureProperty(leftImageFeatures, matchIt->second[k].trainIdx);
+                    FeatureProperty leftProp = this->getFeatureProperty_(leftImageFeatures, leftFeature);
                     props.push_back(leftProp);
                     if (this->addFeatureToIndex(rightFeature, featureIndex))
                     {
                         featureIndex++;
                         allFeatures.push_back(make_pair(leftFeature, rightFeature));
-                        FeatureProperty rightProp = this->_getFeatureProperty(rightImageFeature, matchIt->second[k].queryIdx);
+                        FeatureProperty rightProp = this->getFeatureProperty_(rightImageFeature, rightFeature);
                         props.push_back(rightProp);
                     }
                 }
@@ -69,7 +71,14 @@ void ShoTracker::createFeatureNodes(vector<pair<FeatureNode, FeatureNode>> &allF
     cout << "Created a total of " << this->features.size() << " feature nodes " << endl;
 }
 
-void ShoTracker::createTracks(const vector<pair<FeatureNode, FeatureNode>> &features)
+ImageFeatures ShoTracker::_loadImageFeatures(const string fileName) {
+    if (this->imageFeatures.find(fileName) == this->imageFeatures.end()) {
+        this->imageFeatures[fileName] = this->flight.loadFeatures(fileName);
+    }
+    return this->imageFeatures[fileName];
+}
+
+void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNode>> &features)
 {
     cout << "Creating tracks" << endl;
     for (size_t i = 0; i < features.size(); ++i)
@@ -131,10 +140,19 @@ vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
 {
     vector<CommonTrack> commonTracks;
     map<pair<string, string>, std::vector<string>> _commonTracks;
+#if 0
     for (auto it = this->trackNodes.begin(); it != this->trackNodes.end(); ++it)
+#endif
+    for (auto& trackNode : trackNodes )
     {
+        std::string vertexName;
+        TrackGraph::vertex_descriptor trackDescriptor;
+        std::tie(vertexName, trackDescriptor) = trackNode;
         vector<string> imageNeighbours;
-        auto neighbours = boost::adjacent_vertices(it->second, tg);
+        if ( trackDescriptor == nullptr) {
+            cout << "We have a dangling pointer. seriously boost...." << endl;
+        }
+        auto neighbours = boost::adjacent_vertices(trackDescriptor, tg);
         for (auto vd : make_iterator_range(neighbours))
         {
             imageNeighbours.push_back(tg[vd].name);
@@ -143,7 +161,7 @@ vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
         
         for (auto combination : combinations)
         {
-            _commonTracks[combination].push_back(it->first);
+            _commonTracks[combination].push_back(vertexName);
         }
     }
     commonTracks.reserve(_commonTracks.size());
@@ -155,9 +173,10 @@ vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
     return commonTracks;
 }
 
-FeatureProperty ShoTracker::_getFeatureProperty(const ImageFeatures &imageFeatures, int featureIndex)
+FeatureProperty ShoTracker::getFeatureProperty_(const ImageFeatures &imageFeatures, ImageFeatureNode fNode) const
 {
-    return {imageFeatures.keypoints[featureIndex].pt, imageFeatures.colors[featureIndex]};
+    assert(fNode.second < imageFeatures.keypoints.size());
+    return {fNode, imageFeatures.keypoints[fNode.second].pt, imageFeatures.colors[fNode.second]};
 }
 
 set<pair<string, string>> ShoTracker::_getCombinations(const vector<string> &images) const

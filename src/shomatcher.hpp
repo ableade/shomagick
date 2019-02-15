@@ -7,10 +7,6 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846264338327950288
-#endif
-
 inline double dist_sq(double *a1, double *a2, int dims)
 {
     double dist_sq = 0, diff;
@@ -32,8 +28,7 @@ private:
     std::map<string, std::vector<string>> candidateImages;
     cv::Ptr<cv::FeatureDetector> detector_;
     cv::Ptr<cv::DescriptorExtractor> extractor_;
-
-    bool _extractFeature(string fileName);
+    bool _extractFeature(std::string fileName);
 
 public:
     ShoMatcher(FlightSession flight)
@@ -43,10 +38,12 @@ public:
         , detector_(cv::ORB::create(4000))
         , extractor_(cv::ORB::create(4000))
     {}
-    void getCandidateMatches(double range = 0.000125);
+    void getCandidateMatchesUsingSpatialSearch(double range = 0.000125);
+    void getCandidateMatchesFromFile(std::string candidateFile);
     int extractFeatures();
     void runRobustFeatureMatching();
     void buildKdTree();
-    std::map<string, std::vector<string>> getCandidateImages() const;
+    std::map<std::string, std::vector<std::string>> getCandidateImages() const;
+    void plotMatches(std::string img1, std::string img2) const;
 };
 #endif

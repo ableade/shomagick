@@ -3,9 +3,8 @@
 #include <Eigen/Core>
 #include <vector>
 #include "../src/allclose.h"
-#include "../src/shompi.h"
+#include "../src/bootstrap.h"
 #include "../src/multiview.h"
-
 
 namespace
 {
