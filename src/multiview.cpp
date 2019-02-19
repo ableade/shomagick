@@ -71,8 +71,8 @@ bool TriangulateBearingsMidpoint(
     os.col(i) << o(0), o(1), o(2);
     bs.col(i) << b(0), b(1), b(2);
   }
-  std::cout << "Triangulating bearings midpoint for os " << os << std::endl;
-  std::cout << "Triangulating bearings midpoint for bs " << bs << std::endl;
+  //std::cout << "Triangulating bearings midpoint for os " << os << std::endl;
+  //std::cout << "Triangulating bearings midpoint for bs " << bs << std::endl;
   // Check angle between rays
   bool angle_ok = false;
   for (int i = 0; i < n; ++i)
@@ -94,15 +94,15 @@ bool TriangulateBearingsMidpoint(
   }
   if (!angle_ok)
   {
-    std::cout << "Angle is not OK at all" << std::endl;
+    //std::cout << "Angle is not OK at all" << std::endl;
     return false;
   }
 
-  std::cout << "Angle was Ok" << std::endl;
+  //std::cout << "Angle was Ok" << std::endl;
 
   // Triangulate
   result = TriangulateBearingsMidpointSolve(os, bs);
-  std::cout << "X is " << result << std::endl;
+  //std::cout << "X is " << result << std::endl;
 
   // Check reprojection error
   for (int i = 0; i < n; ++i)
@@ -111,10 +111,10 @@ bool TriangulateBearingsMidpoint(
     Eigen::Vector3d b = bs.col(i);
 
     double error = AngleBetweenVectors(x_reproj, b);
-    std::cout << "Error was " << error << std::endl;
+    //std::cout << "Error was " << error << std::endl;
     if (error > threshold)
     {
-      std::cout << "Error was greater than treshhold" << std::endl;
+      //std::cout << "Error was greater than treshhold" << std::endl;
       return false;
     }
   }

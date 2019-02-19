@@ -5,9 +5,11 @@
 
 #include <vector>
 #include <ostream>
+#include <iostream>
 #include <string>
 
 using std::vector;
+using std::cerr;
 
 namespace
 {
@@ -40,9 +42,9 @@ namespace
 
 namespace catchtests
 {
-    SCENARIO( "two collections with close elements should be all close", "[allClose]" )
+    SCENARIO("two collections with close elements should be all close", "[allClose]")
     {
-        GIVEN( "two collections that are close and a tolerance that we set manually" )
+        GIVEN("two collections that are close and a tolerance that we set manually")
         {
             using std::vector;
             const auto collection1 = vector<float>{
@@ -55,7 +57,7 @@ namespace catchtests
 
             constexpr auto tolerance = 0.05;
 
-            WHEN( "the collections are checked for closeness" )
+            WHEN("the collections are checked for closeness")
             {
                 const auto actual = allClose(
                     collection1,
@@ -63,11 +65,14 @@ namespace catchtests
                     tolerance
                 );
 
-                THEN( "the results shoud be as expected" )
+                THEN("the results shoud be as expected")
                 {
-                    const auto expected = true;
-                    INFO( "collection1: " << makePrintable( collection1 ) );
-                    INFO( "collection2: " << makePrintable( collection2 ) );
+                    constexpr auto expected = true;
+                    INFO("collection1: " << makePrintable(collection1));
+                    INFO("collection2: " << makePrintable(collection2));
+
+                    cerr << "expected = " << expected << ", actual = " << actual << "\n";
+                    
                     REQUIRE( expected == actual );
                 }
             }
@@ -107,4 +112,4 @@ namespace catchtests
             }
         }
     }
-}
+} //namespace catchtests

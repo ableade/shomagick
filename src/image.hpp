@@ -1,17 +1,12 @@
-#ifndef SHOIMAGE_HPP_
-#define SHOIMAGE_HPP_
+#pragma once
 
 #include <string>
 #include <cmath>
 #include <fstream>
 #include <opencv2/core.hpp>
-#include "shompi.h"
+#include <exiv2/exiv2.hpp>
+#include "bootstrap.h"
 #include <boost/filesystem.hpp>
-
-using cv::Point3d;
-using std::endl;
-using std::ostream;
-using std::string;
 
 const int DEG = 180;
 const float WGS84_A = 6378137.0;
@@ -23,10 +18,11 @@ inline double toRadian(double deg)
 	return deg * M_PI / DEG;
 }
 
-inline string parseFileNameFromPath(string path)
+inline std::string parseFileNameFromPath(std::string path)
 {
 	return boost::filesystem::path{path}.filename().string();
 }
+
 
 /*
 double distanceEarth(double lat1d, double lon1d, double lat2d, double lon2d) {
@@ -45,7 +41,7 @@ struct Location
 	double longitude;
 	double latitude;
 	double altitude;
-
+    double dop;
 	float distanceTo(Location loc)
 	{
 		auto b = 2;
@@ -76,7 +72,7 @@ struct Location
 	 * CHeck results for ecef function here http://
 	 * www.oc.nps.edu/oc2902w/coord/llhxyz.htm
 	 */
-	Point3d ecef()
+	cv::Point3d ecef()
 	{
 		auto b = 2.0;
 		auto a2 = pow(WGS84_A, b);
@@ -89,22 +85,93 @@ struct Location
 		auto y = (a2 * l + this->altitude) * cos(latRad) * sin(longRad);
 		auto z = (b2 * l + this->altitude) * sin(latRad);
 
-		return Point3d(x, y, z);
+		return cv::Point3d(x, y, z);
 	}
 
-	friend ostream &operator<<(ostream &os, const Location &loc)
+    cv::Point3d getTopcentricLocationCoordinates(std::map<std::string, double> reference) {
+        const cv::Mat t = Location::topcentricTransformFromReferenceLLA(reference).inv();
+        const auto locEcef = ecef();
+
+        const auto tx = t.at<double>(0,0) * locEcef.x + t.at<double>(0,1) * locEcef.y + t.at<double>(0,2) * locEcef.z 
+            + t.at<double>(0,3);
+        const auto ty = t.at<double>(1, 0) * locEcef.x + t.at<double>(1, 1) * locEcef.y + t.at<double>(1, 2) * locEcef.z
+            + t.at<double>(1, 3);
+        const auto tz = t.at<double>(2, 0) * locEcef.x + t.at<double>(2, 1) * locEcef.y + t.at<double>(2, 2) * locEcef.z
+            + t.at<double>(2, 3);
+
+        return { tx,ty, tz };
+    }
+
+	friend std::ostream &operator<<(std::ostream &os, const Location &loc)
 	{
 		os << loc.latitude << " " << loc.longitude << " " << loc.altitude;
 		return os;
 	}
+
+    static cv::Mat topcentricTransformFromReferenceLLA(std::map<std::string, double> referenceLLA) {
+        const auto lat = referenceLLA["lat"];
+        const auto lon = referenceLLA["lon"];
+        const auto alt = referenceLLA["alt"];
+
+        Location refLocation{lon, lat, alt, 0.0};
+        const auto refLlaEcef = refLocation.ecef();
+        const auto sa = sin(toRadian(lat));
+        const auto ca = cos(toRadian(lat));
+        const auto so = sin(toRadian(lon));
+        const auto co = cos(toRadian(lon));
+
+        cv::Matx<double, 4, 4> topCentricReference{
+            -so, -sa * co, ca * co, refLlaEcef.x,
+            co, -sa * so, ca * so, refLlaEcef.y,
+            0, ca, sa, refLlaEcef.z,
+            0, 0, 0, 1
+        };
+        
+        return cv::Mat(topCentricReference);
+    }
 };
 
-struct Img
+struct ImageMetadata
 {
-	std::string fileName;
-	Location location;
-
-	Img() : fileName(), location() {};
-	Img(string fileName, Location location) : fileName(fileName) , location(location) {};
+    Location location;
+    int height;
+    int width;
+    std::string projectionType;
+    std::string cameraMake;
+    std::string cameraModel;
+    std::string orientation;
+    double captureTime;
 };
-#endif
+
+class Img
+{
+public:
+    using CameraMake = std::string;
+    using CameraModel = std::string;
+    using CameraMakeAndModel = std::tuple<CameraMake, CameraModel>;
+
+private:
+    std::string imageFileName;
+    ImageMetadata metadata;
+    static Location _extractCoordinatesFromExif(Exiv2::ExifData exifData);
+    static int _getImageOrientationFromExif(Exiv2::ExifData imageExifData);
+    static double _extractPhysicalFocalFromExif(Exiv2::ExifData exifData);
+    // TODO Implement unimplemented functions in image class
+    std::string _extractProjectionTypeFromExif(Exiv2::ExifData exifData);
+    static CameraMakeAndModel _extractMakeAndModelFromExif(Exiv2::ExifData exifData);
+    static double _extractDopFromExif(Exiv2::ExifData imageExifData);
+    static int _extractOrientationFromExif(Exiv2::ExifData imageExifData);
+
+public:
+	Img() : imageFileName(), metadata() {};
+    //Constructs an img class given the path to the image 
+    Img(std::string imageFilePath);
+	Img(std::string fileName, ImageMetadata metadata) : imageFileName(fileName) ,  metadata(metadata) {};
+    const ImageMetadata& getMetadata() const;
+    const std::string& getFileName() const;
+    ImageMetadata& getMetadata();
+    static ImageMetadata extractExifFromImage(std::string imagePath);
+    
+};
+
+
