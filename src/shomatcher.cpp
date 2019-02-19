@@ -32,13 +32,13 @@ void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
 {
     this->buildKdTree();
     auto imageSet = this->flight.getImageSet();
-    for (size_t i = 0; i < imageSet.size(); ++i)
+    for (const auto img: imageSet)
     {
         vector<string> matchSet;
-        auto currentImage = imageSet[i].fileName;
+        auto currentImageName = img.getFileName();
         void *result_set;
 
-        double pt[] = { imageSet[i].metadata.location.longitude, imageSet[i].metadata.location.latitude };
+        double pt[] = {img.getMetadata().location.longitude, img.getMetadata().location.latitude };
         result_set = kd_nearest_range(static_cast<kdtree *>(kd), pt, range);
         vector<double> pos(this->dimensions);
         while (!kd_res_end(static_cast<kdres *>(result_set)))
@@ -48,16 +48,16 @@ void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
                 continue;
 
             auto img = static_cast<Img *>(current);
-            if (currentImage != img->fileName)
+            if (currentImageName != img->getFileName())
             {
-                matchSet.push_back(img->fileName);
+                matchSet.push_back(img->getFileName());
             }
             kd_res_next(static_cast<kdres *>(result_set));
         }
-        cout << "Found " << matchSet.size() << " candidate matches for " << currentImage << endl;
+        cout << "Found " << matchSet.size() << " candidate matches for " << currentImageName << endl;
         if (matchSet.size())
         {
-            this->candidateImages[currentImage] = matchSet;
+            this->candidateImages[currentImageName] = matchSet;
         }
     }
 }
@@ -164,10 +164,11 @@ void ShoMatcher::buildKdTree()
     kd = kd_create(this->dimensions);
     for (auto &img : this->flight.getImageSet())
     {
-        auto pos = vector<double>{ img.metadata.location.longitude, img.metadata.location.latitude };
+        auto pos = vector<double>{ img.getMetadata().location.longitude, img.getMetadata().location.latitude };
         void *dt = &img;
         assert(kd_insert(static_cast<kdtree *>(kd), pos.data(), dt) == 0);
     }
+
 }
 
 map<string, std::vector<string>> ShoMatcher::getCandidateImages() const

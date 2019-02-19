@@ -3,7 +3,6 @@
 #include "image.hpp"
 #include "camera.h"
 #include <boost/filesystem.hpp>
-#include <exiv2/exiv2.hpp>
 #include <map>
 #include <vector>
 #include <string>
@@ -19,22 +18,19 @@ public:
 
 class FlightSession
 {
-public:
-    using CameraMake = std::string;
-    using CameraModel = std::string;
-    using CameraMakeAndModel = std::tuple<CameraMake, CameraModel>;
 
 private:
-    std::vector<Img> imageData;
+    std::vector<Img> imageSet;
     std::string imageDirectory;
     boost::filesystem::path imageDirectoryPath;
     boost::filesystem::path imageFeaturesPath;
     boost::filesystem::path imageMatchesPath;
     boost::filesystem::path imageTracksPath;
+    boost::filesystem::path exifPath;
     Camera camera;
-    ImageMetadata _extractExifFromImage(std::string imageName) const;
-    Location _extractCoordinates(Exiv2::ExifData exifData) const;
-    CameraMakeAndModel _extractMakeAndModel(Exiv2::ExifData exifData) const;
+    std::map<std::string, double> referenceLLA;
+    // TODO Implement unimplemented functions in flightsession class
+    std::string _extractProjectionTypeFromExif(Exiv2::ExifData exifData) const;
 
 public:
     FlightSession();
@@ -57,4 +53,6 @@ public:
     ImageFeatures loadFeatures(std::string imageName) const;
     const Camera& getCamera() const;
     void setCamera(Camera camera);
+    void inventReferenceLLA();
+    const std::map<std::string, double>& getReferenceLLA() const;
 };

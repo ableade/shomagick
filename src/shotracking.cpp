@@ -151,9 +151,7 @@ vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
         TrackGraph::vertex_descriptor trackDescriptor;
         std::tie(vertexName, trackDescriptor) = trackNode;
         vector<string> imageNeighbours;
-        if ( trackDescriptor == nullptr) {
-            cout << "We have a dangling pointer. seriously boost...." << endl;
-        }
+
         auto neighbours = boost::adjacent_vertices(trackDescriptor, tg);
         for (auto vd : make_iterator_range(neighbours))
         {

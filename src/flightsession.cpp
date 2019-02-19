@@ -16,14 +16,14 @@ using std::cerr;
 using std::string;
 using std::endl;
 
-FlightSession::FlightSession() : imageData(), imageDirectory(), imageDirectoryPath(), imageFeaturesPath(),
-imageTracksPath(), camera()
+FlightSession::FlightSession() : imageSet(), imageDirectory(), imageDirectoryPath(), imageFeaturesPath(),
+imageTracksPath(), camera(), referenceLLA()
 {
 
 }
 
-FlightSession::FlightSession(string imageDirectory, string calibrationFile) : imageData(), imageDirectory(imageDirectory), imageDirectoryPath(), imageFeaturesPath(),
-imageTracksPath(), camera()
+FlightSession::FlightSession(string imageDirectory, string calibrationFile) : imageSet(), imageDirectory(imageDirectory), imageDirectoryPath(), imageFeaturesPath(),
+imageTracksPath(), camera(), referenceLLA()
 {
     cerr << "Image directory is " << imageDirectory << endl;
     vector<directory_entry> v;
@@ -33,12 +33,16 @@ imageTracksPath(), camera()
     this->imageFeaturesPath = this->imageDirectoryPath / "features";
     this->imageMatchesPath = this->imageDirectoryPath / "matches";
     this->imageTracksPath = this->imageDirectoryPath / "tracks";
-    cout << "Creating directory " << this->imageFeaturesPath.string() << endl;
-    boost::filesystem::create_directory(this->imageFeaturesPath);
-    cout << "Creating directory " << this->imageMatchesPath.string() << endl;
-    boost::filesystem::create_directory(this->imageMatchesPath);
-    cout << "Creating directory " << this->imageTracksPath.string() << endl;
-    boost::filesystem::create_directory(this->imageTracksPath);
+    this->exifPath = this->imageDirectoryPath / "exif";
+
+    const vector <boost::filesystem::path> allPaths{ imageFeaturesPath, imageMatchesPath,
+    imageTracksPath, exifPath };
+
+    for (const auto path : allPaths) {
+        cout << "Creating directory " << path.string() << endl;
+        boost::filesystem::create_directory(this->imageFeaturesPath);
+    }
+    
     copy_if(
         directory_iterator(imageDirectory),
         directory_iterator(),
@@ -48,73 +52,24 @@ imageTracksPath(), camera()
     });
     for (auto entry : v)
     {
-        Img img;
-        img.fileName = parseFileNameFromPath(entry.path().string());
-       
-        auto metadata = _extractExifFromImage(entry.path().string());
-        img.metadata = metadata;
-        this->imageData.push_back(img);
+        Img img(entry.path().string());
+        this->imageSet.push_back(img);
     }
     if (!calibrationFile.empty()) {
         this->camera = Camera::getCameraFromCalibrationFile(calibrationFile);
     }
-    cout << "Found " << this->imageData.size() << " usable images" << endl;
+    inventReferenceLLA();
+    cout << "Found " << this->imageSet.size() << " usable images" << endl;
 }
 
-ImageMetadata FlightSession::_extractExifFromImage(std::string imagePath) const
+std::string FlightSession::_extractProjectionTypeFromExif(Exiv2::ExifData exifData) const
 {
-    ImageMetadata imageExif;
-    auto image = Exiv2::ImageFactory::open(imagePath);
-    assert(image.get() != 0);
-    image->readMetadata();
-    Exiv2::ExifData &exifData = image->exifData();
-    if (exifData.empty())
-    {
-        std::string error(imagePath);
-        error += ": No Exif data found in the file";
-        throw Exiv2::Error(Exiv2::ErrorCode::kerGeneralError, error);
-    }
-    const auto loc = _extractCoordinates(exifData);
-    const auto[make, model] = _extractMakeAndModel(exifData);
-
-    return imageExif;
-}
-
-Location FlightSession::_extractCoordinates(const Exiv2::ExifData exifData) const
-{
-    Exiv2::ExifData::const_iterator end = exifData.end();
-    Exiv2::Value::UniquePtr latV = Exiv2::Value::create(Exiv2::signedRational);
-    Exiv2::Value::UniquePtr longV = Exiv2::Value::create(Exiv2::signedRational);
-    auto longitudeKey = Exiv2::ExifKey("Exif.GPSInfo.GPSLongitude");
-    auto latitudeKey = Exiv2::ExifKey("Exif.GPSInfo.GPSLatitude");
-    auto latPos = exifData.findKey(latitudeKey);
-    auto longPos = exifData.findKey(longitudeKey);
-    if (latPos == exifData.end() || longPos == exifData.end())
-        throw Exiv2::Error(Exiv2::ErrorCode::kerInvalidKey, "Key not found");
-    // Get a pointer to a copy of the value
-    latV = latPos->getValue();
-    longV = longPos->getValue();
-    auto latitude = latV->toFloat() + (latV->toFloat(1) / 60.0) + (latV->toFloat(2) / 3600.0);
-    auto longitude = longV->toFloat() + (longV->toFloat(1) / 60.0) + (longV->toFloat(2) / 3600.0);
-
-    return {longitude, latitude, 0};
-}
-
-FlightSession::CameraMakeAndModel FlightSession::_extractMakeAndModel(const Exiv2::ExifData exifData) const
-{
-    auto makeKey = Exiv2::ExifKey("Exif.Image.Make");
-    auto modelKey = Exiv2::ExifKey("Exif.Image.Model");
-
-    Exiv2::Value::UniquePtr makeV = Exiv2::Value::create(Exiv2::string);
-    Exiv2::Value::UniquePtr modelV = Exiv2::Value::create(Exiv2::string);
-
-    return make_tuple(makeV->toString(), modelV->toString());
-
+    return std::string("perspective");
 }
 
 vector<Img> FlightSession::getImageSet() const
 {
-    return this->imageData;
+    return this->imageSet;
 }
 
 const path FlightSession::getImageDirectoryPath() const
@@ -151,16 +106,15 @@ const path FlightSession::getImageTracksPath() const
 
 int FlightSession::getImageIndex(string imageName) const
 {
-    for (size_t i = 0; i < this->imageData.size(); ++i)
+    for (size_t i = 0; i < this->imageSet.size(); ++i)
     {
-        if (this->imageData[i].fileName == imageName)
+        if (this->imageSet[i].getFileName() == imageName)
         {
             return i;
         }
     }
     return -1;
 }
-
 bool FlightSession::saveImageFeaturesFile(string imageName, const std::vector<cv::KeyPoint> &keypoints, const cv::Mat &descriptors,
     const std::vector<cv::Scalar> &colors)
 {
@@ -234,4 +188,34 @@ const Camera& FlightSession::getCamera() const {
 void FlightSession::setCamera(Camera camera)
 {
     this->camera = camera;
+}
+
+void FlightSession::inventReferenceLLA()
+{
+    auto lat = 0.0;
+    auto lon = 0.0;
+    auto alt = 0.0;
+    auto wAlt = 0.0;
+    auto wLat = 0.0;
+    auto wLon = 0.0;
+    const auto defaultDop = 15;
+    for (const auto img : imageSet) {
+        auto dop = (img.getMetadata().location.dop != 0.0) ? img.getMetadata().location.dop : defaultDop;
+        auto w = 1.0 / std:: max(0.01, dop);
+        lat += img.getMetadata().location.latitude;
+        lon += img.getMetadata().location.longitude;
+        wLat += w;
+        wLon += w;
+        alt += img.getMetadata().location.altitude;
+        wAlt += w;
+        lat /= wLat;
+        lon /= wLon;
+        alt /= wAlt;
+    }
+    referenceLLA = { {"alt", alt}, {"lat",  lat}, {"lon" , lon} };
+}
+
+const std::map<std::string, double>& FlightSession::getReferenceLLA() const
+{
+    return referenceLLA;
 }

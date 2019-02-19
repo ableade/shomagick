@@ -82,4 +82,5 @@ public:
   void plotTracks(CommonTrack track) const;
   void bundle(Reconstruction& rec);
   void removeOutliers(Reconstruction & rec);
+  void alignReconstruction(Reconstruction & rec);
 };

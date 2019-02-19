@@ -4,6 +4,7 @@
 #include <cmath>
 #include <fstream>
 #include <opencv2/core.hpp>
+#include <exiv2/exiv2.hpp>
 #include "bootstrap.h"
 #include <boost/filesystem.hpp>
 
@@ -40,7 +41,7 @@ struct Location
 	double longitude;
 	double latitude;
 	double altitude;
-
+    double dop;
 	float distanceTo(Location loc)
 	{
 		auto b = 2;
@@ -87,11 +88,47 @@ struct Location
 		return cv::Point3d(x, y, z);
 	}
 
+    cv::Point3d getTopcentricLocationCoordinates(std::map<std::string, double> reference) {
+        const cv::Mat t = Location::topcentricTransformFromReferenceLLA(reference).inv();
+        const auto locEcef = ecef();
+
+        const auto tx = t.at<double>(0,0) * locEcef.x + t.at<double>(0,1) * locEcef.y + t.at<double>(0,2) * locEcef.z 
+            + t.at<double>(0,3);
+        const auto ty = t.at<double>(1, 0) * locEcef.x + t.at<double>(1, 1) * locEcef.y + t.at<double>(1, 2) * locEcef.z
+            + t.at<double>(1, 3);
+        const auto tz = t.at<double>(2, 0) * locEcef.x + t.at<double>(2, 1) * locEcef.y + t.at<double>(2, 2) * locEcef.z
+            + t.at<double>(2, 3);
+
+        return { tx,ty, tz };
+    }
+
 	friend std::ostream &operator<<(std::ostream &os, const Location &loc)
 	{
 		os << loc.latitude << " " << loc.longitude << " " << loc.altitude;
 		return os;
 	}
+
+    static cv::Mat topcentricTransformFromReferenceLLA(std::map<std::string, double> referenceLLA) {
+        const auto lat = referenceLLA["lat"];
+        const auto lon = referenceLLA["lon"];
+        const auto alt = referenceLLA["alt"];
+
+        Location refLocation{lon, lat, alt, 0.0};
+        const auto refLlaEcef = refLocation.ecef();
+        const auto sa = sin(toRadian(lat));
+        const auto ca = cos(toRadian(lat));
+        const auto so = sin(toRadian(lon));
+        const auto co = cos(toRadian(lon));
+
+        cv::Matx<double, 4, 4> topCentricReference{
+            -so, -sa * co, ca * co, refLlaEcef.x,
+            co, -sa * so, ca * so, refLlaEcef.y,
+            0, ca, sa, refLlaEcef.z,
+            0, 0, 0, 1
+        };
+        
+        return cv::Mat(topCentricReference);
+    }
 };
 
 struct ImageMetadata
@@ -103,14 +140,38 @@ struct ImageMetadata
     std::string cameraMake;
     std::string cameraModel;
     std::string orientation;
+    double captureTime;
 };
 
-struct Img
+class Img
 {
-	std::string fileName;
-    ImageMetadata metadata;
+public:
+    using CameraMake = std::string;
+    using CameraModel = std::string;
+    using CameraMakeAndModel = std::tuple<CameraMake, CameraModel>;
 
-	Img() : fileName(), metadata() {};
-	Img(std::string fileName, ImageMetadata metadata) : fileName(fileName) ,  metadata(metadata) {};
+private:
+    std::string imageFileName;
+    ImageMetadata metadata;
+    static Location _extractCoordinatesFromExif(Exiv2::ExifData exifData);
+    static int _getImageOrientationFromExif(Exiv2::ExifData imageExifData);
+    static double _extractPhysicalFocalFromExif(Exiv2::ExifData exifData);
+    // TODO Implement unimplemented functions in image class
+    std::string _extractProjectionTypeFromExif(Exiv2::ExifData exifData);
+    static CameraMakeAndModel _extractMakeAndModelFromExif(Exiv2::ExifData exifData);
+    static double _extractDopFromExif(Exiv2::ExifData imageExifData);
+    static int _extractOrientationFromExif(Exiv2::ExifData imageExifData);
+
+public:
+	Img() : imageFileName(), metadata() {};
+    //Constructs an img class given the path to the image 
+    Img(std::string imageFilePath);
+	Img(std::string fileName, ImageMetadata metadata) : imageFileName(fileName) ,  metadata(metadata) {};
+    const ImageMetadata& getMetadata() const;
+    const std::string& getFileName() const;
+    ImageMetadata& getMetadata();
+    static ImageMetadata extractExifFromImage(std::string imagePath);
+    
 };
+
 

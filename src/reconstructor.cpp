@@ -212,8 +212,13 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
     cv::Rodrigues(r, rVec);
     cv::Mat distortion;
     Reconstruction reconstruction;
-    Shot shot1(track.imagePair.first, this->flight.getCamera(), Pose());
-    Shot shot2(track.imagePair.second, this->flight.getCamera(), Pose(rVec, t));
+
+    const auto shot1Image = flight.getImageSet()[flight.getImageIndex(track.imagePair.first)];
+    const auto shot2Image = flight.getImageSet()[flight.getImageIndex(track.imagePair.second)];
+    ShotMetadata shot1Metadata(shot1Image.getMetadata(), flight);
+    ShotMetadata shot2Metadata(shot2Image.getMetadata(), flight);
+    Shot shot1(track.imagePair.first, this->flight.getCamera(), Pose(), shot1Metadata);
+    Shot shot2(track.imagePair.second, this->flight.getCamera(), Pose(rVec, t), shot2Metadata);
 
     rec.getReconstructionShots()[shot1.getId()] = shot1;
     rec.getReconstructionShots()[shot2.getId()] = shot2;
@@ -510,5 +515,17 @@ void Reconstructor::bundle(Reconstruction & rec)
 void Reconstructor::removeOutliers(Reconstruction & rec)
 {
 
+}
+
+void Reconstructor::alignReconstruction(Reconstruction & rec)
+{
+    vector<cv::Mat> shotOrigins;
+    vector <cv::Point3d> gpsPositions;
+
+    for (const auto[imageName, shot] : rec.getReconstructionShots()) {
+        shotOrigins.push_back(shot.getPose().getOrigin());
+        gpsPositions.push_back(shot.getMetadata().gpsPosition);
+        auto rot = shot.getPose().getRotationMatrix();
+    }
 }
 
