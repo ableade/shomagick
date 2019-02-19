@@ -192,43 +192,50 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
   }
 }
 
-Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(
-    CommonTrack track, const ShoTracker& tracker) {
-  Reconstruction rec;
+Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonTrack track, const ShoTracker &tracker)
+{
+    Reconstruction rec;
 
-  Mat mask;
-  TwoViewPose poseParameters = this->recoverTwoCameraViewPose(track, mask);
-  Mat essentialMat = std::get<0>(poseParameters);
-  Mat r = std::get<1>(poseParameters);
-  Mat t = std::get<2>(poseParameters);
+    Mat mask;
+    TwoViewPose poseParameters = this->recoverTwoCameraViewPose(track, mask);
+    Mat essentialMat = std::get<0>(poseParameters);
+    Mat r = std::get<1>(poseParameters);
+    Mat t = std::get<2>(poseParameters);
 
-  if (essentialMat.rows != 3) {
-    cout << "Could not compute the essential matrix for this pair" << endl;
-    // Get the first essential Mat;
-    return rec;
-  }
+    if (essentialMat.rows != 3)
+    {
+        cout << "Could not compute the essential matrix for this pair" << endl;
+        //Get the first essential Mat;
+        return rec;
+    }
 
-  auto inliers = countNonZero(mask);
-  if (inliers <= 5) {
-    cout << "This pair failed to adequately reconstruct" << endl;
-    return std::nullopt;
-  }
-  cv::Mat rVec;
-  cv::Rodrigues(r, rVec);
-  cv::Mat distortion;
-  Reconstruction reconstruction;
-  Shot shot1(track.imagePair.first, this->flight.getCamera(), Pose());
-  Shot shot2(track.imagePair.second, this->flight.getCamera(), Pose(rVec, t));
+    auto inliers = countNonZero(mask);
+    if (inliers <= 5)
+    {
+        cout << "This pair failed to adequately reconstruct" << endl;
+        return std::nullopt;
+    }
+    cv::Mat rVec;
+    cv::Rodrigues(r, rVec);
+    cv::Mat distortion;
+    Reconstruction reconstruction;
 
-  rec.getReconstructionShots()[shot1.getId()] = shot1;
-  rec.getReconstructionShots()[shot2.getId()] = shot2;
+    const auto shot1Image = flight.getImageSet()[flight.getImageIndex(track.imagePair.first)];
+    const auto shot2Image = flight.getImageSet()[flight.getImageIndex(track.imagePair.second)];
+    ShotMetadata shot1Metadata(shot1Image.getMetadata(), flight);
+    ShotMetadata shot2Metadata(shot2Image.getMetadata(), flight);
+    Shot shot1(track.imagePair.first, this->flight.getCamera(), Pose(), shot1Metadata);
+    Shot shot2(track.imagePair.second, this->flight.getCamera(), Pose(rVec, t), shot2Metadata);
 
-  this->triangulateShots(track.imagePair.first, rec);
-  if (rec.getCloudPoints().size() < MIN_INLIERS) {
-    // return None
-    cout << "Initial motion did not generate enough points : "
-         << rec.getCloudPoints().size() << endl;
-    return std::nullopt;
+    rec.getReconstructionShots()[shot1.getId()] = shot1;
+    rec.getReconstructionShots()[shot2.getId()] = shot2;
+
+    this->triangulateShots(track.imagePair.first, rec);
+    if (rec.getCloudPoints().size() < MIN_INLIERS)
+    {
+        //return None
+        cout << "Initial motion did not generate enough points : " << rec.getCloudPoints().size() << endl;
+        return std::nullopt;
   }
 
   cout << "Generated " << rec.getCloudPoints().size()
@@ -257,40 +264,6 @@ void Reconstructor::triangulateShots(string image1, Reconstruction &rec) {
   }
 }
 
-<<<<<<< HEAD
-void Reconstructor::triangulateTrack(string trackId, Reconstruction &rec)
-{
-    auto track = this->trackNodes[trackId];
-    std::pair<adjacency_iterator, adjacency_iterator> neighbors = boost::adjacent_vertices(track, this->tg);
-    Eigen::Vector3d x;
-    vector<Eigen::Vector3d> originList, bearingList;
-    for (; neighbors.first != neighbors.second; ++neighbors.first)
-    {
-        auto shotId = this->tg[*neighbors.first].name;
-        if (rec.hasShot(shotId))
-        {
-            auto shot = rec.getReconstructionShots()[shotId];
-            //cout << "Currently at shot " << shot.getId() << endl;
-            auto edgePair = boost::edge(track, this->imageNodes[shotId], this->tg);
-            auto edgeDescriptor = edgePair.first;
-            auto fCol = this->tg[edgeDescriptor].fProp.color;
-            auto fPoint = this->tg[edgeDescriptor].fProp.coordinates;
-            auto fBearing = this->flight.getCamera().normalizedPointToBearingVec(fPoint);
-            //cout << "F point to f bearing is " << fPoint << " to " << fBearing << endl;
-            auto origin = this->getShotOrigin(shot);
-            //cout << "Origin for this shot was " << origin << endl;
-            Eigen::Vector3d eOrigin;
-            Eigen::Matrix3d eigenRotationInverse;
-            cv2eigen(origin, eOrigin);
-            auto rotationInverse = this->getRotationInverse(shot);
-            cv2eigen(rotationInverse, eigenRotationInverse);
-            //cout << "Rotation inverse is " << eigenRotationInverse << endl;
-            auto eigenRotationBearingProduct = eigenRotationInverse * fBearing;
-            //cout << "Rotation inverse times bearing us  " << eigenRotationBearingProduct << endl;
-            bearingList.push_back(eigenRotationBearingProduct);
-            originList.push_back(eOrigin);
-        }
-=======
 void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec) {
   auto track = this->trackNodes[trackId];
   std::pair<adjacency_iterator, adjacency_iterator> neighbors =
@@ -324,7 +297,6 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec) {
       // eigenRotationBearingProduct << endl;
       bearingList.push_back(eigenRotationBearingProduct);
       originList.push_back(eOrigin);
->>>>>>> yaml
     }
   }
   if (bearingList.size() >= 2) {
@@ -545,12 +517,6 @@ void Reconstructor::bundle(Reconstruction& rec) {
   }
 }
 
-<<<<<<< HEAD
-void Reconstructor::removeOutliers(Reconstruction & rec)
-{
-
-}
-
 void Reconstructor::alignReconstruction(Reconstruction & rec)
 {
     vector<cv::Mat> shotOrigins;
@@ -563,7 +529,6 @@ void Reconstructor::alignReconstruction(Reconstruction & rec)
     }
 }
 
-=======
 void Reconstructor::removeOutliers(Reconstruction& rec) {
   erase_if(
         rec.getCloudPoints(),
@@ -573,4 +538,3 @@ void Reconstructor::removeOutliers(Reconstruction& rec) {
         }
     );
 }
->>>>>>> yaml
