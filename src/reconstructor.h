@@ -8,6 +8,10 @@
 #include <tuple>
 #include <optional>
 
+struct ReconstructionReport {
+    int numCommonPoints;
+    int numInliers;
+};
 //Essential matrix, rotation and translation
 typedef std::tuple <cv::Mat, cv::Mat, cv::Mat> TwoViewPose;
 //Loss function for the ceres problem (see: http://ceres-solver.org/modeling.html#lossfunction)
@@ -50,7 +54,7 @@ private:
   TrackGraph tg;
   TrackNodes trackNodes;
   ImageNodes imageNodes;
-  std::map<std::string, cv::Mat> shotOrigins;
+  std::map<std::string, ShoColumnVector3d> shotOrigins;
   std::map<std::string, cv::Mat> rInverses;
   void _alignMatchingPoints(const CommonTrack track, std::vector<cv::Point2f>& points1, std::vector<cv::Point2f>& points2) const;
   std::vector<cv::DMatch> _getTrackDMatchesForImagePair(const CommonTrack track) const;
@@ -74,7 +78,7 @@ public:
   void triangulateShots(std::string image1, Reconstruction& rec);
   void triangulateTrack(std::string trackId, Reconstruction& rec);
   void retriangulate(Reconstruction& rec);
-  cv::Mat getShotOrigin(const Shot& shot);
+  ShoColumnVector3d getShotOrigin(const Shot& shot);
   cv::Mat getRotationInverse(const Shot& shot);
   void singleViewBundleAdjustment(std::string shotId, Reconstruction& rec);
   const vertex_descriptor getImageNode(const std::string imageName) const;
@@ -82,5 +86,11 @@ public:
   void plotTracks(CommonTrack track) const;
   void bundle(Reconstruction& rec);
   void removeOutliers(Reconstruction & rec);
-  void alignReconstruction(Reconstruction & rec);
+  std::tuple<bool, ReconstructionReport> resect(Reconstruction & rec, const vertex_descriptor imageVetex,
+      double threshold = 0.004, int iterations = 1000, double probability = 0.999, int resectionInliers = 10 );
+  std::vector<std::pair<std::string, int>> reconstructedPointForImages(const Reconstruction & rec);
+  std::tuple<double, cv::Mat3d, cv::Vec3d> alignReconstruction(Reconstruction & rec);
+  void paintReconstruction(Reconstruction & rec);
+  bool shouldBundle(const Reconstruction &rec);
+  bool shouldTriangulate();
 };

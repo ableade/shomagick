@@ -8,7 +8,7 @@ using std::string;
 
 Reconstruction::Reconstruction() : shots(), cloudPoints(), camera() {}
 
-Reconstruction::Reconstruction(std::map<std::string, Shot> shots, std::map<int, CloudPoint> cloudPoints, Camera camera) : shots(shots), cloudPoints(cloudPoints), camera(camera) {}
+Reconstruction::Reconstruction(Camera camera) :camera(camera) {}
 
 map<string, Shot>& Reconstruction::getReconstructionShots()
 {

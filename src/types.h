@@ -1,6 +1,6 @@
-#ifndef __TYPES_H__
-#define __TYPES_H__
-
+#pragma once
+#include <opencv2/core.hpp>
+/*
 #include <boost/python.hpp>
 #ifdef USE_BOOST_PYTHON_NUMPY
 #include <boost/python/numpy.hpp>
@@ -167,5 +167,7 @@ class PyArrayContiguousView {
 };
 
 }
+*/
+typedef cv::Matx31d ShoColumnVector3d;
+typedef cv::Matx13d ShoRowVector3d;
 
-#endif // __TYPES_H__

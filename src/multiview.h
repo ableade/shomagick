@@ -1,3 +1,4 @@
+#pragma once
 /*
 This code is taken from OpenSFM see License at
 
@@ -9,6 +10,8 @@ This code is taken from OpenSFM see License at
 #include <Eigen/LU>
 #include <Eigen/QR>
 #include <Eigen/StdVector>
+#include <opencv2/core.hpp>
+#include <opengv/types.hpp>
 #include "bootstrap.h"
 
 namespace csfm
@@ -55,7 +58,19 @@ bool TriangulateBearingsMidpoint(
     const std::vector<Eigen::Vector3d>& bs_list,
     Eigen::Vector3d& result,
     double treshold = 0.006,
-    Radians min_angle = 1.0 * M_PI / 180
+    Radians min_angle = 1.0 * CV_PI / 180
 );
 
 } //namespace csfm
+
+cv::Vec4d fitPlane(std::vector<cv::Vec3d> points, std::vector<cv::Vec3d> vectors, std::vector<cv::Vec3d> verticals);
+void convertVectorToHomogeneous(cv::InputArray, cv::OutputArray);
+std::tuple<cv::Mat, cv::Mat> nullSpace(cv::Mat a);
+Eigen::Matrix3d calculateHorizontalPlanePosition(cv::Mat p);
+std::vector<float> getStdByAxis(cv::InputArray m, int axis);
+std::vector<float> getMeanByAxis(cv::InputArray m, int axis);
+opengv::transformation_t absolutePoseRansac(opengv::bearingVectors_t bearings,
+    opengv::points_t points,
+    double threshold,
+    int iterations,
+    double probability);

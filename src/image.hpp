@@ -139,7 +139,7 @@ struct ImageMetadata
     std::string projectionType;
     std::string cameraMake;
     std::string cameraModel;
-    std::string orientation;
+    int orientation;
     double captureTime;
 };
 
@@ -154,7 +154,6 @@ private:
     std::string imageFileName;
     ImageMetadata metadata;
     static Location _extractCoordinatesFromExif(Exiv2::ExifData exifData);
-    static int _getImageOrientationFromExif(Exiv2::ExifData imageExifData);
     static double _extractPhysicalFocalFromExif(Exiv2::ExifData exifData);
     // TODO Implement unimplemented functions in image class
     std::string _extractProjectionTypeFromExif(Exiv2::ExifData exifData);

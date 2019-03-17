@@ -16,9 +16,14 @@ ShotMetadata::ShotMetadata(ImageMetadata imageExif, const FlightSession & flight
     gpsPosition = imageExif.location.getTopcentricLocationCoordinates(flight.getReferenceLLA());
     gpsDop = imageExif.location.dop;
     captureTime = imageExif.captureTime;
+    orientation = imageExif.orientation;
 }
 
-cv::Mat Shot::getOrientationVectors()
+std::tuple<ShoRowVector3d, ShoRowVector3d, ShoRowVector3d> Shot::getOrientationVectors() const
 {
-    return cv::Mat();
+    if (metadata.orientation == 1) {
+       
+        return std::make_tuple(getPose().getRotationMatrix().row(0), getPose().getRotationMatrix().row(1), getPose().getRotationMatrix().row(2));
+    }
+    return std::make_tuple(cv::Mat(), cv::Mat(), cv::Mat());
 }

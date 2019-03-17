@@ -32,7 +32,7 @@ class Reconstruction {
 
     public:
         Reconstruction();
-        Reconstruction(std::map<std::string, Shot> shots, std::map<int, CloudPoint> cloudPoints, Camera camera);
+        Reconstruction(Camera camera);
         std::map<std::string, Shot>& getReconstructionShots();
         const std::map<std::string, Shot>& getReconstructionShots() const;
         bool hasShot(std::string shotId) const;

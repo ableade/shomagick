@@ -24,7 +24,8 @@ class Shot {
 
     public: 
         Shot():imageName(), camera (), cameraPose(), metadata(){}
-        // TODO explpore the need for another constructor
+        Shot(std::string imaeName, Camera camera, Pose pose) : imageName(imageName), camera(camera),
+            cameraPose(pose) {}
         Shot(std::string image, Camera camera, Pose pose, ShotMetadata metadata) : imageName(image)
             , camera(camera), cameraPose(pose), metadata(metadata) {}
         std::string getId() const {return this->imageName;}
@@ -32,8 +33,7 @@ class Shot {
         const Pose& getPose() const {return this->cameraPose;}
         Pose getPose() { return this->cameraPose; }
         const ShotMetadata getMetadata() const { return metadata; }
-
-        cv::Mat getOrientationVectors();
+        std::tuple<ShoRowVector3d, ShoRowVector3d, ShoRowVector3d> getOrientationVectors() const;
         friend std::ostream & operator << (std::ostream &out, const Pose &p); 
 };
 

@@ -4,25 +4,27 @@
 #include <opencv2/opencv.hpp>
 #include <opengv/types.hpp>
 #include <ostream>
+#include "types.h"
+
 
 class Pose {
   private:
-    cv::Mat rotation;
-    cv::Mat translation;
+    ShoColumnVector3d translation;
+    ShoColumnVector3d rotation; //Rotation is stored in short format as a vec 3d (3 channel Mat)
 
   public:
-    Pose () : rotation(cv::Mat::zeros(3,1,CV_32F)), translation(cv::Mat::zeros(3,1,CV_32F)) {}
-    Pose(cv::Mat rotation, cv::Mat translation) : rotation(rotation), translation(translation) { setRotationVector(rotation); }
-    cv::Mat getRotationMatrix() const;
-    cv::Mat getRotationVector() const;
+    Pose() : rotation({ 0,0,0 }), translation({ 0,0,0 }) {}
+    Pose(cv::Mat rotation, cv::Vec3d translation) : translation(translation) { setRotationVector(rotation); }
+    cv::Matx33d getRotationMatrix() const;
+    ShoColumnVector3d getRotationVector() const;
     cv::Mat getRotationMatrixInverse() const;
     void setRotationVector(cv::Mat rot);
-    void setTranslation(cv::Mat rot);
-    cv::Mat getOrigin() const;
+    void setTranslation(ShoColumnVector3d t);
+    ShoColumnVector3d getOrigin() const;
     friend std::ostream & operator << (std::ostream& out, const Pose& p);
-    Pose inverse() const;
+    Pose poseInverse() const;
     Pose compose(const Pose& p) const;
-    cv::Mat getTranslation() const;
+    ShoColumnVector3d getTranslation() const;
 };
 
 class Camera
@@ -30,7 +32,7 @@ class Camera
 
   private:
     cv::Mat cameraMatrix;
-    cv::Mat distortionCoefficients;
+    cv::Mat_<double> distortionCoefficients;
     void _cvPointsToBearingVec(cv::Mat pRect, opengv::bearingVectors_t& );
     int height;
     int width;
@@ -39,9 +41,6 @@ class Camera
     float initialK1;
     float initialK2;
     float initialPhysicalFocal;
-    double& getPixelFocal();
-    double& getK1();
-    double&  getK2();
 
   public:
     Camera();
@@ -70,5 +69,8 @@ class Camera
     void setFocalWithPhysical(double physicalFocal);
     void setK1(double k1);
     void setK2(double k2);
+    double& getPixelFocal();
+    double& getK1();
+    double&  getK2();
 };
 #endif
