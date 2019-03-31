@@ -599,13 +599,3 @@ int eigenvector_of_symmetric_44(
 
     return 0;
 }
-
-Mat getAffine2dMatrixNoShearing(InputArray src, InputArray dst) {
-    auto _src = src.getMat().reshape(1);
-    auto _dst = dst.getMat().reshape(1);
-
-    CV_Assert(_src.size() == _dst.size());
-    CV_Assert(_src.cols >= 2 && _dst.cols >= 2);
-
-    return estimateAffinePartial2D(_src.colRange(0, 2), _dst.colRange(0, 2));
-}

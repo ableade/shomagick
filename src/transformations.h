@@ -52,5 +52,3 @@ int eigenvector_of_symmetric_44(
 Eigen::Matrix4d superImpositionMatrix(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> a,
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> b,
     bool scaling = false);
-
-cv::Mat getAffine2dMatrixNoShearing(cv::InputArray, cv::InputArray);

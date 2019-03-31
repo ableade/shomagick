@@ -8,6 +8,7 @@ using std::vector;
 using cv::Vec3d;
 using cv::Mat;
 using cv::Matx33d;
+using cv::Mat_;
 
 namespace catchtests
 {
@@ -15,16 +16,18 @@ namespace catchtests
     {
         GIVEN("A point with no vectors or verticals")
         {
-            std::vector<cv::Vec3d> points = { { 0, 0, 0,},{1, 0, 0,},{0,1,0} };
-            std::vector<cv::Vec3d> vectors;
-            std::vector<cv::Vec3d> verticals;
+            Mat points = (Mat_<double>(3, 3) << 0, 0, 0,
+                1, 1, 0, 
+                0,1,0);
+            Mat vectors;
+            Mat verticals;
 
 
             WHEN("We estimate the plane from these parameters") {
                 const auto p = fitPlane(points, vectors, verticals);
                 THEN("The result should be as expected") {
                     std::cout << "P was " << p << "\n";
-                    const auto expected = cv::Mat(cv::Vec4d{ 0,0,1,0 });
+                    const ShoColumnVector4d expected { 0,0,1,0 };
                     REQUIRE(allClose(p, expected));
                 }
             }
@@ -35,13 +38,14 @@ namespace catchtests
     {
         GIVEN("A point with vectors but no verticals")
         {
-            vector<Vec3d> points = { { 0, 0, 0,},{ 0, 1, 0} };
-            vector<Vec3d> vectors{ {1,0,0} };
-            vector<Vec3d> verticals;
+            Mat points = (Mat_<double>(2, 3) << 0, 0, 0,
+                1,1,0);
+            vector<ShoColumnVector3d> vectors{ {1,0,0} };
+            Mat verticals;
 
 
             WHEN("We estimate the plane from these parameters") {
-                const auto p = fitPlane(points, vectors, verticals);
+                const auto p = fitPlane(points, Mat(vectors), verticals);
                 THEN("The result should be as expected") {
                     const auto expected = cv::Mat(cv::Vec4d{ 0,0,1,0 });
                     const auto expected2 = cv::Mat(cv::Vec4d{ 0, 0, -1,0 });
@@ -57,13 +61,14 @@ namespace catchtests
     {
         GIVEN("A point with vectors and verticals")
         {
-            std::vector<cv::Vec3d> points = { { 0, 0, 0,},{ 0, 1, 0} };
-            std::vector<cv::Vec3d> vectors{ {1,0,0} };
-            std::vector<cv::Vec3d> verticals{ {0,0,1} };
+            Mat points = (Mat_<double>(2, 3) << 0, 0, 0,
+                0, 1, 0);
+            std::vector<ShoColumnVector3d> vectors{ {1,0,0} };
+            std::vector<ShoColumnVector3d> verticals{ {0,0,1} };
 
 
             WHEN("We estimate the plane from these parameters") {
-                const auto p = fitPlane(points, vectors, verticals);
+                const auto p = fitPlane(points, Mat(vectors), Mat(verticals));
                 THEN("The result should be as expected") {
                     const auto expected = cv::Mat(cv::Vec4d{ 0,0,1,0 });
                     const auto result = (allClose(p, expected));

@@ -12,6 +12,7 @@ This code is taken from OpenSFM see License at
 #include <Eigen/StdVector>
 #include <opencv2/core.hpp>
 #include <opengv/types.hpp>
+#include "types.h"
 #include "bootstrap.h"
 
 namespace csfm
@@ -63,7 +64,7 @@ bool TriangulateBearingsMidpoint(
 
 } //namespace csfm
 
-cv::Vec4d fitPlane(std::vector<cv::Vec3d> points, std::vector<cv::Vec3d> vectors, std::vector<cv::Vec3d> verticals);
+ShoRowVector4d fitPlane(cv::Mat points, cv::Mat vectors, cv::Mat verticals);
 void convertVectorToHomogeneous(cv::InputArray, cv::OutputArray);
 std::tuple<cv::Mat, cv::Mat> nullSpace(cv::Mat a);
 Eigen::Matrix3d calculateHorizontalPlanePosition(cv::Mat p);

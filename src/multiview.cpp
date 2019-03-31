@@ -257,23 +257,22 @@ bp::object TriangulateBearingsDLT(const bp::list &Rts_list,
 Estimates a plane from on-plane points and vectors.
 See https://raw.githubusercontent.com/mapillary/OpenSfM/master/opensfm/reconstruction.py
 */
-cv::Vec4d fitPlane(std::vector<cv::Vec3d> points, std::vector<cv::Vec3d> vectors, std::vector<cv::Vec3d> verticals)
+ShoRowVector4d fitPlane(Mat points, Mat vectors, Mat verticals)
 {
     Scalar mean, stddev; //0:1st channel, 1:2nd channel and 2:3rd channel
     Mat pointsMat(points);
     meanStdDev(pointsMat.reshape(1,1), mean, stddev, cv::Mat());
-    //std::cout << "Std of points was " << stddev[0] << "\n";
+    std::cout << "Std of points was " << stddev[0] << "\n";
     const auto s = 1.0 / std::max(1e-8, stddev[0]);
-    //std::cout << "S was " << s << "\n";
+    std::cout << "S was " << s << "\n";
     Mat x;
-    Mat vectorsMat(vectors);
     cv::convertPointsToHomogeneous(s* pointsMat, x);
-    //std::cout << "Homogenous x is " << x << "\n";
+    std::cout << "Homogenous x is " << x << "\n";
     Mat a;
     //TODO investigate if this condition is needed
     if (!vectors.empty()) {
         Mat homogenousVec;
-        convertVectorToHomogeneous(vectorsMat, homogenousVec);
+        convertVectorToHomogeneous(s*vectors, homogenousVec);
         cv::vconcat(x, homogenousVec, a);
     }
     else {
@@ -289,19 +288,21 @@ cv::Vec4d fitPlane(std::vector<cv::Vec3d> points, std::vector<cv::Vec3d> vectors
     if (allClose(p.colRange(0, 3), Mat::zeros({ 3,1 }, CV_64F))) {
         return { 0.0, 0.0, 1.0, 0 };
     }
-
     if (!verticals.empty()) {
-        auto d = 0;
-        for (const auto& vertical : verticals) {
-            std::cout << "Vertical is now " << vertical << "\n\n";
-            const auto verticalMat = Mat(verticals).reshape(1, 1);
-            std::cout << "Size of vertical mat  is now " << verticalMat.size() << "\n\n";
-            auto pRange = p.colRange(0, 3);
-            d+=  pRange.dot(verticalMat);
+        auto d = 0.0;
+        for (auto i = 0; i < verticals.rows; ++i) {
+            const double* verticalsCurrentRowPtr = verticals.ptr<double>(i);
+            ShoRowVector3d columnVertical(verticalsCurrentRowPtr);
+            std::cout << "Vertical is now " << columnVertical << "\n\n";
+            std::cout << "P range is now " << pRange << "\n";
+            auto pRangeProduct = pRange.dot(Mat(columnVertical));
+            std::cout << "P range product was " << pRangeProduct << "\n";
+            d+= ( pRange.dot(Mat(columnVertical)));
             std::cout << "D is now " << d << "\n\n";
-            p *= sgn(d);
         }
+        p *= sgn(d);
     }
+    std::cout << "P being returned is " << p << "\n";
     return p;
 }
 
@@ -399,19 +400,23 @@ std::tuple<cv::Mat, cv::Mat> nullSpace(cv::Mat a)
 }
 Matrix3d calculateHorizontalPlanePosition(cv::Mat p)
 {
+    std::cout << "P was " << p << "\n";
     const auto v0ColRange = p.colRange(0, 3);
     const auto v0 = Point3d(v0ColRange);
-    
+    std::cout << "v0 was " << v0 << "\n";
     const Point3d v1{ 0.0, 0.1, 1.0 };
 
     const auto angle = calculateAngleBetweenVectors(v0, v1);
     const auto axis = v0.cross(v1);
+    std::cout << "Axis was " << axis << "\n";
     Vector3d eigenAxis;
     cv2eigen(Mat(axis), eigenAxis);
     const auto norm = eigenAxis.norm();
+    std::cout << "Norm was " << norm << "\n";
 
     if (norm > 0) {
         auto m = rotationMatrix(angle, eigenAxis, nullptr);
+        std::cout << "Rotation matrix was " << rotationMatrix << "\n";
         Matrix3d rot;
         rot = m.block<3, 3>(0, 0);
         return rot;

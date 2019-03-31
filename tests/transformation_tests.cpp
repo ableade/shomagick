@@ -16,7 +16,7 @@ using Eigen::RowMajor;
 using Eigen::Matrix;
 using Eigen::Matrix4d;
 
-namespace catchtests
+namespace transformationtests
 {
     SCENARIO("Test angle between two vectors")
     {
@@ -100,6 +100,5 @@ namespace catchtests
                 }
             }
         }
-    }
-    
+    }  
 }

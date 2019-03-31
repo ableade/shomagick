@@ -79,3 +79,9 @@ void multiplyMat_ByScalar(cv::Mat_<T> & m, T s) {
         element *= s;
     }
 }
+
+ShoRowVector3d convertPointToRowVector(cv::Point3d);
+ShoRowVector3d convertVecToRowVector(cv::Vec3d);
+ShoColumnVector3d convertVecToColumnVector(cv::Vec3d);
+ShoRowVector4d convertPointToRowVector(cv::Vec4d);
+ShoRowVector4d convertColumnVecToRowVector(ShoColumnVector3d);

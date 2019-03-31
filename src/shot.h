@@ -1,6 +1,4 @@
-#ifndef SHOT_HPP_
-#define SHOT_HPP_
-
+#pragma once
 #include "camera.h"
 #include "image.hpp"
 #include "flightsession.h"
@@ -31,10 +29,8 @@ class Shot {
         std::string getId() const {return this->imageName;}
         Camera getCamera() const {return this->camera;}
         const Pose& getPose() const {return this->cameraPose;}
-        Pose getPose() { return this->cameraPose; }
+        Pose& getPose() { return this->cameraPose; }
         const ShotMetadata getMetadata() const { return metadata; }
         std::tuple<ShoRowVector3d, ShoRowVector3d, ShoRowVector3d> getOrientationVectors() const;
         friend std::ostream & operator << (std::ostream &out, const Pose &p); 
 };
-
-#endif

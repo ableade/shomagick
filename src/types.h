@@ -169,5 +169,7 @@ class PyArrayContiguousView {
 }
 */
 typedef cv::Matx31d ShoColumnVector3d;
+typedef cv::Matx41d ShoColumnVector4d;
 typedef cv::Matx13d ShoRowVector3d;
+typedef cv::Matx14d ShoRowVector4d;
 
