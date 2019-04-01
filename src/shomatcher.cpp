@@ -10,6 +10,7 @@
 using cv::DMatch;
 using cv::FeatureDetector;
 using cv::imread;
+using cv::UMat;
 using cv::Mat;
 using cv::ORB;
 using cv::Ptr;
@@ -90,7 +91,7 @@ int ShoMatcher::extractFeatures()
         {
             if (detected.find(*_it) == detected.end())
             {
-                if (this->_extractFeature(*_it))
+                if (_extractFeature(*_it))
                 {
                     detected.insert(*_it);
                 }
@@ -103,9 +104,9 @@ int ShoMatcher::extractFeatures()
 bool ShoMatcher::_extractFeature(string fileName)
 {
     auto modelimageNamePath = this->flight.getImageDirectoryPath() / fileName;
-    Mat modelImg = imread(modelimageNamePath.string(), SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM | SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM);
+    UMat modelImg = imread(modelimageNamePath.string(), SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM | SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM).getUMat(cv::ACCESS_READ);
     cv::cvtColor(modelImg, modelImg, SHO_BGR2RGB);
-    Mat featureImage = imread(modelimageNamePath.string(), SHO_GRAYSCALE);
+    UMat featureImage = imread(modelimageNamePath.string(), SHO_GRAYSCALE).getUMat(cv::ACCESS_READ);
     auto channels = modelImg.channels();
 
     if (modelImg.empty())
@@ -120,9 +121,9 @@ bool ShoMatcher::_extractFeature(string fileName)
 
     for (auto &keypoint : keypoints) {
         if (channels == 1)
-            colors.push_back(modelImg.at<uchar>(keypoint.pt));
+            colors.push_back(modelImg.getMat(cv::ACCESS_READ).at<uchar>(keypoint.pt));
         else if (channels == 3)
-            colors.push_back(modelImg.at<Vec3b>(keypoint.pt));
+            colors.push_back(modelImg.getMat(cv::ACCESS_READ).at<Vec3b>(keypoint.pt));
         keypoint.pt = this->flight.getCamera().normalizeImageCoordinate(keypoint.pt);
     }
     return this->flight.saveImageFeaturesFile(fileName, keypoints, descriptors, colors);
