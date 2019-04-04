@@ -24,6 +24,7 @@ using std::endl;
 using std::map;
 using std::pair;
 using std::set;
+using std::max;
 using std::vector;
 using std::string;
 using json = nlohmann::json;
@@ -73,15 +74,23 @@ void ShoMatcher::getCandidateMatchesFromFile(string candidatesFile) {
     }
 }
 
-int ShoMatcher::extractFeatures()
+int ShoMatcher::extractFeatures(bool resize) 
 {
+    if (resize) {
+        auto maxSize = max(flight.getCamera().getHeight(), flight.getCamera().getWidth());
+        int fx = flight.getCamera().getWidth() * FEATURE_PROCESS_SIZE / maxSize;
+        int fy = flight.getCamera().getHeight() * FEATURE_PROCESS_SIZE / maxSize;
+        flight.getCamera().setScaledHeight(fy);
+        flight.getCamera().setScaledWidth(fx);
+    }
+
     set<string> detected;
     if (!this->candidateImages.size())
         return 0;
 
-    for (auto it = this->candidateImages.begin(); it != candidateImages.end(); it++)
+    for (auto it = candidateImages.begin(); it != candidateImages.end(); it++)
     {
-        if (detected.find(it->first) == detected.end() && this->_extractFeature(it->first))
+        if (detected.find(it->first) == detected.end() && _extractFeature(it->first, resize))
         {
             detected.insert(it->first);
         }
@@ -90,7 +99,7 @@ int ShoMatcher::extractFeatures()
         {
             if (detected.find(*_it) == detected.end())
             {
-                if (this->_extractFeature(*_it))
+                if (_extractFeature(*_it, resize))
                 {
                     detected.insert(*_it);
                 }
@@ -100,17 +109,24 @@ int ShoMatcher::extractFeatures()
     return detected.size();
 }
 
-bool ShoMatcher::_extractFeature(string fileName)
+bool ShoMatcher::_extractFeature(string fileName, bool resize)
 {
     auto modelimageNamePath = this->flight.getImageDirectoryPath() / fileName;
     Mat modelImg = imread(modelimageNamePath.string(), SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM | SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM);
     cv::cvtColor(modelImg, modelImg, SHO_BGR2RGB);
     Mat featureImage = imread(modelimageNamePath.string(), SHO_GRAYSCALE);
+
     auto channels = modelImg.channels();
 
     if (modelImg.empty())
         return false;
 
+    if (resize) {
+        cv::resize(modelImg, modelImg, { flight.getCamera().getScaledHeight(), flight.getCamera().getScaledWidth()}, 0, 0, cv::INTER_AREA);
+        cv::resize(featureImage, featureImage, { flight.getCamera().getScaledHeight(), flight.getCamera().getScaledWidth() }, 0, 0, cv::INTER_AREA);
+    }
+
+    cout << "Feature image size is " << featureImage.size() << "\n";
     std::vector<cv::KeyPoint> keypoints;
     std::vector<cv::Scalar> colors;
     cv::Mat descriptors;

@@ -42,7 +42,7 @@ struct Location
 	double latitude;
 	double altitude;
     double dop;
-	float distanceTo(Location loc)
+	double distanceTo(Location loc)
 	{
 		auto b = 2;
 		auto longRad = toRadian(this->longitude);
@@ -59,7 +59,7 @@ struct Location
 	/**
 	 * Uses WGS84 model for GPS distance. See https://github.com/mapillary/OpenSfM/blob/master/opensfm/geo.py
 	 */
-	float wgDistanceTo(Location loc)
+	double wgDistanceTo(Location loc)
 	{
 		auto p1 = this->ecef();
 		auto p2 = loc.ecef();

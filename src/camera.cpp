@@ -97,7 +97,7 @@ ostream & operator << (ostream &out, const Pose &p)
     return out;
 }
 
-void Camera::_cvPointsToBearingVec(cv::Mat pRect, opengv::bearingVectors_t &bearings)
+void Camera::_cvPointsToBearingVec(cv::Mat pRect, opengv::bearingVectors_t &bearings) const
 {
     double l;
     Vec3d p;
@@ -123,8 +123,8 @@ Camera::Camera() : cameraMatrix(), distortionCoefficients(), height(), width(), 
     this->initialK2 = 0.0;
 }
 
-Camera::Camera(Mat cameraMatrix, Mat distortion, int height, int width) : 
-    cameraMatrix(cameraMatrix), distortionCoefficients(distortion), height(height),
+Camera::Camera(Mat cameraMatrix, Mat distortion, int height, int width, int scaledHeight, int scaledWidth) : 
+    scaledHeight(scaledHeight), scaledWidth(scaledWidth), cameraMatrix(cameraMatrix), distortionCoefficients(distortion), height(height),
 width(width),cameraMake(),
 cameraModel(),  initialK1(),  initialK2(), initialPhysicalFocal() {
     assert (!cameraMatrix.empty());
@@ -155,7 +155,7 @@ Mat Camera::getDistortionMatrix() const
     return distortionCoefficients;
 }
 
-void Camera::cvPointsToBearingVec(const vector<Point2f> &points, bearingVectors_t &bearings)
+void Camera::cvPointsToBearingVec(const vector<Point2f> &points, bearingVectors_t &bearings) const
 {
     const int N1 = static_cast<int>(points.size());
     cv::Mat points1_mat = cv::Mat(points).reshape(1);
@@ -169,7 +169,7 @@ void Camera::cvPointsToBearingVec(const vector<Point2f> &points, bearingVectors_
     cv::Mat points1_rect = points1_mat * this->cameraMatrix.inv();
 
     // compute bearings
-    this->_cvPointsToBearingVec(points1_rect, bearings);
+    _cvPointsToBearingVec(points1_rect, bearings);
 }
 
 bearingVector_t Camera::normalizedPointToBearingVec(const Point2f &point) const
@@ -233,13 +233,17 @@ double Camera::getInitialPhysicalFocal() const {
 
 Point2f Camera::normalizeImageCoordinate(const cv::Point2f pixelCoords) const
 {
-    const auto size = max(width, height);
+    auto h = (scaledHeight) ? scaledHeight : height;
+    auto w = (scaledWidth) ? scaledWidth : width;
+
+    const auto size = max(w, h);
 
     float step = 0.5;
     const auto pixelX = pixelCoords.x + step;
     const auto pixelY = pixelCoords.y + step;
-    const auto normX = ((1.0f * width) / size) * (pixelX - width / 2.0f) / width;
-    const auto normY = ((1.0f * height) / size) * (pixelY - height / 2.0f) / height;
+    const auto normX = ((1.0f * w) / size) * (pixelX - w / 2.0f) / w;
+    const auto normY = ((1.0f * h) / size) * (pixelY - h / 2.0f) / h;
+
     return {
         normX,
         normY,
@@ -259,12 +263,16 @@ vector<Point2f> Camera::normalizeImageCoordinates(const vector<Point2f>& points)
 
 Point2f Camera::denormalizeImageCoordinates(const Point2f normalizedCoords) const
 {
-    const auto size = max(width, height);
+    auto h = (scaledHeight) ? scaledHeight : height;
+    auto w = (scaledWidth) ? scaledWidth : width;
+
+
+    const auto size = max(w, h);
     auto normX = normalizedCoords.x;
     auto normY = normalizedCoords.y;
 
-    float pixelX = ((normX * width  * size / (1.0f * width)) + width / 2.0f) - 0.5;
-    float pixelY = ((normY * height * size / (1.0f * height)) + height / 2.0f) -0.5;
+    float pixelX = ((normX * width  * size / (1.0f * w)) + w / 2.0f) - 0.5;
+    float pixelY = ((normY * height * size / (1.0f * h)) + h / 2.0f) -0.5;
 
     return { pixelX, pixelY };
 }
@@ -316,6 +324,36 @@ void Camera::setK1(double k1)
 void Camera::setK2(double k2)
 {
     getK2() = k2;
+}
+
+void Camera::setScaledHeight(int h)
+{
+    scaledHeight = h;
+}
+
+void Camera::setScaledWidth(int w)
+{
+    scaledWidth = w;
+}
+
+int Camera::getHeight()
+{
+    return height;
+}
+
+int Camera::getScaledHeight()
+{
+    return scaledHeight;
+}
+
+int Camera::getScaledWidth()
+{
+    return scaledWidth;
+}
+
+int Camera::getWidth()
+{
+    return width;
 }
 
 
