@@ -1,6 +1,4 @@
-#ifndef RECONSTRUCTION_HPP_
-#define RECONSTRUCTION_HPP_
-
+#pragma once
 #include "shot.h"
 
 class CloudPoint {
@@ -22,6 +20,9 @@ class CloudPoint {
         void setPosition(cv::Point3d pos) {this->position  = pos;}
         void setId(int id) {this->id = id;}
         cv::Point3d& getPosition() { return this->position; }
+        void setColor(cv::Scalar col) {color = col;}
+        cv::Scalar getColor() const { return color;}
+        cv::Scalar getColor() { return color; }
 };
 
 class Reconstruction {
@@ -32,7 +33,7 @@ class Reconstruction {
 
     public:
         Reconstruction();
-        Reconstruction(std::map<std::string, Shot> shots, std::map<int, CloudPoint> cloudPoints, Camera camera);
+        Reconstruction(Camera camera);
         std::map<std::string, Shot>& getReconstructionShots();
         const std::map<std::string, Shot>& getReconstructionShots() const;
         bool hasShot(std::string shotId) const;
@@ -41,7 +42,6 @@ class Reconstruction {
         void addCloudPoint(CloudPoint cPoint);
         bool hasTrack(std::string trackId) const;
         const Camera& getCamera() const;
+        void saveReconstruction() const;
         Camera& getCamera();
 };
-
-#endif

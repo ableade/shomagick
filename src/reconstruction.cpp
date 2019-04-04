@@ -1,14 +1,17 @@
 #include "reconstruction.h"
 #include "reconstructor.h"
+#include <fstream>
 #include "map"
 #include "string"
 
 using std::map;
 using std::string;
+using std::ofstream;
+using std::ios;
 
 Reconstruction::Reconstruction() : shots(), cloudPoints(), camera() {}
 
-Reconstruction::Reconstruction(std::map<std::string, Shot> shots, std::map<int, CloudPoint> cloudPoints, Camera camera) : shots(shots), cloudPoints(cloudPoints), camera(camera) {}
+Reconstruction::Reconstruction(Camera camera) :camera(camera) {}
 
 map<string, Shot>& Reconstruction::getReconstructionShots()
 {
@@ -51,5 +54,26 @@ const Camera& Reconstruction::getCamera() const
 
 Camera& Reconstruction::getCamera() {
     return camera;
+}
+
+
+void Reconstruction::saveReconstruction() const
+{
+    ofstream recFile("Reconstruction.ply");
+    recFile << "ply\n";
+    recFile << "format ascii 1.0\n";
+    recFile << "element vertex "<< cloudPoints.size()<< "\n";
+    recFile << "property float x\n";
+    recFile << "property float y\n";
+    recFile << "property float z\n";
+    recFile << "property uchar diffuse_red\n";
+    recFile << "property uchar diffuse_green\n";
+    recFile << "property uchar diffuse_blue\n";
+    recFile << "end_header\n";
+    for (const auto [trackId, cp] : cloudPoints) {
+        recFile << cp.getPosition().x << " " << cp.getPosition().y << " " << cp.getPosition().z << " " << cp.getColor()[0] << " " << cp.getColor()[1]<< " " 
+            << cp.getColor()[2] << "\n";
+    }
+    recFile.close();
 }
 

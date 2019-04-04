@@ -52,6 +52,7 @@ public:
     bool saveMatches(std::string fileName, const std::map<std::string, std::vector<cv::DMatch>>& matches);
     ImageFeatures loadFeatures(std::string imageName) const;
     const Camera& getCamera() const;
+    Camera& getCamera();
     void setCamera(Camera camera);
     void inventReferenceLLA();
     const std::map<std::string, double>& getReferenceLLA() const;

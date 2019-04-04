@@ -40,7 +40,7 @@ imageTracksPath(), camera(), referenceLLA()
 
     for (const auto path : allPaths) {
         cout << "Creating directory " << path.string() << endl;
-        boost::filesystem::create_directory(this->imageFeaturesPath);
+        boost::filesystem::create_directory(path);
     }
     
     copy_if(
@@ -183,6 +183,11 @@ ImageFeatures FlightSession::loadFeatures(string imageName) const
 
 const Camera& FlightSession::getCamera() const {
     return this->camera;
+}
+
+Camera & FlightSession::getCamera()
+{
+    return camera;
 }
 
 void FlightSession::setCamera(Camera camera)

@@ -42,7 +42,7 @@ struct Location
 	double latitude;
 	double altitude;
     double dop;
-	float distanceTo(Location loc)
+	double distanceTo(Location loc)
 	{
 		auto b = 2;
 		auto longRad = toRadian(this->longitude);
@@ -59,7 +59,7 @@ struct Location
 	/**
 	 * Uses WGS84 model for GPS distance. See https://github.com/mapillary/OpenSfM/blob/master/opensfm/geo.py
 	 */
-	float wgDistanceTo(Location loc)
+	double wgDistanceTo(Location loc)
 	{
 		auto p1 = this->ecef();
 		auto p2 = loc.ecef();
@@ -139,7 +139,7 @@ struct ImageMetadata
     std::string projectionType;
     std::string cameraMake;
     std::string cameraModel;
-    std::string orientation;
+    int orientation;
     double captureTime;
 };
 
@@ -154,7 +154,6 @@ private:
     std::string imageFileName;
     ImageMetadata metadata;
     static Location _extractCoordinatesFromExif(Exiv2::ExifData exifData);
-    static int _getImageOrientationFromExif(Exiv2::ExifData imageExifData);
     static double _extractPhysicalFocalFromExif(Exiv2::ExifData exifData);
     // TODO Implement unimplemented functions in image class
     std::string _extractProjectionTypeFromExif(Exiv2::ExifData exifData);

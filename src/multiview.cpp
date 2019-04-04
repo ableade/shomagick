@@ -6,10 +6,32 @@ This code is taken from OpenSFM see License at
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <Eigen/Core>
 #include <Eigen/SVD>
 #include <Eigen/LU>
 #include <Eigen/QR>
 #include <Eigen/StdVector>
+#include <opencv2/core.hpp>
+#include <opencv2/calib3d.hpp>
+#include "transformations.h"
+#include "allclose.h"
+#include "utilities.h"
+#include <opencv2/core/eigen.hpp>
+#include <opengv/absolute_pose/methods.hpp>
+#include <opengv/absolute_pose/CentralAbsoluteAdapter.hpp>
+#include <opengv/sac_problems/absolute_pose/AbsolutePoseSacProblem.hpp>
+#include <opengv/sac/Ransac.hpp>
+
+using cv::Mat;
+using cv::Scalar;
+using std::vector;
+using cv::Point3d;
+using Eigen::Vector3d;
+using Eigen::Matrix3d;
+using opengv::absolute_pose::CentralAbsoluteAdapter;
+using opengv::sac::Ransac;
+using opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem;
+using opengv::transformation_t;
 
 namespace csfm
 {
@@ -231,3 +253,243 @@ bp::object TriangulateBearingsDLT(const bp::list &Rts_list,
 
 */
 
+/*
+Estimates a plane from on-plane points and vectors.
+See https://raw.githubusercontent.com/mapillary/OpenSfM/master/opensfm/reconstruction.py
+*/
+ShoRowVector4d fitPlane(Mat points, Mat vectors, Mat verticals)
+{
+    Scalar mean, stddev; //0:1st channel, 1:2nd channel and 2:3rd channel
+    Mat pointsMat(points);
+    meanStdDev(pointsMat.reshape(1,1), mean, stddev, cv::Mat());
+    std::cout << "Std of points was " << stddev[0] << "\n";
+    const auto s = 1.0 / std::max(1e-8, stddev[0]);
+    std::cout << "S was " << s << "\n";
+    Mat x;
+    cv::convertPointsToHomogeneous(s* pointsMat, x);
+    std::cout << "Homogenous x is " << x << "\n";
+    Mat a;
+    //TODO investigate if this condition is needed
+    if (!vectors.empty()) {
+        Mat homogenousVec;
+        convertVectorToHomogeneous(s*vectors, homogenousVec);
+        cv::vconcat(x, homogenousVec, a);
+    }
+    else {
+        a = x;
+    }
+    a = a.reshape(1);
+    auto[o, p] = nullSpace(a);
+    std::cout << "P returned from nullspace is " << p << "\n";
+    p.at<double>(0, 3) /= s;
+    const auto pRange = p.colRange(0, 3);
+    //std::cout << "Type of prange is " << pRange.type() << "\n";
+    //std::cout << "Size of prange is " << pRange.size() << "\n";
+    if (allClose(p.colRange(0, 3), Mat::zeros({ 3,1 }, CV_64F))) {
+        return { 0.0, 0.0, 1.0, 0 };
+    }
+    if (!verticals.empty()) {
+        auto d = 0.0;
+        for (auto i = 0; i < verticals.rows; ++i) {
+            const double* verticalsCurrentRowPtr = verticals.ptr<double>(i);
+            ShoRowVector3d columnVertical(verticalsCurrentRowPtr);
+            std::cout << "Vertical is now " << columnVertical << "\n\n";
+            std::cout << "P range is now " << pRange << "\n";
+            auto pRangeProduct = pRange.dot(Mat(columnVertical));
+            std::cout << "P range product was " << pRangeProduct << "\n";
+            d+= ( pRange.dot(Mat(columnVertical)));
+            std::cout << "D is now " << d << "\n\n";
+        }
+        p *= sgn(d);
+    }
+    std::cout << "P being returned is " << p << "\n";
+    return p;
+}
+
+void convertVectorToHomogeneous(cv::InputArray _src  , cv::OutputArray _dst) {
+    Mat src = _src.getMat();
+    if (!src.isContinuous())
+        src = src.clone();
+    int i, npoints = src.checkVector(2), depth = src.depth(), cn = 2;
+    if (npoints < 0)
+    {
+        npoints = src.checkVector(3);
+        CV_Assert(npoints >= 0);
+        cn = 3;
+    }
+    CV_Assert(npoints >= 0 && (depth == CV_32S || depth == CV_32F || depth == CV_64F));
+
+    int dtype = CV_MAKETYPE(depth, cn + 1);
+    _dst.create(npoints, 1, dtype);
+    Mat dst = _dst.getMat();
+    if (!dst.isContinuous())
+    {
+        _dst.release();
+        _dst.create(npoints, 1, dtype);
+        dst = _dst.getMat();
+    }
+    CV_Assert(dst.isContinuous());
+
+    if (depth == CV_32S)
+
+
+    {
+        if (cn == 2)
+        {
+            const cv::Point2i* sptr = src.ptr<cv::Point2i>();
+            cv::Point3i* dptr = dst.ptr<cv::Point3i>();
+            for (i = 0; i < npoints; i++)
+                dptr[i] = cv::Point3i(sptr[i].x, sptr[i].y, 0);
+        }
+        else
+        {
+            const cv::Point3i* sptr = src.ptr<cv::Point3i>();
+            cv::Vec4i* dptr = dst.ptr<cv::Vec4i>();
+            for (i = 0; i < npoints; i++)
+                dptr[i] = cv::Vec4i(sptr[i].x, sptr[i].y, sptr[i].z, 0);
+        }
+    }
+    else if (depth == CV_32F)
+    {
+        if (cn == 2)
+        {
+            const cv::Point2f* sptr = src.ptr<cv::Point2f>();
+            cv::Point3f* dptr = dst.ptr<cv::Point3f>();
+            for (i = 0; i < npoints; i++)
+                dptr[i] = cv::Point3f(sptr[i].x, sptr[i].y, 0.f);
+        }
+        else
+        {
+            const cv::Point3f* sptr = src.ptr<cv::Point3f>();
+            cv::Vec4f* dptr = dst.ptr<cv::Vec4f>();
+            for (i = 0; i < npoints; i++)
+                dptr[i] = cv::Vec4f(sptr[i].x, sptr[i].y, sptr[i].z, 0.f);
+        }
+    }
+    else if (depth == CV_64F)
+    {
+        if (cn == 2)
+        {
+            const cv::Point2d* sptr = src.ptr<cv::Point2d>();
+            cv::Point3d* dptr = dst.ptr<cv::Point3d>();
+            for (i = 0; i < npoints; i++)
+                dptr[i] = cv::Point3d(sptr[i].x, sptr[i].y, 0.);
+        }
+        else
+        {
+            const cv::Point3d* sptr = src.ptr<cv::Point3d>();
+            cv::Vec4d* dptr = dst.ptr<cv::Vec4d>();
+            for (i = 0; i < npoints; i++)
+                dptr[i] = cv::Vec4d(sptr[i].x, sptr[i].y, sptr[i].z, 0.);
+        }
+    }
+    else
+        CV_Error(cv::Error::StsUnsupportedFormat, "");
+}
+
+std::tuple<cv::Mat, cv::Mat> nullSpace(cv::Mat a)
+{
+    auto svd = cv::SVD();
+    Mat u, s, vh;
+    std::cout << "A is " << a << "\n\n";
+    svd.compute(a, u, s, vh, cv::SVD::FULL_UV);
+    std::cout << " u returned from svd is " << u << "\n\n";
+    std::cout << " S returned from svd is " << s << "\n\n";
+    std::cout << " VH returned from svd is " << vh << "\n\n";
+    return std::make_tuple(s.row(u.rows - 1), vh.row(vh.rows - 1));
+}
+Matrix3d calculateHorizontalPlanePosition(cv::Mat p)
+{
+    std::cout << "P was " << p << "\n";
+    const auto v0ColRange = p.colRange(0, 3);
+    const auto v0 = Point3d(v0ColRange);
+    std::cout << "v0 was " << v0 << "\n";
+    const Point3d v1{ 0.0, 0.1, 1.0 };
+
+    const auto angle = calculateAngleBetweenVectors(v0, v1);
+    const auto axis = v0.cross(v1);
+    std::cout << "Axis was " << axis << "\n";
+    Vector3d eigenAxis;
+    cv2eigen(Mat(axis), eigenAxis);
+    const auto norm = eigenAxis.norm();
+    std::cout << "Norm was " << norm << "\n";
+
+    if (norm > 0) {
+        auto m = rotationMatrix(angle, eigenAxis, nullptr);
+        std::cout << "Rotation matrix was " << rotationMatrix << "\n";
+        Matrix3d rot;
+        rot = m.block<3, 3>(0, 0);
+        return rot;
+    }
+    else if (angle < 1.0) {
+        return Matrix3d::Identity();
+    }
+    else if (angle > 3.0) {
+        Vector3d diagonal{ 1, -1, -1 };
+        return diagonal.asDiagonal().toDenseMatrix();
+    }
+    return Matrix3d();
+}
+
+std::vector<float> getStdByAxis(cv::InputArray data, int axis) {
+    auto m = data.getMat().reshape(1);
+    cv::Scalar mean, stddev;
+    std::vector<float> stds;
+    if (!axis) {
+        for (int i = 0; i < m.cols; ++i) {
+            cv::meanStdDev(m.col(i), mean, stddev);
+            stds.push_back(stddev[0]);
+        }
+    }
+    else {
+        for (int i = 0; i < m.rows; ++i) {
+            cv::meanStdDev(m.row(i), mean, stddev);
+            stds.push_back(stddev[0]);
+        }
+    }
+    return stds;
+}
+
+std::vector<float> getMeanByAxis(cv::InputArray data, int axis)
+{
+    auto m = data.getMat().reshape(1);
+    cv::Scalar mean, stddev;
+    std::vector<float> means;
+    if (!axis) {
+        for (int i = 0; i < m.cols; ++i) {
+            cv::meanStdDev(m.col(i), mean, stddev);
+            means.push_back(mean[0]);
+        }
+    }
+    else {
+        for (int i = 0; i < m.rows; ++i) {
+            cv::meanStdDev(m.row(i), mean, stddev);
+            means.push_back(mean[0]);
+        }
+    }
+    return means;
+}
+
+transformation_t absolutePoseRansac(opengv::bearingVectors_t bearings, opengv::points_t points, double threshold, int iterations, double probability)
+{
+    // create the central adapter
+    CentralAbsoluteAdapter adapter(
+        bearings, points);
+    // create a Ransac object
+    Ransac<AbsolutePoseSacProblem> ransac;
+    // create an AbsolutePoseSacProblem
+    // (algorithm is selectable: KNEIP, GAO, or EPNP)
+    std::shared_ptr<AbsolutePoseSacProblem>
+        absposeproblem_ptr(
+            new AbsolutePoseSacProblem(adapter, AbsolutePoseSacProblem::KNEIP));
+    // run ransac
+    ransac.sac_model_ = absposeproblem_ptr;
+    ransac.threshold_ = threshold;
+    ransac.max_iterations_ = iterations;
+    ransac.probability_ = probability;
+    ransac.computeModel();
+    // get the result
+    transformation_t best_transformation = ransac.model_coefficients_;
+
+    return best_transformation;
+}

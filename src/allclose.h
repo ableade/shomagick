@@ -22,6 +22,12 @@ bool allClose(
     const double tolerance = defaultTolerance
 );
 
+bool allClose(
+    const double lhs,
+    const double rhs,
+    const double tolerance = defaultTolerance
+);
+
 template <typename T>
 bool allClose_(
     const cv::Mat_<T>& a, 

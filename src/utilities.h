@@ -22,8 +22,8 @@ inline void printGraph(TrackGraph tracksGraph) {
         std::cout, "\n"});
 }
 
-inline Camera getPerspectiveCamera(float physicalLens, int height, int width, float k1, float k2) {
-    const auto pixelFocal = physicalLens * width;
+inline Camera getPerspectiveCamera(float physicalLens, int height, int width, double k1, double k2) {
+    const auto pixelFocal = physicalLens * std::max(height, width);
 
     cv::Mat cameraMatrix = (cv::Mat_<double>(3, 3) <<
         pixelFocal,
@@ -44,7 +44,7 @@ inline Camera getPerspectiveCamera(float physicalLens, int height, int width, fl
         0.
         );
 
-    return { cameraMatrix, dist, height, width };
+    return { cameraMatrix, dist , height, width };
 }
 
 template<typename AssociativeContainer, typename Predicate>
@@ -68,3 +68,20 @@ void erase_if(std::map<Key, Value, Comparator>& container, Predicate shouldRemov
 {
     return erase_if_impl(container, shouldRemove);
 }
+
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
+}
+
+template <class T>
+void multiplyMat_ByScalar(cv::Mat_<T> & m, T s) {
+    for (auto & element : m) {
+        element *= s;
+    }
+}
+
+ShoRowVector3d convertPointToRowVector(cv::Point3d);
+ShoRowVector3d convertVecToRowVector(cv::Vec3d);
+ShoColumnVector3d convertVecToColumnVector(cv::Vec3d);
+ShoRowVector4d convertPointToRowVector(cv::Vec4d);
+ShoRowVector4d convertColumnVecToRowVector(ShoColumnVector3d);

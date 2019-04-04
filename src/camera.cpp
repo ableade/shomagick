@@ -7,67 +7,75 @@
 
 using std::ostream;
 using std::max;
+using std::vector;
 using std::string;
+using cv::Matx33d;
+using cv::Mat;
+using cv::Vec3d;
+using cv::Point2f;
+using cv::Size;
+using opengv::bearingVector_t;
+using opengv::bearingVectors_t;
 
-cv::Mat Pose::getRotationMatrix() const
+Matx33d Pose::getRotationMatrix() const
 {
-    cv::Mat rods;
-    cv::Rodrigues(this->rotation, rods);
+    Mat rods;
+    Rodrigues(this->rotation, rods);
     return rods;
 }
 
-cv::Mat Pose::getRotationVector() const
+ShoColumnVector3d Pose::getRotationVector() const
 {
-    return this->rotation;
+    return rotation;
 }
 
 cv::Mat Pose::getRotationMatrixInverse() const {
     auto r = getRotationMatrix();
-    cv::Mat tR;
-    cv::transpose(r, tR);
+    Mat tR;
+    transpose(r, tR);
     return tR;
 }
 
-cv::Mat Pose::getOrigin() const
+ShoColumnVector3d Pose::getOrigin() const
 {
-    cv::Mat tRot;
-    auto origin = this->getRotationMatrix();
+    Mat tRot;
+    auto origin = -(this->getRotationMatrix());
    // std::cout << "Rotation matrix is " << origin << std::endl;
-    cv::transpose(-origin, tRot);
+
     //std::cout << "Rotation matrix transpose is " << tRot << std::endl;
-    origin = tRot * this->translation;
-    return origin;
+    auto t = Mat(origin.t() * Mat(this->translation));
+    return t;
 }
 
-cv::Mat Pose::getTranslation() const{
+ShoColumnVector3d Pose::getTranslation() const{
     return translation;
 }
 
-void Pose::setTranslation(cv::Mat t) {
+void Pose::setTranslation(ShoColumnVector3d t)
+{
     translation = t;
 }
 
 void Pose::setRotationVector(cv::Mat src) {
-    cv::Mat rotationVector;
-    rotationVector = src;
+    ShoColumnVector3d rotationVector;
     if (src.rows == 3 && src.cols == 3) {
         //src is currently a rotation matrix
-        cv::Rodrigues(src, rotationVector);
+        cv::Rodrigues(src, src);
     }
-    CV_Assert((rotationVector.cols == 1 && rotationVector.rows == 3) || (rotationVector.cols == 3 && rotationVector.rows == 1));
-    rotation = rotationVector;
+    rotation = src;
 }
 
-Pose Pose::inverse() const {
+Pose Pose::poseInverse() const {
     auto inv = Pose{};
     auto r = getRotationMatrix();
-    cv::Mat transposedRotation;
+    std::cout << "R was " << r << "\n\n";
+    cv::Matx33d transposedRotation;
     cv::transpose(r, transposedRotation);
-    cv::Mat transposedRotationVector;
     //cv::Rodrigues()
-    inv.setRotationVector(transposedRotation);
+    inv.setRotationVector(Mat(transposedRotation));
     cv::transpose(-r, transposedRotation);
-    inv.setTranslation(transposedRotation * translation);
+    auto inverseTranslation = transposedRotation * Mat(translation);
+    inv.setTranslation(inverseTranslation);
     return inv;
 }
 
@@ -75,9 +83,11 @@ Pose Pose::compose(const Pose& other) const {
     auto r = getRotationMatrix();
     auto otherR = other.getRotationMatrix();
     auto nR = (r * otherR);
-    auto nT = (r * other.getTranslation()) + getTranslation();
-    
-    return { nR, nT };
+    auto nT = (r * Mat(other.getTranslation())) + getTranslation();
+    Pose p;
+    p.setTranslation(nT);
+    p.setRotationVector(Mat(nR));
+    return p;
 }
 
 ostream & operator << (ostream &out, const Pose &p)
@@ -87,14 +97,14 @@ ostream & operator << (ostream &out, const Pose &p)
     return out;
 }
 
-void Camera::_cvPointsToBearingVec(cv::Mat pRect, opengv::bearingVectors_t &bearings)
+void Camera::_cvPointsToBearingVec(cv::Mat pRect, opengv::bearingVectors_t &bearings) const
 {
     double l;
-    cv::Vec3f p;
+    Vec3d p;
     opengv::bearingVector_t bearing;
     for (auto i = 0; i < pRect.rows; ++i)
     {
-        p = cv::Vec3f(pRect.row(i));
+        p = cv::Vec3d(pRect.row(i));
         l = std::sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]);
         for (int j = 0; j < 3; ++j)
             bearing[j] = p[j] / l;
@@ -113,7 +123,8 @@ Camera::Camera() : cameraMatrix(), distortionCoefficients(), height(), width(), 
     this->initialK2 = 0.0;
 }
 
-Camera::Camera(cv::Mat cameraMatrix, cv::Mat distortion, int height, int width) : cameraMatrix(cameraMatrix), distortionCoefficients(distortion), height(height),
+Camera::Camera(Mat cameraMatrix, Mat distortion, int height, int width, int scaledHeight, int scaledWidth) : 
+    scaledHeight(scaledHeight), scaledWidth(scaledWidth), cameraMatrix(cameraMatrix), distortionCoefficients(distortion), height(height),
 width(width),cameraMake(),
 cameraModel(),  initialK1(),  initialK2(), initialPhysicalFocal() {
     assert (!cameraMatrix.empty());
@@ -122,28 +133,29 @@ cameraModel(),  initialK1(),  initialK2(), initialPhysicalFocal() {
     this->initialK1 = this->getK1();
     this->initialK2 = this->getK2();
     this->initialPhysicalFocal = this->getPhysicalFocalLength();
+    std::cout << "Shape of distortion coefficients is " << distortionCoefficients.size() << "\n\n";
 }
 
-cv::Mat Camera::getKMatrix() { return this->cameraMatrix; }
+Mat Camera::getKMatrix() { return this->cameraMatrix; }
 
-cv::Mat Camera::getNormalizedKMatrix() const {
+Mat Camera::getNormalizedKMatrix() const {
     auto lensSize = this->getPhysicalFocalLength();
-    cv::Mat normK = (cv::Mat_<double>(3, 3) <<
+    Mat normK = (cv::Mat_<double>(3, 3) <<
         lensSize,   0.,          0.,
         0.,         lensSize,    0,
         0.,          0.,         1);
     return normK;
 }
 
-cv::Mat Camera::getDistortionMatrix() const
+Mat Camera::getDistortionMatrix() const
 {
-    cv::Mat C = (cv::Mat_<double>(4,1) << 0., 0., 0., 0.);
-    return C;
-    //return this->distortionCoefficients;
+    if( distortionCoefficients.rows ==1)
+        return distortionCoefficients.t();
+
+    return distortionCoefficients;
 }
 
-void Camera::cvPointsToBearingVec(
-    const std::vector<cv::Point2f> &points, opengv::bearingVectors_t &bearings)
+void Camera::cvPointsToBearingVec(const vector<Point2f> &points, bearingVectors_t &bearings) const
 {
     const int N1 = static_cast<int>(points.size());
     cv::Mat points1_mat = cv::Mat(points).reshape(1);
@@ -157,10 +169,10 @@ void Camera::cvPointsToBearingVec(
     cv::Mat points1_rect = points1_mat * this->cameraMatrix.inv();
 
     // compute bearings
-    this->_cvPointsToBearingVec(points1_rect, bearings);
+    _cvPointsToBearingVec(points1_rect, bearings);
 }
 
-opengv::bearingVector_t Camera::normalizedPointToBearingVec(const cv::Point2f &point) const
+bearingVector_t Camera::normalizedPointToBearingVec(const Point2f &point) const
 {
     std::vector<cv::Point2f> points{ point };
     std::vector<cv::Point3f> hPoints;
@@ -191,8 +203,7 @@ double & Camera::getK1()
     return this->getDistortionMatrix().at<double>(0, 0);
 }
 
-double & Camera::getK2()
-{
+double & Camera::getK2() {
     return this->getDistortionMatrix().at<double>(1, 0);
 }
 
@@ -220,22 +231,26 @@ double Camera::getInitialPhysicalFocal() const {
     return this->initialPhysicalFocal;
 }
 
-cv::Point2f Camera::normalizeImageCoordinate(const cv::Point2f pixelCoords) const
+Point2f Camera::normalizeImageCoordinate(const cv::Point2f pixelCoords) const
 {
-    const auto size = max(width, height);
+    auto h = (scaledHeight) ? scaledHeight : height;
+    auto w = (scaledWidth) ? scaledWidth : width;
+
+    const auto size = max(w, h);
 
     float step = 0.5;
     const auto pixelX = pixelCoords.x + step;
     const auto pixelY = pixelCoords.y + step;
-    const auto normX = ((1.0f * width) / size) * (pixelX - width / 2.0f) / width;
-    const auto normY = ((1.0f * height) / size) * (pixelY - height / 2.0f) / height;
+    const auto normX = ((1.0f * w) / size) * (pixelX - w / 2.0f) / w;
+    const auto normY = ((1.0f * h) / size) * (pixelY - h / 2.0f) / h;
+
     return {
         normX,
         normY,
     };
 }
 
-std::vector<cv::Point2f> Camera::normalizeImageCoordinates(const std::vector<cv::Point2f>& points) const
+vector<Point2f> Camera::normalizeImageCoordinates(const vector<Point2f>& points) const
 {
     std::vector<cv::Point2f> results;
 
@@ -246,19 +261,23 @@ std::vector<cv::Point2f> Camera::normalizeImageCoordinates(const std::vector<cv:
     return results;
 }
 
-cv::Point2f Camera::denormalizeImageCoordinates(const cv::Point2f normalizedCoords) const
+Point2f Camera::denormalizeImageCoordinates(const Point2f normalizedCoords) const
 {
-    const auto size = max(width, height);
+    auto h = (scaledHeight) ? scaledHeight : height;
+    auto w = (scaledWidth) ? scaledWidth : width;
+
+
+    const auto size = max(w, h);
     auto normX = normalizedCoords.x;
     auto normY = normalizedCoords.y;
 
-    float pixelX = ((normX * width  * size / (1.0f * width)) + width / 2.0f) - 0.5;
-    float pixelY = ((normY * height * size / (1.0f * height)) + height / 2.0f) -0.5;
+    float pixelX = ((normX * width  * size / (1.0f * w)) + w / 2.0f) - 0.5;
+    float pixelY = ((normY * height * size / (1.0f * h)) + h / 2.0f) -0.5;
 
     return { pixelX, pixelY };
 }
 
- std::vector<cv::Point2f> Camera::denormalizeImageCoordinates(const std::vector<cv::Point2f>& points) const {
+ vector<Point2f> Camera::denormalizeImageCoordinates(const vector<Point2f>& points) const {
      std::vector<cv::Point2f> results;
      for(const auto point: points) {
          results.push_back(denormalizeImageCoordinates(point));
@@ -266,7 +285,7 @@ cv::Point2f Camera::denormalizeImageCoordinates(const cv::Point2f normalizedCoor
      return results;
  }
 
-cv::Point2f Camera::projectBearing(opengv::bearingVector_t b) {
+Point2f Camera::projectBearing(bearingVector_t b) {
     auto x = b[0] / b[2];
     auto y = b[1] / b[2];
 
@@ -305,6 +324,36 @@ void Camera::setK1(double k1)
 void Camera::setK2(double k2)
 {
     getK2() = k2;
+}
+
+void Camera::setScaledHeight(int h)
+{
+    scaledHeight = h;
+}
+
+void Camera::setScaledWidth(int w)
+{
+    scaledWidth = w;
+}
+
+int Camera::getHeight()
+{
+    return height;
+}
+
+int Camera::getScaledHeight()
+{
+    return scaledHeight;
+}
+
+int Camera::getScaledWidth()
+{
+    return scaledWidth;
+}
+
+int Camera::getWidth()
+{
+    return width;
 }
 
 

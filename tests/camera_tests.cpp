@@ -9,6 +9,10 @@
 #include <opencv2/core/eigen.hpp>
 
 using std::vector;
+using cv::Mat;
+using cv::Vec3d;
+using Eigen::Matrix3d;
+using Eigen::Vector3d;
 
 namespace
 {
@@ -44,7 +48,7 @@ SCENARIO("Testing the projection for a perspective camera")
 {
     GIVEN("a perspective camera and pixel [0.1,0.2]  ")
     {
-        const auto physicalLens = 0.6;
+        const auto physicalLens = 0.63;
         const auto height = 600;
         const auto width = 800;
         const auto dist1 = -0.1;
@@ -100,23 +104,22 @@ SCENARIO("Testing the bearing direction of a camera")
     }
 }
 
-SCENARIO("Testing the inverse of a pose")
+    SCENARIO("Testing the inverse of a pose")
 {
     GIVEN("a pose with rotation vector [1,2,3] and translation vector [4,5,6]")
     {
         cv::Mat rotation = (cv::Mat_<double>(3, 1) << 1,2,3);
-        cv::Mat translation = (cv::Mat_<double>(3, 1) << 4, 5, 6);
+        Vec3d translation { 4, 5, 6 };
         Pose p{rotation, translation };
-        const cv::Mat expected =  (cv::Mat_<double>(3, 1) << 0, 0, 0);
+        const Vec3d expected { 0, 0, 0 };
         WHEN("the inverse of this pose is calculated")
         {
-            const auto inv = p.inverse();
+            const auto inv = p.poseInverse();
             std::cout << "Inverse "<< inv << std::endl;
             const auto identity = p.compose(inv);
             std::cout << "Identity " << identity << std::endl;
             THEN("the inverted pose should be as expected")
             {
-                const bool result = allClose(identity.getRotationVector(), expected);
                 REQUIRE(allClose(identity.getRotationVector(), expected));
 
             }
@@ -128,15 +131,15 @@ SCENARIO("Testing the origin of a pose")
 {
     GIVEN("a pose with rotation vector [1,2,3] and translation vector [4,5,6]")
     {
-        cv::Mat rotation = (cv::Mat_<double>(3, 1) << 1, 2, 3);
-        cv::Mat translation = (cv::Mat_<double>(3, 1) << 4, 5, 6);
+        Mat rotation = (cv::Mat_<double>(3, 1) << 1, 2, 3);
+        Vec3d translation{ 4, 5, 6 };
         Pose p{rotation, translation};
-        WHEN("the inverse of this pose is calculated")
+        WHEN("the origin of this pose is calculated")
         {
             const auto actual = p.getOrigin();
             THEN("the inverted pose should be as expected")
             {
-                cv::Mat expected = (cv::Mat_<double>(3, 1) << -0.41815191, -5.12325694, -7.11177807);
+                Mat expected = (cv::Mat_<double>(3, 1) << -0.41815191, -5.12325694, -7.11177807);
                 std::cout << "Origin of this pose is " << p.getOrigin()<< std::endl;
                 WARN("expected: " << expected);
                 WARN("actual: " << actual);
@@ -158,19 +161,19 @@ SCENARIO("Testing the rotation inverse of a shot")
         const auto dist1 = -0.1;
         const auto dist2 = 0.01;
 
-        cv::Mat rotation = (cv::Mat_<double>(3, 1) << 1, 2, 3);
-        cv::Mat translation = (cv::Mat_<double>(3, 1) << 4, 5, 6);
+        Mat rotation = (cv::Mat_<double>(3, 1) << 1, 2, 3);
+        Mat translation = (cv::Mat_<double>(3, 1) << 4, 5, 6);
         Pose p{ rotation, translation };
         const std::string image = "im1";
         const auto camera = getPerspectiveCamera(physicalLens, height, width, dist1, dist2);
         Shot shot{ image, camera, p };
         WHEN("the inverse of this pose is calculated")
         {
-            Eigen::Matrix3d eigenRotationInverse;
+            Matrix3d eigenRotationInverse;
             const auto bearing = shot.getCamera().normalizedPointToBearingVec(testPoint);
             const auto rotationInverse = shot.getPose().getRotationMatrixInverse();
             cv2eigen(rotationInverse, eigenRotationInverse);
-            cv::Mat expectedRotationInverse = (cv::Mat_<double>(3,3) <<
+            Mat expectedRotationInverse = (cv::Mat_<double>(3,3) <<
                 -0.6949205576413117, -0.1920069727919994, 0.6929781677417702,
                  0.7135209905277877, -0.3037850443394704, 0.6313496993837179,
                  0.0892928588619122,  0.933192353823647,  0.3481074778302649
@@ -196,22 +199,22 @@ SCENARIO("Testing the rotation inverse times bearing of a shot")
         const auto dist1 = -0.1;
         const auto dist2 = 0.01;
 
-        cv::Mat rotation = (cv::Mat_<double>(3, 1) << 1, 2, 3);
-        cv::Mat translation = (cv::Mat_<double>(3, 1) << 4, 5, 6);
+        Mat rotation = (cv::Mat_<double>(3, 1) << 1, 2, 3);
+        Vec3d translation{ 4, 5, 6 };
         Pose p{ rotation, translation };
         const std::string image = "im1";
         const auto camera = getPerspectiveCamera(physicalLens, height, width, dist1, dist2);
         Shot shot{ image, camera, p };
         WHEN("the inverse of this pose is calculated")
         {
-            Eigen::Matrix3d eigenRotationInverse;
+            Matrix3d eigenRotationInverse;
             const auto bearing = shot.getCamera().normalizedPointToBearingVec(testPoint);
             const auto rotationInverse = shot.getPose().getRotationMatrixInverse();
             cv2eigen(rotationInverse, eigenRotationInverse);
             THEN("the inverted pose should be as expected")
             {
                 const auto actual = eigenRotationInverse * bearing;
-                Eigen::Vector3d expected (0.06710956564396,  0.3152355286551768,  0.9466376644062762);
+                Vector3d expected (0.06710956564396,  0.3152355286551768,  0.9466376644062762);
                 CAPTURE(expected);
                 CAPTURE(actual);
                 REQUIRE(allClose(expected, actual, 1e-7));
@@ -223,14 +226,14 @@ SCENARIO("Testing normalized point conversion")
 {
     GIVEN("a point, test camera with width 800 and height 600")
     {
-        const std::vector<cv::Point2f> inputPoints {
+        const vector<cv::Point2f> inputPoints {
             {   0, 0 },
             { 319, 240 },
             { 800, 600 }
         };
 
 
-        const std::vector<cv::Point2f> expectedPoints{
+        const vector<cv::Point2f> expectedPoints{
             { -0.4993750000000, -0.3743750000000 },
             { -0.1006250000000, -0.0743750000000 },
             {  0.5006250000000,	 0.3756250000000 }
