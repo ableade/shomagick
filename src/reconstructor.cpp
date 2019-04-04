@@ -324,12 +324,22 @@ void Reconstructor::_computeTwoViewReconstructionInliers(opengv::bearingVectors_
     opengv::rotation_t r, opengv::translation_t t)
 {
 #if 0
-    CentralRelativeAdapter adapter(b1, b2, r, t);
+    CentralRelativeAdapter adapter(b1, b2, t, r);
     // run method 
     cout << "Number of adapter correspondences is " << adapter.getNumberCorrespondences();
 
-    for (auto i = 0; i < adapter.getNumberCorrespondences(); ++i) {
-        point_t point = triangulate(adapter, i);
+    size_t iterations = 100;
+    MatrixXd triangulate_results(3, adapter.getNumberCorrespondences);
+    for (size_t i = 0; i < adapter.getNumberCorrespondences(); ++i) {
+        for (size_t j = 0; i < iterations; i++)
+            triangulate_results.block<3, 1>(0, i) = triangulate(adapter, i);
+        
+    }
+    MatrixXd error(1, adapter.getNumberCorrespondences);
+    for (size_t i = 0; i < adapter.getNumberCorrespondences; i++)
+    {
+        Vector3d singleError = triangulate_results.col(i) - gt.col(i);
+        error(0, i) = singleError.norm();
     }
 #endif
 }

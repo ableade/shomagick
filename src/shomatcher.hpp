@@ -1,11 +1,12 @@
-#ifndef SHOMATCHER_HPP_
-#define SHOMATCHER_HPP_
+#pragma once
 
 #include "flightsession.h"
 #include <boost/filesystem.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
+
+const int FEATURE_PROCESS_SIZE = 2048;
 
 inline double dist_sq(double *a1, double *a2, int dims)
 {
@@ -28,7 +29,7 @@ private:
     std::map<std::string, std::vector<std::string>> candidateImages;
     cv::Ptr<cv::FeatureDetector> detector_;
     cv::Ptr<cv::DescriptorExtractor> extractor_;
-    bool _extractFeature(std::string fileName);
+    bool _extractFeature(std::string fileName, bool resize = false);
 
 public:
     ShoMatcher(FlightSession flight)
@@ -40,10 +41,9 @@ public:
     {}
     void getCandidateMatchesUsingSpatialSearch(double range = 0.000125);
     void getCandidateMatchesFromFile(std::string candidateFile);
-    int extractFeatures();
+    int extractFeatures(bool resize = false);
     void runRobustFeatureMatching();
     void buildKdTree();
     std::map<std::string, std::vector<std::string>> getCandidateImages() const;
     void plotMatches(std::string img1, std::string img2) const;
 };
-#endif

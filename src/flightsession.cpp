@@ -185,6 +185,11 @@ const Camera& FlightSession::getCamera() const {
     return this->camera;
 }
 
+Camera & FlightSession::getCamera()
+{
+    return camera;
+}
+
 void FlightSession::setCamera(Camera camera)
 {
     this->camera = camera;
