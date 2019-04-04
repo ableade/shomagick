@@ -40,7 +40,7 @@ imageTracksPath(), camera(), referenceLLA()
 
     for (const auto path : allPaths) {
         cout << "Creating directory " << path.string() << endl;
-        boost::filesystem::create_directory(this->imageFeaturesPath);
+        boost::filesystem::create_directory(path);
     }
     
     copy_if(
