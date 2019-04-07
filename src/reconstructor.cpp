@@ -426,7 +426,8 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
         }
     }
     colorReconstruction(allReconstruction);
-    allReconstruction.saveReconstruction();
+    string recFileName = flight.getImageDirectoryPath().parent_path().leaf().string() + ".ply";
+    allReconstruction.saveReconstruction(recFileName);
     cout << "Total number of points in all reconstructions is " << allReconstruction.getCloudPoints().size() << "\n";
 }
 
@@ -494,7 +495,7 @@ void Reconstructor::continueReconstruction(Reconstruction& rec) {
     //removeOutliers(rec);
     alignReconstruction(rec);
     colorReconstruction(rec);
-    rec.saveReconstruction();
+    //rec.saveReconstruction();
 
 
     while (1) {

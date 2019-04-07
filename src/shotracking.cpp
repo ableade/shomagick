@@ -74,10 +74,10 @@ void ShoTracker::createFeatureNodes(vector<pair<ImageFeatureNode, ImageFeatureNo
 }
 
 ImageFeatures ShoTracker::_loadImageFeatures(const string fileName) {
-    if (this->imageFeatures.find(fileName) == this->imageFeatures.end()) {
-        this->imageFeatures[fileName] = this->flight.loadFeatures(fileName);
+    if (imageFeatures.find(fileName) == this->imageFeatures.end()) {
+        imageFeatures[fileName] = this->flight.loadFeatures(fileName);
     }
-    return this->imageFeatures[fileName];
+    return imageFeatures[fileName];
 }
 
 void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNode>> &features)
@@ -85,7 +85,7 @@ void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNo
     cout << "Creating tracks" << endl;
     for (size_t i = 0; i < features.size(); ++i)
     {
-        this->mergeFeatureTracks(features[i].first, features[i].second);
+        mergeFeatureTracks(features[i].first, features[i].second);
     }
     cout << "Created a total of " << this->uf.numDisjointSets() << " tracks " << endl;
 
@@ -95,6 +95,8 @@ void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNo
         int dSet = this->uf.findSet(i);
         if (this->uf.sizeOfSet(dSet) >= this->minTrackLength)
         {
+            if(uf.sizeOfSet(dSet) > minTrackLength) 
+                cout << "Size of track is " << uf.sizeOfSet(dSet) << "\n";
             this->tracks[dSet].push_back(i);
         }
     }

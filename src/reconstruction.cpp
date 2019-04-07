@@ -57,9 +57,9 @@ Camera& Reconstruction::getCamera() {
 }
 
 
-void Reconstruction::saveReconstruction() const
+void Reconstruction::saveReconstruction(const string recFileName) const
 {
-    ofstream recFile("Reconstruction.ply");
+    ofstream recFile(recFileName);
     recFile << "ply\n";
     recFile << "format ascii 1.0\n";
     recFile << "element vertex "<< cloudPoints.size()<< "\n";
