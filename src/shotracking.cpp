@@ -52,7 +52,7 @@ void ShoTracker::createFeatureNodes(vector<pair<ImageFeatureNode, ImageFeatureNo
                 auto leftFeature = make_pair(leftImageName, dMatch.queryIdx);
                 auto rightFeature = make_pair(matchImageName, dMatch.trainIdx);
                 auto rightImageFeature = this->_loadImageFeatures(matchImageName);
-                if (this->addFeatureToIndex(leftFeature, featureIndex))
+                if (addFeatureToIndex(leftFeature, featureIndex))
                 {
                     featureIndex++;
                     FeatureProperty leftProp = this->getFeatureProperty_(leftImageFeatures, leftFeature);
@@ -204,7 +204,7 @@ set<pair<string, string>> ShoTracker::_getCombinations(const vector<string> &ima
 
 void ShoTracker::mergeFeatureTracks(pair<string, int> feature1, pair<string, int> feature2)
 {
-    this->uf.unionSet(this->features[feature1], this->features[feature2]);
+    uf.unionSet(this->features[feature1], this->features[feature2]);
 }
 
 bool ShoTracker::addFeatureToIndex(pair<string, int> feature, int featureIndex)

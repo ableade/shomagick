@@ -121,7 +121,7 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
     if (modelImg.empty())
         return false;
 
-    if (resize) {
+    if (resize && featureImage.size().width > FEATURE_PROCESS_SIZE) {
         cv::resize(modelImg, modelImg, { flight.getCamera().getScaledHeight(), flight.getCamera().getScaledWidth()}, 0, 0, cv::INTER_AREA);
         cv::resize(featureImage, featureImage, { flight.getCamera().getScaledHeight(), flight.getCamera().getScaledWidth() }, 0, 0, cv::INTER_AREA);
     }
