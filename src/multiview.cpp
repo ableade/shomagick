@@ -95,6 +95,7 @@ bool TriangulateBearingsMidpoint(
   }
   //std::cout << "Triangulating bearings midpoint for os " << os << std::endl;
   //std::cout << "Triangulating bearings midpoint for bs " << bs << std::endl;
+
   // Check angle between rays
   bool angle_ok = false;
   for (int i = 0; i < n; ++i)
@@ -136,7 +137,7 @@ bool TriangulateBearingsMidpoint(
     //std::cout << "Error was " << error << std::endl;
     if (error > threshold)
     {
-      //std::cout << "Error was greater than treshhold" << std::endl;
+    //  std::cout << "Error was greater than treshhold" << std::endl;
       return false;
     }
   }

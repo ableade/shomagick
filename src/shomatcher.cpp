@@ -31,10 +31,10 @@ using json = nlohmann::json;
 
 void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
 {
+    set<pair<string, string>> alreadyPaired;
     this->buildKdTree();
-    auto imageSet = this->flight.getImageSet();
-    for (const auto img: imageSet)
-    {
+    auto imageSet = flight.getImageSet();
+    for (const auto img: imageSet) {
         vector<string> matchSet;
         auto currentImageName = img.getFileName();
         void *result_set;
@@ -42,20 +42,26 @@ void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
         double pt[] = {img.getMetadata().location.longitude, img.getMetadata().location.latitude };
         result_set = kd_nearest_range(static_cast<kdtree *>(kd), pt, range);
         vector<double> pos(this->dimensions);
+        int count = 0;
         while (!kd_res_end(static_cast<kdres *>(result_set)))
         {
             auto current = kd_res_item(static_cast<kdres *>(result_set), pos.data());
             if (current == nullptr)
                 continue;
-
             auto img = static_cast<Img *>(current);
             if (currentImageName != img->getFileName())
             {
-                matchSet.push_back(img->getFileName());
+                count++;
+                if (alreadyPaired.find(make_pair(currentImageName, img->getFileName())) == alreadyPaired.end()
+                    || alreadyPaired.find(make_pair(img->getFileName(), currentImageName)) == alreadyPaired.end()) {
+                    alreadyPaired.insert(make_pair(currentImageName, img->getFileName()));
+                    matchSet.push_back(img->getFileName());
+                }
+                
             }
             kd_res_next(static_cast<kdres *>(result_set));
         }
-        cout << "Found " << matchSet.size() << " candidate matches for " << currentImageName << endl;
+        cout << "Found " << count << " candidate matches for " << currentImageName << endl;
         if (matchSet.size())
         {
             this->candidateImages[currentImageName] = matchSet;
@@ -76,7 +82,8 @@ void ShoMatcher::getCandidateMatchesFromFile(string candidatesFile) {
 
 int ShoMatcher::extractFeatures(bool resize) 
 {
-    if (resize) {
+    //set feature process size to -1 to avoid resizing
+    if (FEATURE_PROCESS_SIZE != -1 && resize) {
         auto maxSize = max(flight.getCamera().getHeight(), flight.getCamera().getWidth());
         int fx = flight.getCamera().getWidth() * FEATURE_PROCESS_SIZE / maxSize;
         int fy = flight.getCamera().getHeight() * FEATURE_PROCESS_SIZE / maxSize;
@@ -122,8 +129,8 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
         return false;
 
     if (resize && featureImage.size().width > FEATURE_PROCESS_SIZE) {
-        cv::resize(modelImg, modelImg, { flight.getCamera().getScaledHeight(), flight.getCamera().getScaledWidth()}, 0, 0, cv::INTER_AREA);
-        cv::resize(featureImage, featureImage, { flight.getCamera().getScaledHeight(), flight.getCamera().getScaledWidth() }, 0, 0, cv::INTER_AREA);
+        cv::resize(modelImg, modelImg, { flight.getCamera().getScaledWidth(), flight.getCamera().getScaledHeight()}, 0, 0, cv::INTER_AREA);
+        cv::resize(featureImage, featureImage, { flight.getCamera().getScaledWidth(), flight.getCamera().getScaledHeight() }, 0, 0, cv::INTER_AREA);
     }
 
     cout << "Feature image size is " << featureImage.size() << "\n";
@@ -139,6 +146,7 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
             colors.push_back(modelImg.at<uchar>(keypoint.pt));
         else if (channels == 3)
             colors.push_back(modelImg.at<Vec3b>(keypoint.pt));
+    
         keypoint.pt = this->flight.getCamera().normalizeImageCoordinate(keypoint.pt);
     }
     return this->flight.saveImageFeaturesFile(fileName, keypoints, descriptors, colors);

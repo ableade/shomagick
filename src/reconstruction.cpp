@@ -71,8 +71,8 @@ void Reconstruction::saveReconstruction(const string recFileName) const
     recFile << "property uchar diffuse_blue\n";
     recFile << "end_header\n";
     for (const auto [trackId, cp] : cloudPoints) {
-        recFile << cp.getPosition().x << " " << cp.getPosition().y << " " << cp.getPosition().z << " " << cp.getColor()[0] << " " << cp.getColor()[1]<< " " 
-            << cp.getColor()[2] << "\n";
+        recFile << cp.getPosition().x << " " << cp.getPosition().y << " " << cp.getPosition().z << " " << 0 << " " << 255 << " " 
+            << 0 << "\n";
     }
     recFile.close();
 }

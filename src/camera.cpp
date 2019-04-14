@@ -133,7 +133,6 @@ cameraModel(),  initialK1(),  initialK2(), initialPhysicalFocal() {
     this->initialK1 = this->getK1();
     this->initialK2 = this->getK2();
     this->initialPhysicalFocal = this->getPhysicalFocalLength();
-    std::cout << "Shape of distortion coefficients is " << distortionCoefficients.size() << "\n\n";
 }
 
 Mat Camera::getKMatrix() { return this->cameraMatrix; }
@@ -182,7 +181,7 @@ bearingVector_t Camera::normalizedPointToBearingVec(const Point2f &point) const
     opengv::bearingVector_t bearing;
     auto convPoint = hPoints[0];
     auto hPoint = cv::Vec3f(convPoint);
-    const double l = std::sqrt(hPoint[0] * hPoint[0] + hPoint[1] * hPoint[1] + hPoint[2] * hPoint[2]);
+    const double l = std::sqrt(hPoint[0] * hPoint[0] + hPoint[1] * hPoint[1] + hPoint[2] * hPoint[2]);          
     for (int j = 0; j < 3; ++j)
         bearing[j] = hPoint[j] / l;
 
@@ -266,7 +265,6 @@ Point2f Camera::denormalizeImageCoordinates(const Point2f normalizedCoords) cons
     auto h = (scaledHeight) ? scaledHeight : height;
     auto w = (scaledWidth) ? scaledWidth : width;
 
-
     const auto size = max(w, h);
     auto normX = normalizedCoords.x;
     auto normY = normalizedCoords.y;
@@ -308,6 +306,11 @@ Camera Camera::getCameraFromCalibrationFile(string calibrationFile) {
     fs["camera_matrix"] >> cameraMatrix;
     fs["distortion_coefficients"] >> distortionParameters;
     return Camera{ cameraMatrix, distortionParameters, height, width };
+}
+
+Camera Camera::getCameraFromExifMetaData(std::string image)
+{
+    return Camera();
 }
 
 void Camera::setFocalWithPhysical(double physicalFocal)

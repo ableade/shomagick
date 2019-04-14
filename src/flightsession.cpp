@@ -52,8 +52,10 @@ imageTracksPath(), camera(), referenceLLA()
     });
     for (auto entry : v)
     {
-        Img img(entry.path().string());
-        this->imageSet.push_back(img);
+        if (entry.path().extension().string() == ".jpg" || entry.path().extension().string() == ".png") {
+            Img img(entry.path().string());
+            this->imageSet.push_back(img);
+        }
     }
     if (!calibrationFile.empty()) {
         this->camera = Camera::getCameraFromCalibrationFile(calibrationFile);

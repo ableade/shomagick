@@ -406,7 +406,7 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
                 auto rec = *optRec;
                 reconstructionImages.erase(track.imagePair.first);
                 reconstructionImages.erase(track.imagePair.second);
-               // continueReconstruction(rec);
+                continueReconstruction(rec);
                 reconstructions.push_back(rec);
             }
         }
@@ -426,9 +426,9 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
         }
     }
     colorReconstruction(allReconstruction);
-    string recFileName = flight.getImageDirectoryPath().parent_path().leaf().string() + ".ply";
+    string recFileName = flight.getImageDirectoryPath().parent_path().leaf().string() + "green.ply";
     allReconstruction.saveReconstruction(recFileName);
-    cout << "Total number of points in all reconstructions is " << allReconstruction.getCloudPoints().size() << "\n";
+    cout << "Total number of points in all reconstructions is " << allReconstruction.getCloudPoints().size() << "\n\n";
 }
 
 Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonTrack track, const ShoTracker &tracker)
@@ -460,6 +460,8 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
     Rodrigues(r, rVec);
     Mat distortion;
 
+    cout << "Rvec was " << rVec + '\n';
+    cout << "T was " << t << '\n';
     const auto shot1Image = flight.getImageSet()[flight.getImageIndex(track.imagePair.first)];
     const auto shot2Image = flight.getImageSet()[flight.getImageIndex(track.imagePair.second)];
     ShotMetadata shot1Metadata(shot1Image.getMetadata(), flight);
@@ -493,7 +495,7 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
 void Reconstructor::continueReconstruction(Reconstruction& rec) {
     bundle(rec);
     //removeOutliers(rec);
-    alignReconstruction(rec);
+    //alignReconstruction(rec);
     colorReconstruction(rec);
     //rec.saveReconstruction();
 
@@ -536,15 +538,15 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec) {
         auto shotId = this->tg[*neighbors.first].name;
         if (rec.hasShot(shotId)) {
             auto shot = rec.getReconstructionShots()[shotId];
-            // cout << "Currently at shot " << shot.getId() << endl;
+            //cout << "Currently at shot " << shot.getId() << endl;
             auto edgePair = boost::edge(track, this->imageNodes[shotId], this->tg);
             auto edgeDescriptor = edgePair.first;
             auto fCol = this->tg[edgeDescriptor].fProp.color;
             auto fPoint = this->tg[edgeDescriptor].fProp.coordinates;
             auto fBearing =
                 this->flight.getCamera().normalizedPointToBearingVec(fPoint);
-            // cout << "F point to f bearing is " << fPoint << " to " << fBearing <<
-            // endl;
+            //cout << "F point to f bearing is " << fPoint << " to " << fBearing <<
+             //endl;
             auto origin = this->getShotOrigin(shot);
             // cout << "Origin for this shot was " << origin << endl;
             Eigen::Vector3d eOrigin;
@@ -552,7 +554,7 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec) {
             cv2eigen(Mat(origin), eOrigin);
             auto rotationInverse = this->getRotationInverse(shot);
             cv2eigen(rotationInverse, eigenRotationInverse);
-            // cout << "Rotation inverse is " << eigenRotationInverse << endl;
+            //cout << "Rotation inverse is " << eigenRotationInverse << endl;
             auto eigenRotationBearingProduct = eigenRotationInverse * fBearing;
             // cout << "Rotation inverse times bearing us  " <<
             // eigenRotationBearingProduct << endl;
@@ -564,6 +566,7 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec) {
         if (TriangulateBearingsMidpoint(originList, bearingList, x)) {
             CloudPoint cp;
             cp.setId(stoi(trackId));
+           // cout << "Triangulated point was " << x << '\n';
             cp.setPosition(Point3d{ x(0), x(1), x(2) });
             rec.addCloudPoint(cp);
         }
@@ -797,7 +800,6 @@ vector<pair<string, int>> Reconstructor::reconstructedPointForImages(const Recon
             for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
                 const auto trackName = this->tg[*tracksIter].trackName;
                 if (rec.hasTrack(trackName)) {
-                    cout << "Has track" << "\n";
                     commonTracks++;
                 }
             }
@@ -838,7 +840,6 @@ bool Reconstructor::shouldBundle(const Reconstruction &rec)
 void Reconstructor::colorReconstruction(Reconstruction & rec)
 {
     for (auto&[trackId, cp] : rec.getCloudPoints()) {
-        cout << "Track id is " << trackId << "\n";
         const auto trackNode = this->getTrackNode(to_string(trackId));
         auto[edgesBegin, _] = boost::out_edges(trackNode, this->tg);
         edgesBegin++;
@@ -874,11 +875,12 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
     for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
         const auto trackName = this->tg[*tracksIter].trackName;
         if (rec.hasTrack(trackName)) {
-            cout << "Has track" << "\n";
             auto fPoint = this->tg[*tracksIter].fProp.coordinates;
+            cout << "F point is " << fPoint << "\n";
             auto fBearing =
                 this->flight.getCamera().normalizedPointToBearingVec(fPoint);
-            auto position = rec.getCloudPoints()[stoi(trackName)].getPosition();
+            cout << "F bearing is " << fBearing << "\n";
+            auto position = rec.getCloudPoints().at(stoi(trackName)).getPosition();
             Xs.push_back({ position.x, position.y, position.z });
             Bs.push_back(fBearing);
         }
@@ -888,6 +890,7 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
         report.numCommonPoints = Bs.size();
         return make_tuple(false, report);
     }
+
     const auto t = absolutePoseRansac(Bs, Xs, threshold, iterations, probability);
     cout << "T obtained was " << t << "\n";
     Matrix3d rotation;
@@ -896,14 +899,22 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
     rotation = t.leftCols(3);
     translation = t.rightCols(1).transpose();
 
-    /*
     auto fd = Xs.data()->data();
     auto bd = Bs.data()->data();
     Matrix<double, Dynamic, 3> eigenXs = Eigen::Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(fd, Xs.size(), 3);
     Matrix<double, Dynamic, 3> eigenBs = Eigen::Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(bd, Bs.size(), 3);
-    const auto reprojectedBs = (rotation.transpose() * (eigenXs.rowwise() - translation).transpose()).transpose().matrix();
 
-    auto divReprojectedBs = reprojectedBs.colwise() / reprojectedBs.colwise().norm();
+    cout << "Eigen xs is " << eigenXs << "\n";
+    cout << "Eigen bs is " << eigenBs << "\n";
+
+    const auto rotationTranspose = rotation.transpose();
+    cout << "Rotation transpose is " << rotationTranspose << "\n";
+    const auto eigenXsMinusTranslation = (eigenXs.rowwise() - translation).transpose();
+    cout << "Eigen minus translation is " << eigenXsMinusTranslation << "\n";
+    const auto reprojectedBs = (rotation.transpose() * (eigenXs.rowwise() - translation).transpose()).transpose().matrix();
+    cout << "Reprojected bs is " << reprojectedBs << "\n";
+   // auto divReprojectedBs = reprojectedBs.colwise() / reprojectedBs.colwise().norm();
+    /*
 
     cout << "Div reprojected bs is " << divReprojectedBs << "\n";
 
