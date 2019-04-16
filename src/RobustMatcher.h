@@ -64,14 +64,13 @@ public:
                    std::vector<cv::KeyPoint> &keypoints1, std::vector<cv::KeyPoint> &keypoints2);
 
   //Match feature point using  ratio and symmetry test
-  void robustMatch(const std::vector<cv::KeyPoint> &keypoints1, const cv::Mat descriptors1, const std::vector<cv::KeyPoint> &keypoints2, const cv::Mat descriptors2, std::vector<cv::DMatch> &matches);
+  void robustMatch(const cv::Mat descriptors1, const cv::Mat descriptors2, std::vector<cv::DMatch> &matches);
   // Match feature points using ratio test
   void fastRobustMatch(const cv::Mat &frame, std::vector<cv::DMatch> &good_matches,
                        std::vector<cv::KeyPoint> &keypoints_frame,
                        const cv::Mat &descriptors_model);
   
-  void fastRobustMatch(const std::vector<cv::KeyPoint> &keypoints1, const cv::Mat descriptors1, 
-  const std::vector<cv::KeyPoint> &keypoints2, const cv::Mat descriptors2, std::vector<cv::DMatch> &matches);
+  void fastRobustMatch(const cv::Mat descriptors1, const cv::Mat descriptors2, std::vector<cv::DMatch> &matches);
 
 private:
   // pointer to the feature point detector object

@@ -17,8 +17,8 @@ bool allClose(
 );
 
 bool allClose(
-    const cv::Point2f& lhs,
-    const cv::Point2f& rhs,
+    const cv::Point2d& lhs,
+    const cv::Point2d& rhs,
     const double tolerance = defaultTolerance
 );
 

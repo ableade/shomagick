@@ -49,7 +49,7 @@ struct kdtree *kd_create(int k)
 {
     struct kdtree *tree;
 
-    if (!(tree = new kdtree))
+    if ((tree = new kdtree)==nullptr)
     {
         return 0;
     }
@@ -111,11 +111,11 @@ static int insert_rec(struct kdnode **nptr, const double *pos, void *data, int d
 
     if (!*nptr)
     {
-        if (!(node = new kdnode))
+        if ((node = new kdnode)==nullptr)
         {
             return -1;
         }
-        if (!(node->pos = new double[dim]))
+        if ((node->pos = new double[(size_t)dim]) == nullptr)
         {
             delete[] node;
             return -1;
@@ -326,11 +326,11 @@ struct kdres *kd_nearest(struct kdtree *kd, const double *pos)
         return 0;
 
     /* Allocate result set */
-    if (!(rset = new kdres))
+    if ((rset = new kdres)== nullptr)
     {
         return 0;
     }
-    if (!(rset->rlist = new res_node))
+    if ((rset->rlist = new res_node)== nullptr)
     {
         delete rset;
         return 0;
@@ -339,7 +339,7 @@ struct kdres *kd_nearest(struct kdtree *kd, const double *pos)
     rset->tree = kd;
 
     /* Duplicate the bounding hyperrectangle, we will work on the copy */
-    if (!(rect = hyperrect_duplicate(kd->rect)))
+    if ((rect = hyperrect_duplicate(kd->rect)) == nullptr)
     {
         kd_res_free(rset);
         return 0;
@@ -381,11 +381,11 @@ struct kdres *kd_nearest_range(struct kdtree *kd, const double *pos, double rang
     int ret;
     struct kdres *rset;
 
-    if (!(rset = new kdres))
+    if ((rset = new kdres) == nullptr)
     {
         return 0;
     }
-    if (!(rset->rlist = new res_node))
+    if ((rset->rlist = new res_node)==nullptr)
     {
         delete rset;
         return 0;
@@ -455,18 +455,18 @@ static struct kdhyperrect *hyperrect_create(int dim, const double *min, const do
     size_t size = dim * sizeof(double);
     struct kdhyperrect *rect = 0;
 
-    if (!(rect = new kdhyperrect))
+    if ((rect = new kdhyperrect) == nullptr)
     {
         return 0;
     }
 
     rect->dim = dim;
-    if (!(rect->min = new double[size]))
+    if ((rect->min = new double[size]) == nullptr)
     {
         delete rect;
         return 0;
     }
-    if (!(rect->max = new double[size]))
+    if ((rect->max = new double[size]) == nullptr)
     {
         delete[] rect->min;
         delete rect;
@@ -533,7 +533,7 @@ static int rlist_insert(struct res_node *list, struct kdnode *item, double dist_
 {
     struct res_node *rnode;
 
-    if (!(rnode = new res_node))
+    if ((rnode = new res_node) == nullptr)
     {
         return -1;
     }

@@ -1,8 +1,8 @@
 #include "reconstruction.h"
 #include "reconstructor.h"
 #include <fstream>
-#include "map"
-#include "string"
+#include <map>
+#include <string>
 
 using std::map;
 using std::string;
@@ -39,7 +39,7 @@ bool Reconstruction::hasShot(string shotId) const
 }
 
 void Reconstruction::addCloudPoint(CloudPoint cp) {
-    this->cloudPoints[cp.getId()] = cp;
+    cloudPoints[cp.getId()] = cp;
 }
 
 bool Reconstruction::hasTrack(std::string trackId) const
@@ -71,8 +71,9 @@ void Reconstruction::saveReconstruction(const string recFileName) const
     recFile << "property uchar diffuse_blue\n";
     recFile << "end_header\n";
     for (const auto [trackId, cp] : cloudPoints) {
-        recFile << cp.getPosition().x << " " << cp.getPosition().y << " " << cp.getPosition().z << " " << 0 << " " << 255 << " " 
-            << 0 << "\n";
+        recFile << cp.getPosition().x << " " << cp.getPosition().y << " " << cp.getPosition().z << " " << 
+            cp.getColor()[0] << " " <<cp.getColor()[1]<< " " 
+            << cp.getColor()[2] << "\n";
     }
     recFile.close();
 }

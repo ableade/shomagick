@@ -133,7 +133,6 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
         cv::resize(featureImage, featureImage, { flight.getCamera().getScaledWidth(), flight.getCamera().getScaledHeight() }, 0, 0, cv::INTER_AREA);
     }
 
-    cout << "Feature image size is " << featureImage.size() << "\n";
     std::vector<cv::KeyPoint> keypoints;
     std::vector<cv::Scalar> colors;
     cv::Mat descriptors;
@@ -168,7 +167,7 @@ void ShoMatcher::runRobustFeatureMatching()
             auto trainFeaturesSet = this->flight.loadFeatures(trainImg);
             vector<DMatch> matches;
 
-            rmatcher.robustMatch(queryFeaturesSet.keypoints, queryFeaturesSet.descriptors, trainFeaturesSet.keypoints, trainFeaturesSet.descriptors, matches);
+            rmatcher.robustMatch(queryFeaturesSet.descriptors, trainFeaturesSet.descriptors, matches);
 
             int trainIndex = this->flight.getImageIndex(trainImg);
             for (size_t i = 0; i < matches.size(); i++)

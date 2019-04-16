@@ -47,25 +47,26 @@ class Camera
   public:
     Camera();
     Camera(cv::Mat cameraMatrix, cv::Mat distortion, int height =0, int width =0, int scaledHeight =0, int scaledWidth =0);
-    const double& getPixelFocal() const;
+    double getPixelFocal() const;
 
     double getPhysicalFocalLength() const;
     cv::Mat getKMatrix();
     cv::Mat getNormalizedKMatrix() const;
     cv::Mat getDistortionMatrix() const;
     void cvPointsToBearingVec(
-    const std::vector<cv::Point2f>&, opengv::bearingVectors_t& ) const;
-    opengv::bearingVector_t  normalizedPointToBearingVec(const cv::Point2f &point) const;
-    cv::Point2f projectBearing(opengv::bearingVector_t);
-    const double& getK1() const;
-    const double& getK2() const;
+    const std::vector<cv::Point2d>&, opengv::bearingVectors_t& ) const;
+    opengv::bearingVectors_t normalizedPointsToBearingVec(const std::vector<cv::Point2d>& points) const;
+    opengv::bearingVector_t  normalizedPointToBearingVec(const cv::Point2d& point) const;
+    cv::Point2d projectBearing(opengv::bearingVector_t);
+    double getK1() const;
+    double getK2() const;
     double getInitialK1() const;
     double getInitialK2() const;
     double getInitialPhysicalFocal() const;
-    cv::Point2f normalizeImageCoordinate(const cv::Point2f) const;
-    std::vector<cv::Point2f> normalizeImageCoordinates(const std::vector<cv::Point2f>&) const;
-    cv::Point2f denormalizeImageCoordinates(const cv::Point2f) const;
-    std::vector<cv::Point2f> denormalizeImageCoordinates(const std::vector<cv::Point2f>&) const;
+    cv::Point2d normalizeImageCoordinate(const cv::Point2d) const;
+    std::vector<cv::Point2d> normalizeImageCoordinates(const std::vector<cv::Point2d>&) const;
+    cv::Point2d denormalizeImageCoordinates(const cv::Point2d) const;
+    std::vector<cv::Point2d> denormalizeImageCoordinates(const std::vector<cv::Point2d>&) const;
     static Camera getCameraFromCalibrationFile(std::string calibFile);
     static Camera getCameraFromExifMetaData(std::string image);
     void setFocalWithPhysical(double physicalFocal);
@@ -77,7 +78,7 @@ class Camera
     int getScaledHeight();
     int getScaledWidth();
     int getWidth();
-    double& getPixelFocal();
+    void setPixelFocal(double pixelFocal);
     double& getK1();
     double&  getK2();
 };

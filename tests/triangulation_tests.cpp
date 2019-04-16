@@ -1,5 +1,4 @@
-#include "stdafx.h"
-#include "catch.hpp"
+#include <catch.hpp>
 #include <Eigen/Core>
 #include <vector>
 #include "../src/allclose.h"

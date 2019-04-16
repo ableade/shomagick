@@ -22,11 +22,11 @@ struct VertexProperty
 struct FeatureProperty
 {
     ImageFeatureNode featureNode;
-    cv::Point2f coordinates;
+    cv::Point2d coordinates;
     cv::Scalar color;
 
     FeatureProperty() : featureNode(), coordinates(), color() {};
-    FeatureProperty(ImageFeatureNode fNode, cv::Point2f coordinates, cv::Scalar color) : featureNode(fNode), coordinates(coordinates), color(color) {}
+    FeatureProperty(ImageFeatureNode fNode, cv::Point2d coordinates, cv::Scalar color) : featureNode(fNode), coordinates(coordinates), color(color) {}
 };
 
 struct EdgeProperty {

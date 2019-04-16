@@ -1,5 +1,4 @@
-#include "stdafx.h"
-#include "catch.hpp"
+#include <catch.hpp>
 #include "../src/allclose.h"
 #include <Eigen/Core>
 
@@ -52,7 +51,7 @@ namespace catchtests
             };
 
             const auto collection2 = vector<float>{
-                1.001, 2, 3
+                1.001f, 2, 3
             };
 
             constexpr auto tolerance = 0.05;

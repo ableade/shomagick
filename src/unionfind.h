@@ -13,7 +13,7 @@ public:
   UnionFind():p(), rank(), setSize(), numSets(){};
   UnionFind(int n):p(n,0),rank(n,0), setSize(n,1), numSets(n)
   {
-    for (std::size_t i = 0; i < n; i++)
+    for (auto i = 0; i < n; i++)
       p[i] = i;
   }
 

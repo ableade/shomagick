@@ -6,7 +6,7 @@
 #include <set>
 
 using cv::DMatch;
-using cv::Point2f;
+using cv::Point2d;
 using cv::Scalar;
 using std::cout;
 using std::make_pair;

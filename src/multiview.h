@@ -75,3 +75,8 @@ opengv::transformation_t absolutePoseRansac(opengv::bearingVectors_t bearings,
     double threshold,
     int iterations,
     double probability);
+opengv::transformation_t relativePoseRansac(opengv::bearingVectors_t bearings,
+    opengv::points_t points,
+    double threshold,
+    int iterations,
+    double probability);

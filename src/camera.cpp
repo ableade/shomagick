@@ -12,7 +12,7 @@ using std::string;
 using cv::Matx33d;
 using cv::Mat;
 using cv::Vec3d;
-using cv::Point2f;
+using cv::Point2d;
 using cv::Size;
 using opengv::bearingVector_t;
 using opengv::bearingVectors_t;
@@ -139,6 +139,7 @@ Mat Camera::getKMatrix() { return this->cameraMatrix; }
 
 Mat Camera::getNormalizedKMatrix() const {
     auto lensSize = this->getPhysicalFocalLength();
+
     Mat normK = (cv::Mat_<double>(3, 3) <<
         lensSize,   0.,          0.,
         0.,         lensSize,    0,
@@ -154,7 +155,7 @@ Mat Camera::getDistortionMatrix() const
     return distortionCoefficients;
 }
 
-void Camera::cvPointsToBearingVec(const vector<Point2f> &points, bearingVectors_t &bearings) const
+void Camera::cvPointsToBearingVec(const vector<Point2d> &points, bearingVectors_t &bearings) const
 {
     const int N1 = static_cast<int>(points.size());
     cv::Mat points1_mat = cv::Mat(points).reshape(1);
@@ -171,30 +172,40 @@ void Camera::cvPointsToBearingVec(const vector<Point2f> &points, bearingVectors_
     _cvPointsToBearingVec(points1_rect, bearings);
 }
 
-bearingVector_t Camera::normalizedPointToBearingVec(const Point2f &point) const
+opengv::bearingVectors_t Camera::normalizedPointsToBearingVec(const std::vector<cv::Point2d>& points) const
 {
-    std::vector<cv::Point2f> points{ point };
-    std::vector<cv::Point3f> hPoints;
-    //std::vector<cv::Point2f> uPoints;
+    opengv::bearingVectors_t bearings;
+    for (const auto point : points) {
+        auto bearing = normalizedPointToBearingVec(point);
+        bearings.push_back(bearing);
+    }
+    return bearings;
+}
+
+bearingVector_t Camera::normalizedPointToBearingVec(const Point2d &point) const
+{
+    std::vector<cv::Point2d> points{ point };
+    std::vector<cv::Point3d> hPoints;
     cv::undistortPoints(points, points, this->getNormalizedKMatrix(), this->getDistortionMatrix());
     cv::convertPointsHomogeneous(points, hPoints);
     opengv::bearingVector_t bearing;
     auto convPoint = hPoints[0];
-    auto hPoint = cv::Vec3f(convPoint);
-    const double l = std::sqrt(hPoint[0] * hPoint[0] + hPoint[1] * hPoint[1] + hPoint[2] * hPoint[2]);          
+    auto hPoint = cv::Vec3d(convPoint);
+    const double l = std::sqrt(hPoint[0] * hPoint[0] + hPoint[1] * hPoint[1] + hPoint[2] * hPoint[2]);    
     for (int j = 0; j < 3; ++j)
         bearing[j] = hPoint[j] / l;
 
     return bearing;
 }
 
-const double& Camera::getPixelFocal() const{
+double Camera::getPixelFocal() const{
     return this->cameraMatrix.at<double>(0, 0);
 }
 
-double & Camera::getPixelFocal()
+void Camera::setPixelFocal(double pixelFocal)
 {
-    return this->cameraMatrix.at<double>(0, 0);
+    CV_Assert(pixelFocal > 1);
+    cameraMatrix.at<double>(0, 0) = pixelFocal;
 }
 
 double & Camera::getK1()
@@ -210,11 +221,11 @@ double Camera::getPhysicalFocalLength() const {
     return (double)this->getPixelFocal() / (double)max(this->height, this->width);
 }
 
-const double& Camera::getK1() const {
+double Camera::getK1() const {
     return this->getDistortionMatrix().at<double>(0,0);
 }
 
-const double& Camera::getK2() const{
+double Camera::getK2() const{
     return this->getDistortionMatrix().at<double>(1, 0);
 }
 
@@ -230,7 +241,7 @@ double Camera::getInitialPhysicalFocal() const {
     return this->initialPhysicalFocal;
 }
 
-Point2f Camera::normalizeImageCoordinate(const cv::Point2f pixelCoords) const
+Point2d Camera::normalizeImageCoordinate(const cv::Point2d pixelCoords) const
 {
     auto h = (scaledHeight) ? scaledHeight : height;
     auto w = (scaledWidth) ? scaledWidth : width;
@@ -249,9 +260,9 @@ Point2f Camera::normalizeImageCoordinate(const cv::Point2f pixelCoords) const
     };
 }
 
-vector<Point2f> Camera::normalizeImageCoordinates(const vector<Point2f>& points) const
+vector<Point2d> Camera::normalizeImageCoordinates(const vector<Point2d>& points) const
 {
-    std::vector<cv::Point2f> results;
+    std::vector<cv::Point2d> results;
 
     for (const auto& point : points) {
         results.push_back(normalizeImageCoordinate(point));
@@ -260,7 +271,7 @@ vector<Point2f> Camera::normalizeImageCoordinates(const vector<Point2f>& points)
     return results;
 }
 
-Point2f Camera::denormalizeImageCoordinates(const Point2f normalizedCoords) const
+Point2d Camera::denormalizeImageCoordinates(const Point2d normalizedCoords) const
 {
     auto h = (scaledHeight) ? scaledHeight : height;
     auto w = (scaledWidth) ? scaledWidth : width;
@@ -275,22 +286,22 @@ Point2f Camera::denormalizeImageCoordinates(const Point2f normalizedCoords) cons
     return { pixelX, pixelY };
 }
 
- vector<Point2f> Camera::denormalizeImageCoordinates(const vector<Point2f>& points) const {
-     std::vector<cv::Point2f> results;
+ vector<Point2d> Camera::denormalizeImageCoordinates(const vector<Point2d>& points) const {
+     std::vector<cv::Point2d> results;
      for(const auto point: points) {
          results.push_back(denormalizeImageCoordinates(point));
      }
      return results;
  }
 
-Point2f Camera::projectBearing(bearingVector_t b) {
+Point2d Camera::projectBearing(bearingVector_t b) {
     auto x = b[0] / b[2];
     auto y = b[1] / b[2];
 
     auto r = x * x + y * y;
     auto radialDistortion = 1.0 + r * (getK1() + getK2() * r);
 
-    return cv::Point2f{
+    return cv::Point2d{
         static_cast<float>(getPhysicalFocalLength() * radialDistortion * x),
         static_cast<float>(getPhysicalFocalLength() * radialDistortion * y)
     };
@@ -315,8 +326,8 @@ Camera Camera::getCameraFromExifMetaData(std::string image)
 
 void Camera::setFocalWithPhysical(double physicalFocal)
 {
-   auto pixelFocal =  (double)this->getPixelFocal() * (double)max(this->height, this->width);
-   getPixelFocal() = pixelFocal;
+   auto pixelFocal = physicalFocal * (double)max(this->height, this->width);
+   setPixelFocal(pixelFocal);
 }
 
 void Camera::setK1(double k1)
