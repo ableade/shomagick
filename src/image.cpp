@@ -58,7 +58,7 @@ Location Img::_extractCoordinatesFromExif(Exiv2::ExifData exifData)
     const auto altPos = exifData.findKey(altitudeKey);
 
     if (latPos == exifData.end() || longPos == exifData.end() || altPos == exifData.end())
-        throw Exiv2::Error(Exiv2::ErrorCode::kerInvalidKey, "Key not found");
+        return {};
     // Get a pointer to a copy of the value
     latV = latPos->getValue();
     longV = longPos->getValue();

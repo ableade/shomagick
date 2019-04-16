@@ -1,9 +1,8 @@
-#include "stdafx.h"
 #include <opencv2/core.hpp>
 #include <Eigen/core>
 #include "../src/transformations.h"
 #include "../src/allclose.h"
-#include "catch.hpp"
+#include <catch.hpp>
 
 using cv::Mat;
 using cv::Mat_;

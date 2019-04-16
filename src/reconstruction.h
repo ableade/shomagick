@@ -42,6 +42,6 @@ class Reconstruction {
         void addCloudPoint(CloudPoint cPoint);
         bool hasTrack(std::string trackId) const;
         const Camera& getCamera() const;
-        void saveReconstruction() const;
+        void saveReconstruction(const std::string recFileName) const;
         Camera& getCamera();
 };

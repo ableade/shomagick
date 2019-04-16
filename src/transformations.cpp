@@ -587,10 +587,11 @@ int eigenvector_of_symmetric_44(
         n = v[0] * v[0] + v[1] * v[1] + v[2] * v[2] + v[3] * v[3];
     }
 
-    if (n < eps)
+    if (n < eps) {
         cout << " n is " << n << "\n\n";
-    return -1;
-
+        return -1;
+    }
+    
     n = sqrt(n);
     v[0] /= n;
     v[1] /= n;

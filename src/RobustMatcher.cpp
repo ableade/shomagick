@@ -110,13 +110,11 @@ void RobustMatcher::robustMatch(const cv::Mat &image1, const cv::Mat &trainImage
   this->computeDescriptors(image1, keypoints1, descriptors1);
   this->computeDescriptors(trainImage, keypoints2, descriptors2);
 
-  this->robustMatch(keypoints1, descriptors1, keypoints2, descriptors2, matches);
+  robustMatch(descriptors1, descriptors2, matches);
 }
 
 void RobustMatcher::robustMatch(
-    const std::vector<cv::KeyPoint>& keypoints1,
     const cv::Mat descriptors1,
-    const std::vector<cv::KeyPoint>& keypoints2,
     const cv::Mat descriptors2,
     std::vector<cv::DMatch>& matches
 )
@@ -139,11 +137,7 @@ void RobustMatcher::robustMatch(
   symmetryTest(matches12, matches21, matches);
 }
 
-void RobustMatcher::fastRobustMatch(const std::vector<cv::KeyPoint> &keypoints1, 
-const cv::Mat descriptors1, 
-const std::vector<cv::KeyPoint> &keypoints2, 
-const cv::Mat descriptors2, 
-std::vector<cv::DMatch> &matches)
+void RobustMatcher::fastRobustMatch(const cv::Mat descriptors1, const cv::Mat descriptors2, std::vector<cv::DMatch> &matches)
 {
   matches.clear();
   std::vector<std::vector<cv::DMatch>> matches12;

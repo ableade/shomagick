@@ -1,6 +1,6 @@
-#include "stdafx.h"
+//#include "stdafx.h"
 #include <Eigen/Core>
-#include "catch.hpp"
+#include <catch.hpp>
 #include <vector>
 #include "../src/camera.h"
 #include "../src/shot.h"
@@ -57,7 +57,7 @@ SCENARIO("Testing the projection for a perspective camera")
         auto c = getPerspectiveCamera(physicalLens, height, width, dist1, dist2);
         WHEN("the camera projects bearing vector for this pixel")
         {
-            const auto testPoint = cv::Point2f{ 0.1,0.2 };
+            const auto testPoint = cv::Point2d{ 0.1,0.2 };
             auto bearing = c.normalizedPointToBearingVec(
                 testPoint
             );
@@ -78,7 +78,7 @@ SCENARIO("Testing the bearing direction of a camera")
 {
     GIVEN("a perspective camera and pixel [0.0,0.0]  ")
     {
-        const auto testPoint = cv::Point2f{ 0.0,0.0 };
+        const auto testPoint = cv::Point2d{ 0.0,0.0 };
         const auto physicalLens = 0.6;
         const auto height = 600;
         const auto width = 800;
@@ -154,7 +154,7 @@ SCENARIO("Testing the rotation inverse of a shot")
     GIVEN("a shot and pose with rotation vector [1,2,3] and translation vector [4,5,6] and \
         a test camera")
     {
-        const auto testPoint = cv::Point2f{ 0.23,0.678 };
+        const auto testPoint = cv::Point2d{ 0.23,0.678 };
         const auto physicalLens = 0.6;
         const auto height = 600;
         const auto width = 800;
@@ -192,7 +192,7 @@ SCENARIO("Testing the rotation inverse times bearing of a shot")
 {
     GIVEN("a shot and pose with rotation vector [1,2,3] and translation vector [4,5,6] and a test camera")
     {
-        const auto testPoint = cv::Point2f{ 0.23,0.678 };
+        const auto testPoint = cv::Point2d{ 0.23,0.678 };
         const auto physicalLens = 0.6;
         const auto height = 600;
         const auto width = 800;
@@ -226,21 +226,21 @@ SCENARIO("Testing normalized point conversion")
 {
     GIVEN("a point, test camera with width 800 and height 600")
     {
-        const vector<cv::Point2f> inputPoints {
+        const vector<cv::Point2d> inputPoints {
             {   0, 0 },
             { 319, 240 },
             { 800, 600 }
         };
 
 
-        const vector<cv::Point2f> expectedPoints{
+        const vector<cv::Point2d> expectedPoints{
             { -0.4993750000000, -0.3743750000000 },
             { -0.1006250000000, -0.0743750000000 },
             {  0.5006250000000,	 0.3756250000000 }
         };
 
-        using InputPoint = cv::Point2f;
-        using ExpectedPoint = cv::Point2f;
+        using InputPoint = cv::Point2d;
+        using ExpectedPoint = cv::Point2d;
         using InputWithExpectedPoint = std::pair<InputPoint, ExpectedPoint>;
         const auto inputsWithExpected = std::vector<InputWithExpectedPoint>{
             { {   0,   0 }, { -0.4993750000000, -0.3743750000000 } },

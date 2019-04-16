@@ -894,7 +894,8 @@ public:
         double focal_prior,
         double k1_prior,
         double k2_prior,
-        bool constant) {
+        bool constant
+    ) {
         cameras_[id] = std::unique_ptr<BAPerspectiveCamera>(new BAPerspectiveCamera());
         BAPerspectiveCamera &c = static_cast<BAPerspectiveCamera &>(*cameras_[id]);
         c.id = id;

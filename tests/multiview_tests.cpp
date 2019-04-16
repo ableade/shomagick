@@ -1,5 +1,4 @@
-#include "stdafx.h"
-#include "catch.hpp"
+#include <catch.hpp>
 #include "../src/multiview.h"
 #include "../src/allclose.h"
 #include <opencv2/core.hpp>

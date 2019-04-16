@@ -7,7 +7,7 @@
 using std::vector;
 using Eigen::Vector3d;
 using cv::InputArray;
-using cv::Point2f;
+using cv::Point2d;
 using cv::Mat_;
 
 bool allClose(
@@ -16,7 +16,7 @@ bool allClose(
     const double tolerance
 )
 {
-    for (size_t i = 0; i < 3; i++) {
+    for (auto i = 0; i < 3; i++) {
         const auto lhsElem = lhs(i);
         const auto rhsElem = rhs(i);
         if (fabs(lhsElem - rhsElem) > tolerance)
@@ -54,8 +54,8 @@ namespace detail
 } //namespace detail
 
 bool allClose(
-    const Point2f& lhs,
-    const Point2f& rhs,
+    const Point2d& lhs,
+    const Point2d& rhs,
     const double tolerance
 )
 {
@@ -69,7 +69,7 @@ bool allClose_(
     const Mat_<T>& b,
     const double tolerance
 ) {
-    for (size_t i = 0; i < a.cols; i++) {
+    for (auto i = 0; i < a.cols; i++) {
         const auto lhsElem = a.at<T>(i);
         const auto rhsElem = b.at<T>(i);
 
@@ -81,10 +81,17 @@ bool allClose_(
     return true;
 }
 
+namespace
+{
+    template <typename T>
+    void ignore(const T&) {}
+} //namespace
+
 bool allClose(
     const double lhs,
     const double rhs,
     const double tolerance
 ) {
+    ignore(tolerance);
     return allClose(vector<double>{lhs}, vector<double>{rhs});
 }

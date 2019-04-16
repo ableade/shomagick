@@ -5,7 +5,9 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/undirected_graph.hpp>
 
-typedef std::pair<std::string, int> ImageFeatureNode;
+typedef std::string ImageName;
+typedef int KeyPointIndex;
+typedef std::pair<ImageName, KeyPointIndex> ImageFeatureNode;
 
 struct VertexProperty
 {
@@ -20,11 +22,11 @@ struct VertexProperty
 struct FeatureProperty
 {
     ImageFeatureNode featureNode;
-    cv::Point2f coordinates;
+    cv::Point2d coordinates;
     cv::Scalar color;
 
     FeatureProperty() : featureNode(), coordinates(), color() {};
-    FeatureProperty(ImageFeatureNode fNode, cv::Point2f coordinates, cv::Scalar color) : featureNode(fNode), coordinates(coordinates), color(color) {}
+    FeatureProperty(ImageFeatureNode fNode, cv::Point2d coordinates, cv::Scalar color) : featureNode(fNode), coordinates(coordinates), color(color) {}
 };
 
 struct EdgeProperty {
@@ -78,7 +80,11 @@ private:
     using ImageName = std::string;
     using CandidateImageNames = std::vector<ImageName>;
     std::map<ImageName, CandidateImageNames> mapOfImageNamesToCandidateImages;
-    std::map<ImageFeatureNode, int> features;
+
+public:
+    typedef int GloballyUniqueImageFeatureId;
+private:
+    std::map<ImageFeatureNode, GloballyUniqueImageFeatureId> imageFeatureNodes_;
     std::map<int, std::vector<int>> tracks;
     UnionFind uf;
     int minTrackLength = 2;

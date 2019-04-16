@@ -85,3 +85,10 @@ ShoRowVector3d convertVecToRowVector(cv::Vec3d);
 ShoColumnVector3d convertVecToColumnVector(cv::Vec3d);
 ShoRowVector4d convertPointToRowVector(cv::Vec4d);
 ShoRowVector4d convertColumnVecToRowVector(ShoColumnVector3d);
+
+template <class T>
+void printVec(std::vector<T> vec, int count = 50) {
+    for (auto i = vec.begin(); i != vec.end(); ++i) {
+        std::cout << i << '\n';
+    }
+}

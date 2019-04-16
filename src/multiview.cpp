@@ -95,6 +95,7 @@ bool TriangulateBearingsMidpoint(
   }
   //std::cout << "Triangulating bearings midpoint for os " << os << std::endl;
   //std::cout << "Triangulating bearings midpoint for bs " << bs << std::endl;
+
   // Check angle between rays
   bool angle_ok = false;
   for (int i = 0; i < n; ++i)
@@ -136,7 +137,7 @@ bool TriangulateBearingsMidpoint(
     //std::cout << "Error was " << error << std::endl;
     if (error > threshold)
     {
-      //std::cout << "Error was greater than treshhold" << std::endl;
+    //  std::cout << "Error was greater than treshhold" << std::endl;
       return false;
     }
   }
@@ -353,7 +354,7 @@ void convertVectorToHomogeneous(cv::InputArray _src  , cv::OutputArray _dst) {
     {
         if (cn == 2)
         {
-            const cv::Point2f* sptr = src.ptr<cv::Point2f>();
+            const cv::Point2d* sptr = src.ptr<cv::Point2d>();
             cv::Point3f* dptr = dst.ptr<cv::Point3f>();
             for (i = 0; i < npoints; i++)
                 dptr[i] = cv::Point3f(sptr[i].x, sptr[i].y, 0.f);
@@ -492,4 +493,8 @@ transformation_t absolutePoseRansac(opengv::bearingVectors_t bearings, opengv::p
     transformation_t best_transformation = ransac.model_coefficients_;
 
     return best_transformation;
+}
+
+transformation_t relativePoseRansac(opengv::bearingVectors_t bearings, opengv::points_t points, double threshold, int iterations, double probability) {
+    return {};
 }

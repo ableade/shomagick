@@ -63,14 +63,14 @@ private:
   std::tuple<double, cv::Matx33d, ShoColumnVector3d> _alignReconstructionWithHorizontalOrientation(Reconstruction& rec);
   void _reconstructionSimilarity(Reconstruction & rec, double s, cv::Matx33d a, ShoColumnVector3d b);
   void _computeTwoViewReconstructionInliers(opengv::bearingVectors_t b1, opengv::bearingVectors_t b2, 
-      opengv::rotation_t r, opengv::translation_t t);
+      opengv::rotation_t r, opengv::translation_t t) const;
 
 public:
   Reconstructor(FlightSession flight, TrackGraph tg, std::map<std::string, TrackGraph::vertex_descriptor> trackNodes, 
   std::map<std::string, TrackGraph::vertex_descriptor> imageNodes);
   TwoViewPose recoverTwoCameraViewPose(CommonTrack track, cv::Mat& mask);
   void twoViewReconstructionInliers(std::vector<cv::Mat>& Rs_decomp, std::vector<cv::Mat>& ts_decomp, std::vector<int> possibleSolutions,
-      std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2) const;
+      std::vector<cv::Point2d> points1, std::vector<cv::Point2d> points2) const;
   TwoViewPose recoverTwoViewPoseWithHomography(CommonTrack track);
   float computeReconstructabilityScore(int tracks, cv::Mat inliers, int treshold = 0.3);
   void computeReconstructability(const ShoTracker& tracker, std::vector<CommonTrack>& commonTracks);
@@ -79,7 +79,7 @@ public:
 
   using OptionalReconstruction = std::optional<Reconstruction>;
   OptionalReconstruction beginReconstruction (CommonTrack track, const ShoTracker& tracker);
-  void continueReconstruction(Reconstruction& rec);
+  void continueReconstruction(Reconstruction& rec, std::set<std::string>& images);
   void triangulateShots(std::string image1, Reconstruction& rec);
   void triangulateTrack(std::string trackId, Reconstruction& rec);
   void retriangulate(Reconstruction& rec);
@@ -93,7 +93,7 @@ public:
   void removeOutliers(Reconstruction & rec);
   std::tuple<bool, ReconstructionReport> resect(Reconstruction & rec, const vertex_descriptor imageVetex,
       double threshold = 0.004, int iterations = 1000, double probability = 0.999, int resectionInliers = 10 );
-  std::vector<std::pair<std::string, int>> reconstructedPointForImages(const Reconstruction & rec);
+  std::vector<std::pair<std::string, int>> reconstructedPointForImages(const Reconstruction & rec, std::set<std::string>& images);
   void alignReconstruction(Reconstruction & rec);
   bool shouldBundle(const Reconstruction &rec);
   void colorReconstruction(Reconstruction &rec);

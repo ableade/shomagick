@@ -9,9 +9,9 @@
 #include <boost/filesystem.hpp>
 
 const int DEG = 180;
-const float WGS84_A = 6378137.0;
-const float WGS84_B = 6356752.314245;
-const float EARTH_RADIUS = 6371e3;
+const double WGS84_A = 6378137.0;
+const double WGS84_B = 6356752.314245;
+const double EARTH_RADIUS = 6371e3;
 
 inline double toRadian(double deg)
 {
