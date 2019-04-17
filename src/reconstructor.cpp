@@ -326,9 +326,11 @@ TwoViewPose Reconstructor::recoverTwoViewPoseWithHomography(CommonTrack track)
     int solutions = decomposeHomographyMat(hom, flight.getCamera().getNormalizedKMatrix(), Rs_decomp, ts_decomp, normals_decomp);
     vector<int> filteredSolutions;
     cv::filterHomographyDecompByVisibleRefpoints(Rs_decomp, normals_decomp, points1, points2, filteredSolutions, homMask);
-    cout << "Size of filtered solutions is " << filteredSolutions.size() << "\n";
+   if(filteredSolutions.size() > 0)
     //twoViewReconstructionInliers(Rs_decomp, ts_decomp, filteredSolutions, points1, points2);
-    return {true, hom, Rs_decomp[filteredSolutions[0]], ts_decomp[filteredSolutions[0]]};
+       return {true, hom, Rs_decomp[filteredSolutions[0]], ts_decomp[filteredSolutions[0]]};
+   
+   return { false, Mat(), Mat(), Mat() };
 }
 
 void Reconstructor::_computeTwoViewReconstructionInliers(opengv::bearingVectors_t b1, opengv::bearingVectors_t b2,
@@ -360,7 +362,6 @@ float Reconstructor::computeReconstructabilityScore(int tracks, Mat mask,
     int tresh) {
     auto inliers = countNonZero(mask);
     auto outliers = tracks - inliers;
-    cout << "Number of outliers is " << outliers << "\n";
     auto ratio = float(outliers) / tracks;
     return ratio;
 }
@@ -370,7 +371,7 @@ void Reconstructor::computeReconstructability(
     auto imageNodes = tracker.getImageNodes();
     for (auto &track : commonTracks) {
         Mat mask;
-        auto score = 0;
+        float score = 0;
         auto[success, essentrialMat, rotation, translation] = this->recoverTwoCameraViewPose(track, mask);
         if (success) {
             cout << "Computing reconstructability for " << track.imagePair.first << " and " << track.imagePair.second << "\n";
@@ -409,6 +410,7 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
             reconstructionImages.end() &&
             reconstructionImages.find(track.imagePair.second) !=
             reconstructionImages.end()) {
+            cout << "Score of this track was " << track.rScore << "\n";
             cout << "Starting reconstruction with " << track.imagePair.first
                 << " and "
                 << " and " << track.imagePair.second << '\n';
@@ -450,21 +452,22 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
     Reconstruction rec(flight.getCamera());
 
     Mat mask;
-    TwoViewPose poseParameters = recoverTwoCameraViewPose(track, mask);
-    //TwoViewPose poseParameters = recoverTwoViewPoseWithHomography(track);
+    //TwoViewPose poseParameters = recoverTwoCameraViewPose(track, mask);
+    TwoViewPose poseParameters = recoverTwoViewPoseWithHomography(track);
 
+    auto [success, poseMatrix, rotation, translation] = poseParameters;
     Mat essentialMat = std::get<1>(poseParameters);
     Mat r = std::get<2>(poseParameters);
     Mat t = std::get<3>(poseParameters);
 
-    if (essentialMat.rows != 3)
+    if (poseMatrix.rows != 3 || !success)
     {
         cout << "Could not compute the essential matrix for this pair" << endl;
         //Get the first essential Mat;
         return std::nullopt;
     }
 
-# if 1
+# if 0
     auto inliers = countNonZero(mask);
     if (inliers <= 5)
     {
