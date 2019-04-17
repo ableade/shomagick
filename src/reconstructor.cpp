@@ -361,9 +361,8 @@ float Reconstructor::computeReconstructabilityScore(int tracks, Mat mask,
     auto inliers = countNonZero(mask);
     auto outliers = tracks - inliers;
     cout << "Number of outliers is " << outliers << "\n";
-    return outliers;
-    //auto ratio = float(outliers) / tracks;
-    //return ratio > tresh ? ratio : 0;
+    auto ratio = float(outliers) / tracks;
+    return ratio;
 }
 
 void Reconstructor::computeReconstructability(
@@ -419,6 +418,9 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
                 reconstructionImages.erase(track.imagePair.first);
                 reconstructionImages.erase(track.imagePair.second);
                 continueReconstruction(rec, reconstructionImages);
+                string recFileName = flight.getImageDirectoryPath().parent_path().leaf().string() + "-" + 
+                    to_string(reconstructions.size() + 1) + ".ply";
+                rec.saveReconstruction(recFileName);
                 reconstructions.push_back(rec);
             }
         }
@@ -438,7 +440,7 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
         }
     }
     colorReconstruction(allReconstruction);
-    string recFileName = flight.getImageDirectoryPath().parent_path().leaf().string() + "green.ply";
+    string recFileName = flight.getImageDirectoryPath().parent_path().leaf().string() + "all_green.ply";
     allReconstruction.saveReconstruction(recFileName);
     cout << "Total number of points in all reconstructions is " << allReconstruction.getCloudPoints().size() << "\n\n";
 }
