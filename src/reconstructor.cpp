@@ -905,7 +905,6 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
 
             fPoints.push_back(flight.getCamera().denormalizeImageCoordinates(fPoint));
             auto position = rec.getCloudPoints().at(stoi(trackName)).getPosition();
-            std::cout << "Real world position was " << position << "\n";
             realWorldPoints.push_back(position);
             Xs.push_back({ position.x, position.y, position.z });
             Bs.push_back(fBearing);

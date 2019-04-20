@@ -165,13 +165,28 @@ void ShoMatcher::runRobustFeatureMatching()
 
     RobustMatcher rmatcher;
 
+    map<string, ImageFeatures> loadedFeatures;
     for (const auto&[queryImg, trainImages] : candidateImages) {
-        auto queryImagePath = this->flight.getImageDirectoryPath() / queryImg;
-        auto queryFeaturesSet = this->flight.loadFeatures(queryImg);
+        auto queryImagePath = flight.getImageDirectoryPath() / queryImg;
+        ImageFeatures queryFeaturesSet;
+        try {
+            queryFeaturesSet = loadedFeatures.at(queryImg);
+        }
+        catch (std::out_of_range e) {
+            queryFeaturesSet = flight.loadFeatures(queryImg);
+            loadedFeatures[queryImg] = queryFeaturesSet;
+        }
         map<string, vector<DMatch>> matchSet;
         for (const auto trainImg : trainImages)
         {
-            auto trainFeaturesSet = this->flight.loadFeatures(trainImg);
+            ImageFeatures trainFeaturesSet;
+            try {
+                trainFeaturesSet = loadedFeatures.at(trainImg);
+            }
+            catch (std::out_of_range e) {
+                trainFeaturesSet = flight.loadFeatures(trainImg);
+                loadedFeatures[trainImg] = trainFeaturesSet;
+            }
             vector<DMatch> matches;
 
             rmatcher.robustMatch(queryFeaturesSet.descriptors, trainFeaturesSet.descriptors, matches);

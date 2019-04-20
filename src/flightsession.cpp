@@ -1,6 +1,10 @@
 #include "flightsession.h"
 #include "exiv2/exiv2.hpp"
 #include <iostream>
+#include <fstream>
+#include "utilities.h"
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 
 using namespace boost::filesystem;
 using cv::DMatch;
@@ -15,6 +19,7 @@ using std::vector;
 using std::cerr;
 using std::string;
 using std::endl;
+using std::ios;
 
 FlightSession::FlightSession() : imageSet(), imageDirectory(), imageDirectoryPath(), imageFeaturesPath(),
 imageTracksPath(), camera(), referenceLLA()
@@ -53,12 +58,22 @@ imageTracksPath(), camera(), referenceLLA()
     for (auto entry : v)
     {
         if (entry.path().extension().string() == ".jpg" || entry.path().extension().string() == ".png") {
-            Img img(entry.path().string());
-            this->imageSet.push_back(img);
+            const auto imageFileName = parseFileNameFromPath(entry.path().string());
+            const auto imageExifPath = getImageExifPath() / (imageFileName + ".dat");
+            ImageMetadata metadata;
+            if (exists(imageExifPath)) {
+                Img::extractExifFromFile(imageExifPath.string(), metadata);
+            } else{
+                metadata = Img::extractExifFromImage(entry.path().string());
+                saveImageExifFile(imageFileName, metadata);
+            }
+            Img img(imageFileName, metadata);
+            imageSet.push_back(img);
         }
     }
     if (!calibrationFile.empty()) {
-        this->camera = Camera::getCameraFromCalibrationFile(calibrationFile);
+        assert(exists(calibrationFile));
+        camera = Camera::getCameraFromCalibrationFile(calibrationFile);
     }
     inventReferenceLLA();
     cout << "Found " << this->imageSet.size() << " usable images" << endl;
@@ -87,6 +102,11 @@ const path FlightSession::getImageFeaturesPath() const
 const path FlightSession::getImageMatchesPath() const
 {
     return this->imageMatchesPath;
+}
+
+const boost::filesystem::path FlightSession::getImageExifPath() const
+{
+    return exifPath;
 }
 
 /*
@@ -132,9 +152,18 @@ bool FlightSession::saveImageFeaturesFile(string imageName, const std::vector<cv
     return boost::filesystem::exists(imageFeaturePath);
 }
 
+bool FlightSession::saveImageExifFile(std::string imageName, ImageMetadata imageExif)
+{
+    auto imageExifPath = getImageExifPath() / (imageName + ".dat");
+    ofstream exifFile(imageExifPath, ios::binary);
+    boost::archive::text_oarchive ar(exifFile);
+    ar & imageExif;
+    return exists(imageExifPath);
+}
+
 bool FlightSession::saveMatches(string fileName, const std::map<string, vector<cv::DMatch>>& matches)
 {
-    auto imageMatchesPath = this->getImageMatchesPath() / (fileName + ".yaml");
+    auto imageMatchesPath = getImageMatchesPath() / (fileName + ".yaml");
     cout << "Writing file " << imageMatchesPath.string() << endl;
     cv::FileStorage fs(imageMatchesPath.string(), cv::FileStorage::WRITE);
     fs << "MatchCount" << (int)matches.size();
@@ -154,7 +183,7 @@ map<string, vector<DMatch>> FlightSession::loadMatches(string fileName) const
     cout << "Loading matches for " << fileName << endl;
     map<string, vector<DMatch>> allPairMatches;
 
-    auto imageMatchesPath = this->getImageMatchesPath() / (fileName + ".yaml");
+    auto imageMatchesPath = getImageMatchesPath() / (fileName + ".yaml");
     cv::FileStorage fs(imageMatchesPath.string(), cv::FileStorage::READ);
     FileNode cMatches = fs["candidateImageMatches"];
     FileNodeIterator it = cMatches.begin(), it_end = cMatches.end();
@@ -171,7 +200,7 @@ map<string, vector<DMatch>> FlightSession::loadMatches(string fileName) const
 ImageFeatures FlightSession::loadFeatures(string imageName) const
 {
     cout << "Loading features for " << imageName << endl;
-    auto imageFeaturePath = this->getImageFeaturesPath() / (imageName + ".yaml");
+    auto imageFeaturePath = getImageFeaturesPath() / (imageName + ".yaml");
     cv::FileStorage fs(imageFeaturePath.string(), cv::FileStorage::READ);
     vector<KeyPoint> keypoints;
     Mat descriptors;
