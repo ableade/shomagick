@@ -281,7 +281,7 @@ TwoViewPose Reconstructor::recoverTwoCameraViewPose(CommonTrack track,
     vector<Point2f> points1;
     vector<Point2f> points2;
     this->_alignMatchingPoints(track, points1, points2);
-    const auto kMatrix = this->flight.getCamera().getNormalizedKMatrix();
+    const auto kMatrix = flight.getCamera().getNormalizedKMatrix();
     Mat essentialMatrix = findEssentialMat(points1, points2, kMatrix);
 
     if (essentialMatrix.rows == 12 && essentialMatrix.cols == 3) {

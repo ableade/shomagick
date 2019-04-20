@@ -164,12 +164,13 @@ private:
 public:
 	Img() : imageFileName(), metadata() {};
     //Constructs an img class given the path to the image 
-    Img(std::string imageFilePath);
+    Img(std::string imageFileName);
 	Img(std::string fileName, ImageMetadata metadata) : imageFileName(fileName) ,  metadata(metadata) {};
     const ImageMetadata& getMetadata() const;
     const std::string& getFileName() const;
     ImageMetadata& getMetadata();
     static ImageMetadata extractExifFromImage(std::string imagePath);
+    static void extractExifFromFile(std::string imageExifFile, ImageMetadata& metadata);
     
 };
 

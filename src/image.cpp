@@ -1,6 +1,7 @@
 #include "image.hpp"
 #include <string>
-
+#include <fstream>
+#include "utilities.h"
 using std::string;
 
 const ImageMetadata & Img::getMetadata() const
@@ -40,6 +41,14 @@ ImageMetadata Img::extractExifFromImage(std::string imagePath)
     imageExif.cameraModel = model;
     imageExif.orientation = orientation;
     return imageExif;
+}
+
+void Img::extractExifFromFile(std::string imageExifFile, ImageMetadata& imgMetadata)
+{
+    assert(boost::filesystem::exists(imageExifFile));
+    std::ifstream exifFile(imageExifFile, std::ios::in);
+    boost::archive::text_iarchive ar(exifFile);
+    ar & imgMetadata;
 }
 
 Location Img::_extractCoordinatesFromExif(Exiv2::ExifData exifData)
@@ -113,7 +122,6 @@ int Img::_extractOrientationFromExif(Exiv2::ExifData imageExifData)
     return orientation;
 }
 
-Img::Img(string imagePath) {
-    imageFileName = parseFileNameFromPath(imagePath);
-    metadata = Img::extractExifFromImage(imagePath);
+Img::Img(string imageFileName) : imageFileName(imageFileName) {
+
 }

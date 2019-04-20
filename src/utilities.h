@@ -1,6 +1,8 @@
 #pragma once
 #include "shotracking.h"
 #include "camera.h"
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 
 inline void printGraph(TrackGraph tracksGraph) {
     std::cerr << "Number of vertices is " << tracksGraph.m_vertices.size() << std::endl;
@@ -92,3 +94,33 @@ void printVec(std::vector<T> vec, int count = 50) {
         std::cout << i << '\n';
     }
 }
+
+namespace boost {
+    namespace serialization {
+
+        template<class Archive>
+        void serialize(Archive & ar, ImageMetadata & m, const unsigned int version)
+        {
+            ar & m.location;
+            ar & m.height;
+            ar & m.width;
+            ar & m.projectionType;
+            ar & m.cameraMake;
+            ar & m.cameraModel;
+            ar & m.orientation;
+            ar & m.captureTime;
+        }
+
+        
+        template <class Archive>
+        void serialize(Archive & ar, Location & loc, const unsigned int version) {
+                ar & loc.longitude;
+                ar & loc.latitude;
+                ar & loc.altitude;
+                ar & loc.dop;
+        }
+        
+    } // namespace serialization
+} // namespace boost
+
+
