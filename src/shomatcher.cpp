@@ -23,6 +23,7 @@ using std::cout;
 using std::endl;
 using std::map;
 using std::pair;
+using std::cerr;
 using std::set;
 using std::max;
 using std::vector;
@@ -118,7 +119,13 @@ int ShoMatcher::extractFeatures(bool resize)
 
 bool ShoMatcher::_extractFeature(string fileName, bool resize)
 {
-    auto modelimageNamePath = this->flight.getImageDirectoryPath() / fileName;
+    auto imageFeaturePath = flight.getImageFeaturesPath() / (fileName + ".yaml");
+    if (boost::filesystem::exists(imageFeaturePath)) {
+        //Use existing file instead.
+        cerr << "Using " << imageFeaturePath.string()<< " for features \n";
+        return true;
+    }
+    auto modelimageNamePath = flight.getImageDirectoryPath() / fileName;
     Mat modelImg = imread(modelimageNamePath.string(), SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM | SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM);
     cv::cvtColor(modelImg, modelImg, SHO_BGR2RGB);
     Mat featureImage = imread(modelimageNamePath.string(), SHO_GRAYSCALE);

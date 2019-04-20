@@ -281,7 +281,7 @@ TwoViewPose Reconstructor::recoverTwoCameraViewPose(CommonTrack track,
     vector<Point2f> points1;
     vector<Point2f> points2;
     this->_alignMatchingPoints(track, points1, points2);
-    const auto kMatrix = this->flight.getCamera().getNormalizedKMatrix();
+    const auto kMatrix = flight.getCamera().getNormalizedKMatrix();
     Mat essentialMatrix = findEssentialMat(points1, points2, kMatrix);
 
     if (essentialMatrix.rows == 12 && essentialMatrix.cols == 3) {
@@ -370,7 +370,7 @@ void Reconstructor::computeReconstructability(
     auto imageNodes = tracker.getImageNodes();
     for (auto &track : commonTracks) {
         Mat mask;
-        auto score = 0;
+        float score = 0;
         auto[success, essentrialMat, rotation, translation] = this->recoverTwoCameraViewPose(track, mask);
         if (success) {
             cout << "Computing reconstructability for " << track.imagePair.first << " and " << track.imagePair.second << "\n";
@@ -905,6 +905,7 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
 
             fPoints.push_back(flight.getCamera().denormalizeImageCoordinates(fPoint));
             auto position = rec.getCloudPoints().at(stoi(trackName)).getPosition();
+            std::cout << "Real world position was " << position << "\n";
             realWorldPoints.push_back(position);
             Xs.push_back({ position.x, position.y, position.z });
             Bs.push_back(fBearing);
