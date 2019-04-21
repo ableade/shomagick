@@ -71,7 +71,7 @@ public:
   TwoViewPose recoverTwoCameraViewPose(CommonTrack track, cv::Mat& mask);
   void twoViewReconstructionInliers(std::vector<cv::Mat>& Rs_decomp, std::vector<cv::Mat>& ts_decomp, std::vector<int> possibleSolutions,
       std::vector<cv::Point2d> points1, std::vector<cv::Point2d> points2) const;
-  TwoViewPose recoverTwoViewPoseWithHomography(CommonTrack track);
+  TwoViewPose recoverTwoViewPoseWithHomography(CommonTrack track, cv::Mat& mask);
   float computeReconstructabilityScore(int tracks, cv::Mat inliers, int treshold = 0.3);
   void computeReconstructability(const ShoTracker& tracker, std::vector<CommonTrack>& commonTracks);
   std::tuple<cv::Mat, std::vector<cv::Point2f>, std::vector<cv::Point2f>, cv::Mat> computePlaneHomography(CommonTrack commonTrack) const;

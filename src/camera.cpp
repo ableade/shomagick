@@ -145,7 +145,6 @@ Mat Camera::getNormalizedKMatrix() const {
         0.,         lensSize,    0,
         0.,          0.,         1);
 
-    std::cout << "Normalized k matrix is " << normK << "\n";
     return normK;
 }
 

@@ -26,6 +26,7 @@ using cv::Mat;
 using cv::Scalar;
 using std::vector;
 using cv::Point3d;
+using cv::Point2f;
 using Eigen::Vector3d;
 using Eigen::Matrix3d;
 using opengv::absolute_pose::CentralAbsoluteAdapter;
@@ -497,4 +498,73 @@ transformation_t absolutePoseRansac(opengv::bearingVectors_t bearings, opengv::p
 
 transformation_t relativePoseRansac(opengv::bearingVectors_t bearings, opengv::points_t points, double threshold, int iterations, double probability) {
     return {};
+}
+
+Mat homography_dlt(vector< Point2f > &x1, const vector< Point2f > &x2)
+{
+    int npoints = (int)x1.size();
+    Mat A(2 * npoints, 9, CV_64F, cv::Scalar(0));
+    // We need here to compute the SVD on a (n*2)*9 matrix (where n is
+    // the number of points). if n == 4, the matrix has more columns
+    // than rows. The solution is to add an extra line with zeros
+    if (npoints == 4)
+        A.resize(2 * npoints + 1, cv::Scalar(0));
+    // Since the third line of matrix A is a linear combination of the first and second lines
+    // (A is rank 2) we don't need to implement this third line
+    for (int i = 0; i < npoints; i++) {      // Update matrix A using eq. 33
+        A.at<double>(2 * i, 3) = -x1[i].x;               // -xi_1
+        A.at<double>(2 * i, 4) = -x1[i].y;               // -yi_1
+        A.at<double>(2 * i, 5) = -1;                     // -1
+        A.at<double>(2 * i, 6) = x2[i].y * x1[i].x;     //  yi_2 * xi_1
+        A.at<double>(2 * i, 7) = x2[i].y * x1[i].y;     //  yi_2 * yi_1
+        A.at<double>(2 * i, 8) = x2[i].y;               //  yi_2
+        A.at<double>(2 * i + 1, 0) = x1[i].x;             //  xi_1
+        A.at<double>(2 * i + 1, 1) = x1[i].y;             //  yi_1
+        A.at<double>(2 * i + 1, 2) = 1;                   //  1
+        A.at<double>(2 * i + 1, 6) = -x2[i].x * x1[i].x;   // -xi_2 * xi_1
+        A.at<double>(2 * i + 1, 7) = -x2[i].x * x1[i].y;   // -xi_2 * yi_1
+        A.at<double>(2 * i + 1, 8) = -x2[i].x;             // -xi_2
+    }
+    // Add an extra line with zero.
+    if (npoints == 4) {
+        for (int i = 0; i < 9; i++) {
+            A.at<double>(2 * npoints, i) = 0;
+        }
+    }
+    Mat w, u, vt;
+    cv::SVD::compute(A, w, u, vt);
+    double smallestSv = w.at<double>(0, 0);
+    unsigned int indexSmallestSv = 0;
+    for (int i = 1; i < w.rows; i++) {
+        if ((w.at<double>(i, 0) < smallestSv)) {
+            smallestSv = w.at<double>(i, 0);
+            indexSmallestSv = i;
+        }
+    }
+    Mat h = vt.row(indexSmallestSv);
+    if (h.at<double>(0, 8) < 0) // tz < 0
+        h *= -1;
+    Mat _2H1(3, 3, CV_64F);
+    for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 3; j++)
+            _2H1.at<double>(i, j) = h.at<double>(0, 3 * i + j);
+    return _2H1;
+}
+void pose_from_homography_dlt(vector<Point2f > &xw, vector<Point2f > &xo, Mat &otw, Mat &oRw)
+{
+    Mat oHw = homography_dlt(xw, xo);
+    // Normalization to ensure that ||c1|| = 1
+    double norm = sqrt(oHw.at<double>(0, 0)*oHw.at<double>(0, 0)
+        + oHw.at<double>(1, 0)*oHw.at<double>(1, 0)
+        + oHw.at<double>(2, 0)*oHw.at<double>(2, 0));
+    oHw /= norm;
+    Mat c1 = oHw.col(0);
+    Mat c2 = oHw.col(1);
+    Mat c3 = c1.cross(c2);
+    otw = oHw.col(2);
+    for (int i = 0; i < 3; i++) {
+        oRw.at<double>(i, 0) = c1.at<double>(i, 0);
+        oRw.at<double>(i, 1) = c2.at<double>(i, 0);
+        oRw.at<double>(i, 2) = c3.at<double>(i, 0);
+    }
 }

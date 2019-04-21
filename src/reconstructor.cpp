@@ -318,11 +318,14 @@ void Reconstructor::twoViewReconstructionInliers(vector<Mat>& Rs_decomp, vector<
     }
 }
 
-TwoViewPose Reconstructor::recoverTwoViewPoseWithHomography(CommonTrack track)
+TwoViewPose Reconstructor::recoverTwoViewPoseWithHomography(CommonTrack track, Mat& mask)
 {
     const auto&[hom, points1, points2, homMask] = computePlaneHomography(track);
+    homMask.copyTo(mask);
     cout << "Homography was " << hom << endl;
-    vector<cv::Mat> Rs_decomp, ts_decomp, normals_decomp;
+    if (!hom.rows || !hom.cols)
+        return { false, Mat(), Mat(), Mat() };
+    vector<Mat> Rs_decomp, ts_decomp, normals_decomp;
     int solutions = decomposeHomographyMat(hom, flight.getCamera().getNormalizedKMatrix(), Rs_decomp, ts_decomp, normals_decomp);
     vector<int> filteredSolutions;
     cv::filterHomographyDecompByVisibleRefpoints(Rs_decomp, normals_decomp, points1, points2, filteredSolutions, homMask);
@@ -380,7 +383,11 @@ void Reconstructor::computeReconstructability(
         track.rScore = score;
     }
     sort(std::begin(commonTracks), std::end(commonTracks),
-        [](CommonTrack a, CommonTrack b) { return a.rScore > b.rScore; });
+        [](CommonTrack a, CommonTrack b) { return a.rScore < b.rScore; });
+
+    for (auto track : commonTracks) {
+        cout << "Score of this track is " << track.rScore << "\n";
+    }
 }
 
 //“Motion and Structure from Motion in a Piecewise Planar Environment. See paper
@@ -453,7 +460,7 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
 
     Mat mask;
     //TwoViewPose poseParameters = recoverTwoCameraViewPose(track, mask);
-    TwoViewPose poseParameters = recoverTwoViewPoseWithHomography(track);
+    TwoViewPose poseParameters = recoverTwoViewPoseWithHomography(track, mask);
 
     auto [success, poseMatrix, rotation, translation] = poseParameters;
     Mat essentialMat = std::get<1>(poseParameters);
@@ -467,7 +474,7 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
         return std::nullopt;
     }
 
-# if 0
+# if 1
     auto inliers = countNonZero(mask);
     if (inliers <= 5)
     {
