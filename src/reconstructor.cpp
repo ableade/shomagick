@@ -366,7 +366,10 @@ float Reconstructor::computeReconstructabilityScore(int tracks, Mat mask,
     auto inliers = countNonZero(mask);
     auto outliers = tracks - inliers;
     auto ratio = float(outliers) / tracks;
-    return ratio;
+    if (ratio > 0.3)
+        return outliers;
+    else
+        return 0;
 }
 
 void Reconstructor::computeReconstructability(
@@ -374,20 +377,26 @@ void Reconstructor::computeReconstructability(
     auto imageNodes = tracker.getImageNodes();
     for (auto &track : commonTracks) {
         Mat mask;
-        float score = 0;
         auto[success, essentrialMat, rotation, translation] = this->recoverTwoCameraViewPose(track, mask);
         if (success) {
             cout << "Computing reconstructability for " << track.imagePair.first << " and " << track.imagePair.second << "\n";
-            score = this->computeReconstructabilityScore(track.commonTracks.size(), mask);
+            track.rScore = computeReconstructabilityScore(track.commonTracks.size(), mask);
         }
-        track.rScore = score;
+        else {
+            track.rScore = 0;
+        }
     }
+    for (const auto& track : commonTracks) {
+        cout << "Track score before sorting is " << track.rScore << "\n";
+    }
+   
     sort(std::begin(commonTracks), std::end(commonTracks),
-        [](CommonTrack a, CommonTrack b) { return a.rScore < b.rScore; });
+        [](const CommonTrack& a, const CommonTrack& b) { return -a.rScore < - b.rScore; });
 
-    for (auto track : commonTracks) {
-        cout << "Score of this track is " << track.rScore << "\n";
+    for (const auto& track : commonTracks) {
+        cout << "Track score after sorting is " << track.rScore << "\n";
     }
+   
 }
 
 //“Motion and Structure from Motion in a Piecewise Planar Environment. See paper
@@ -418,9 +427,11 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
             reconstructionImages.find(track.imagePair.second) !=
             reconstructionImages.end()) {
             cout << "Score of this track was " << track.rScore << "\n";
+
             cout << "Starting reconstruction with " << track.imagePair.first
                 << " and "
                 << " and " << track.imagePair.second << '\n';
+            cout << "Score of this track is " << track.rScore << "\n";
             auto optRec = beginReconstruction(track, tracker);
             if (optRec) {
                 auto rec = *optRec;
