@@ -71,6 +71,21 @@ public:
     CommonTrack() : imagePair(), rScore(), commonTracks() {};
     CommonTrack(std::pair<std::string, std::string> imagePair, float rScore, std::set<std::string> commonTracks) : imagePair
     (imagePair), rScore(rScore), commonTracks(commonTracks) {};
+
+    CommonTrack(const CommonTrack& c)
+    {
+        this->imagePair = c.imagePair;
+        this->rScore = c.rScore;
+        this->commonTracks = c.commonTracks;
+    }
+
+    CommonTrack& operator= (const CommonTrack &c)
+    {
+        this->imagePair = c.imagePair;
+        this->rScore = c.rScore;
+        this->commonTracks = c.commonTracks;
+        return *this;
+    }
 };
 
 class ShoTracker
