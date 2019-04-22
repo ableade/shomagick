@@ -329,9 +329,15 @@ TwoViewPose Reconstructor::recoverTwoViewPoseWithHomography(CommonTrack track, M
     int solutions = decomposeHomographyMat(hom, flight.getCamera().getNormalizedKMatrix(), Rs_decomp, ts_decomp, normals_decomp);
     vector<int> filteredSolutions;
     cv::filterHomographyDecompByVisibleRefpoints(Rs_decomp, normals_decomp, points1, points2, filteredSolutions, homMask);
-   if(filteredSolutions.size() > 0)
+    if (filteredSolutions.size() > 0) {
+        cout << "Size of filtered solutions is " << filteredSolutions.size() << "\n";
+        return { true, hom, Rs_decomp[filteredSolutions[0]], ts_decomp[filteredSolutions[0]] };
+    }
+    else {
+        cout << "No filtered solutions << \n";
+    }
     //twoViewReconstructionInliers(Rs_decomp, ts_decomp, filteredSolutions, points1, points2);
-       return {true, hom, Rs_decomp[filteredSolutions[0]], ts_decomp[filteredSolutions[0]]};
+       
    
    return { false, Mat(), Mat(), Mat() };
 }
@@ -952,6 +958,8 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
         rec.getReconstructionShots()[recShot.getId()] = recShot;
         return { true, report };
     }
+
+    /*
     const auto t = absolutePoseRansac(Bs, Xs, threshold, iterations, probability);
     cout << "T obtained was " << t << "\n";
     Matrix3d rotation;
@@ -1005,6 +1013,6 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
     }
     return make_tuple(false, report);
       */
-
+    
     return make_tuple(false, report);
 }
