@@ -12,6 +12,7 @@ using cv::FeatureDetector;
 using cv::imread;
 using cv::Mat;
 using cv::ORB;
+using cv::cuda::GpuMat;
 using cv::Ptr;
 using cv::Vec3b;
 using cv::Scalar;
@@ -30,6 +31,21 @@ using std::vector;
 using std::string;
 using json = nlohmann::json;
 
+ShoMatcher::ShoMatcher(FlightSession flight) : flight(flight)
+, kd(nullptr)
+, candidateImages()
+, detector_(cv::ORB::create(4000))
+, extractor_(cv::ORB::create(4000)) {
+    if (cv::cuda::getCudaEnabledDeviceCount()) {
+        cerr<< "CUDA device detected. Running CUDA \n";
+        runCuda = true;
+    }
+    if (runCuda) {
+        //Set CUDA ORB detector
+        detector_ = cv::cuda::ORB::create(4000);
+        extractor_ = cv::cuda::ORB::create(4000);
+    }
+}
 void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
 {
     set<pair<string, string>> alreadyPaired;
@@ -143,6 +159,14 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
     std::vector<cv::KeyPoint> keypoints;
     std::vector<cv::Scalar> colors;
     cv::Mat descriptors;
+
+    if (runCuda) {
+        GpuMat cudaFeatureImg, cudaKeypoints, cudaDescriptors;
+        cudaFeatureImg.upload(featureImage);
+        
+        (cv::Ptr<cv::cuda::ORB>)this->detector_->detect(cudaFeatureImg, cudaKeypoints);
+        this->extractor_->compute(cudaFeatureImg, cudaKeypoints, cudaDescriptors);
+    }
     this->detector_->detect(featureImage, keypoints);
     this->extractor_->compute(featureImage, keypoints, descriptors);
     cout << "Extracted " << descriptors.rows << " points for  " << fileName << endl;
