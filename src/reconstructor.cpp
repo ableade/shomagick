@@ -616,7 +616,6 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec) {
             cp.setId(stoi(trackId));
             cp.setPosition(Point3d{ x(0), x(1), x(2) });
             rec.addCloudPoint(cp);
-            cout << "added cloud point, size now  " << rec.getCloudPoints().size() << "\n";
         }
     }
 }
@@ -823,10 +822,7 @@ void Reconstructor::bundle(Reconstruction& rec) {
         shot.getPose().setRotationVector(rotation);
         shot.getPose().setTranslation(translation);
 
-        cout << "Origin in map is " << rec.getReconstructionShots()[shotId].getPose().getOrigin() << "\n";
-
         Pose testPose{ translation, rotation };
-        cout << "Origin from this pose is " << testPose.getOrigin() << "\n";
     }
 
     for (auto &[pointId, cloudPoint] : rec.getCloudPoints()) {
