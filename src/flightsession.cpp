@@ -180,7 +180,6 @@ bool FlightSession::saveMatches(string fileName, const std::map<string, vector<c
 
 map<string, vector<DMatch>> FlightSession::loadMatches(string fileName) const
 {
-    cout << "Loading matches for " << fileName << endl;
     map<string, vector<DMatch>> allPairMatches;
 
     auto imageMatchesPath = getImageMatchesPath() / (fileName + ".yaml");
@@ -199,7 +198,6 @@ map<string, vector<DMatch>> FlightSession::loadMatches(string fileName) const
 
 ImageFeatures FlightSession::loadFeatures(string imageName) const
 {
-    cout << "Loading features for " << imageName << endl;
     auto imageFeaturePath = getImageFeaturesPath() / (imageName + ".yaml");
     cv::FileStorage fs(imageFeaturePath.string(), cv::FileStorage::READ);
     vector<KeyPoint> keypoints;

@@ -322,7 +322,7 @@ TwoViewPose Reconstructor::recoverTwoViewPoseWithHomography(CommonTrack track, M
 {
     const auto&[hom, points1, points2, homMask] = computePlaneHomography(track);
     homMask.copyTo(mask);
-    cout << "Homography was " << hom << endl;
+    //cout << "Homography was " << hom << endl;
     if (!hom.rows || !hom.cols)
         return { false, Mat(), Mat(), Mat() };
     vector<Mat> Rs_decomp, ts_decomp, normals_decomp;
@@ -385,23 +385,15 @@ void Reconstructor::computeReconstructability(
         Mat mask;
         auto[success, essentrialMat, rotation, translation] = this->recoverTwoCameraViewPose(track, mask);
         if (success) {
-            cout << "Computing reconstructability for " << track.imagePair.first << " and " << track.imagePair.second << "\n";
             track.rScore = computeReconstructabilityScore(track.commonTracks.size(), mask);
         }
         else {
             track.rScore = 0;
         }
     }
-    for (const auto& track : commonTracks) {
-        cout << "Track score before sorting is " << track.rScore << "\n";
-    }
    
     sort(std::begin(commonTracks), std::end(commonTracks),
         [](const CommonTrack& a, const CommonTrack& b) { return -a.rScore < - b.rScore; });
-
-    for (const auto& track : commonTracks) {
-        cout << "Track score after sorting is " << track.rScore << "\n";
-    }
    
 }
 
@@ -446,11 +438,13 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
                 continueReconstruction(rec, reconstructionImages);
                 string recFileName = flight.getImageDirectoryPath().parent_path().leaf().string() + "-" + 
                     to_string(reconstructions.size() + 1) + ".ply";
+            
                 rec.saveReconstruction(recFileName);
                 reconstructions.push_back(rec);
             }
         }
     }
+    cerr << "Generated a total of " << reconstructions.size() << " partial reconstruction \n";
     Reconstruction allReconstruction;
     for (auto & rec : reconstructions) {
         for (const auto[shotId, shot] : rec.getReconstructionShots()) {
@@ -503,8 +497,6 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
     Rodrigues(r, rVec);
     Mat distortion;
 
-    cout << "Rvec was " << rVec + '\n';
-    cout << "T was " << t << '\n';
     const auto shot1Image = flight.getImageSet()[flight.getImageIndex(track.imagePair.first)];
     const auto shot2Image = flight.getImageSet()[flight.getImageIndex(track.imagePair.second)];
     ShotMetadata shot1Metadata(shot1Image.getMetadata(), flight);
@@ -616,7 +608,6 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec) {
             cp.setId(stoi(trackId));
             cp.setPosition(Point3d{ x(0), x(1), x(2) });
             rec.addCloudPoint(cp);
-            cout << "added cloud point, size now  " << rec.getCloudPoints().size() << "\n";
         }
     }
 }
@@ -817,16 +808,11 @@ void Reconstructor::bundle(Reconstruction& rec) {
     for (auto &[shotId, shot] : rec.getReconstructionShots()) {
         auto s = bundleAdjuster.GetShot(shotId);
         Mat rotation = (Mat_<double>(3, 1) << s.GetRX(), s.GetRY(), s.GetRZ());
-        cout << "Rotation was " << rotation << "\n";
         Mat translation = (Mat_<double>(3, 1) << s.GetTX(), s.GetTY(), s.GetTZ());
 
         shot.getPose().setRotationVector(rotation);
         shot.getPose().setTranslation(translation);
-
-        cout << "Origin in map is " << rec.getReconstructionShots()[shotId].getPose().getOrigin() << "\n";
-
         Pose testPose{ translation, rotation };
-        cout << "Origin from this pose is " << testPose.getOrigin() << "\n";
     }
 
     for (auto &[pointId, cloudPoint] : rec.getCloudPoints()) {
@@ -921,7 +907,6 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
     vector<Point2d> fPoints;
     vector<Point3d> realWorldPoints;
     const auto[edgesBegin, edgesEnd] = boost::out_edges(imageVertex, this->tg);
-    cout << "Reconstruction has " << rec.getCloudPoints().size() << "tracks \n";
     for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
         const auto trackName = this->tg[*tracksIter].trackName;
         if (rec.hasTrack(trackName)) {
@@ -937,7 +922,7 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
             Bs.push_back(fBearing);
         }
     }
-    cout << "Size of bs is " << Bs.size() << "\n";
+
     if (Bs.size() < 5) {
         report.numCommonPoints = Bs.size();
         return make_tuple(false, report);
@@ -950,8 +935,6 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
         const auto shotName = tg[imageVertex].name;
         const auto shot = flight.getImageSet()[flight.getImageIndex(shotName)];
         ShotMetadata shotMetadata(shot.getMetadata(), flight);
-        cout << "Rotation from absolute ransac is " << pnpRot << "\n";
-        cout << "Translation from absolute ransac is " << pnpTrans << "\n";
         report.numCommonPoints = Bs.size();
         report.numInliers = cv::countNonZero(inliers);
         Shot recShot(shotName, flight.getCamera(), Pose(pnpRot, pnpTrans), shotMetadata);

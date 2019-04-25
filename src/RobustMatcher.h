@@ -1,13 +1,10 @@
+#pragma once
 /*
  * RobustMatcher.h
  *
  *  Created on: Jun 4, 2014
  *      Author: eriba
  */
-
-#ifndef ROBUSTMATCHER_H_
-#define ROBUSTMATCHER_H_
-
 #include <iostream>
 
 #include <opencv2/core/core.hpp>
@@ -82,5 +79,3 @@ private:
   // max ratio between 1st and 2nd NN
   float ratio_;
 };
-
-#endif /* ROBUSTMATCHER_H_ */
