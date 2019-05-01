@@ -167,7 +167,7 @@ tuple<double, Matx33d, ShoColumnVector3d> Reconstructor::_alignReconstructionWit
     for (const auto[imageName, shot] : rec.getReconstructionShots()) {
         auto shotOrigin = Mat(shot.getPose().getOrigin());
         shotOrigin = shotOrigin.reshape(1, 1);
-        cout << "Shot origin is " << shotOrigin << "\n\n";
+        //cout << "Shot origin is " << shotOrigin << "\n\n";
         shotOrigins.push_back(shotOrigin);
         Vec2d shotOrigin2D((double*)shotOrigin.colRange(0, 2).data);
         shotOrigins2D.push_back(shotOrigin2D);
@@ -200,7 +200,7 @@ tuple<double, Matx33d, ShoColumnVector3d> Reconstructor::_alignReconstructionWit
 
     Mat3d cvRPlane;
     eigen2cv(rPlane, cvRPlane);
-#if 0
+#if 1
     cout << "Size of CV r plane was " << cvRPlane.size() << "\n";
     cout << "Size of shot origins is " << shotOrigins.size() << "\n";
 
@@ -238,7 +238,7 @@ tuple<double, Matx33d, ShoColumnVector3d> Reconstructor::_alignReconstructionWit
         cout << "Type of t affine was " << tAffine.type() << "\n";
         cout << "Size of t affine was " << tAffine.size() << "\n";
         tAffine.push_back(Mat(ShoRowVector3d{ 0,0,1 }));
-        cout << "T affine was " << tAffine << "\n\n";
+        cout << "T from affine matrix was " << tAffine << "\n\n";
         //TODO apply scalar operation to s
         const auto s = pow(determinant(tAffine), 0.5);
         auto a = Mat(Matx33d::eye());
@@ -373,7 +373,7 @@ float Reconstructor::computeReconstructabilityScore(int tracks, Mat mask,
     auto outliers = tracks - inliers;
     auto ratio = float(outliers) / tracks;
     if (ratio > 0.3)
-        return outliers;
+        return tracks;
     else
         return 0;
 }
@@ -499,7 +499,9 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
 
     const auto shot1Image = flight.getImageSet()[flight.getImageIndex(track.imagePair.first)];
     const auto shot2Image = flight.getImageSet()[flight.getImageIndex(track.imagePair.second)];
+    cout << "Getting metadata for " << track.imagePair.first << "\n";
     ShotMetadata shot1Metadata(shot1Image.getMetadata(), flight);
+    cout << "Getting metadata for " << track.imagePair.second << "\n";
     ShotMetadata shot2Metadata(shot2Image.getMetadata(), flight);
     Shot shot1(track.imagePair.first, this->flight.getCamera(), Pose(), shot1Metadata);
     Shot shot2(track.imagePair.second, this->flight.getCamera(), Pose(rVec, t), shot2Metadata);
@@ -544,6 +546,7 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
             break;
 
         for (auto[imageName, numTracks] : candidates) {
+            cout << "Number of tracks is " << numTracks << "\n";
             auto imageVertex = getImageNode(imageName);
             auto [status, report] = resect(rec, imageVertex);
             if (!status)
@@ -839,8 +842,8 @@ vector<pair<string, int>> Reconstructor::reconstructedPointForImages(const Recon
             }
             res.push_back(std::make_pair(imageName, commonTracks));
         }
-        std::sort(res.begin(), res.end(), [](pair<string, int> a, pair<string, int> b) {
-            return a.second < b.second;
+        std::sort(res.begin(), res.end(), [](const pair<string, int>& a, const pair<string, int>& b) {
+            return a.second > b.second;
         });
     }
     return res;
@@ -848,10 +851,10 @@ vector<pair<string, int>> Reconstructor::reconstructedPointForImages(const Recon
 void  Reconstructor::alignReconstruction(Reconstruction & rec)
 {
     const auto[s, a, b] = _alignReconstructionWithHorizontalOrientation(rec);
-#if 0
+#if 1
     cout << "s is " << s << "\n";
     cout << "a is " << a << "\n";
-    cout << "b ia " << b << "\n";
+    cout << "b is " << b << "\n";
 #endif
     _reconstructionSimilarity(rec, s, a, b);
 

@@ -68,6 +68,10 @@ imageTracksPath(), camera(), referenceLLA()
                 saveImageExifFile(imageFileName, metadata);
             }
             Img img(imageFileName, metadata);
+            cout << "Read in image " << img.getFileName() << "\n";
+            cout << "Longitude of image is " << metadata.location.longitude << "\n";
+            cout << "Latitude of image is " << metadata.location.latitude << "\n";
+            cout << "Altitude of image is " << metadata.location.altitude << "\n";
             imageSet.push_back(img);
         }
     }
@@ -224,6 +228,11 @@ void FlightSession::setCamera(Camera camera)
     this->camera = camera;
 }
 
+namespace
+{
+
+} //namespace
+
 void FlightSession::inventReferenceLLA()
 {
     auto lat = 0.0;
@@ -234,19 +243,24 @@ void FlightSession::inventReferenceLLA()
     auto wLon = 0.0;
     const auto defaultDop = 15;
     for (const auto img : imageSet) {
-        auto dop = (img.getMetadata().location.dop != 0.0) ? img.getMetadata().location.dop : defaultDop;
-        auto w = 1.0 / std:: max(0.01, dop);
-        lat += img.getMetadata().location.latitude;
-        lon += img.getMetadata().location.longitude;
+        const auto dop = (img.getMetadata().location.dop != 0.0) ? img.getMetadata().location.dop : defaultDop;
+        const auto w = 1.0 / std:: max(0.01, dop);
+        lat += w * img.getMetadata().location.latitude;
+        cout << "Longitude of this image is " << img.getMetadata().location.longitude << "\n";
+        lon += w * img.getMetadata().location.longitude;
         wLat += w;
         wLon += w;
-        alt += img.getMetadata().location.altitude;
+        alt += w * img.getMetadata().location.altitude;
         wAlt += w;
-        lat /= wLat;
-        lon /= wLon;
-        alt /= wAlt;
     }
-    referenceLLA = { {"alt", alt}, {"lat",  lat}, {"lon" , lon} };
+    lat /= wLat;
+    lon /= wLon;
+    alt /= wAlt;
+    cout << "Reference altitude " << alt << "\n";
+    cout << "Reference latitude " << lat << "\n";
+    cout << "Reference longitude " << lon << "\n";
+
+    referenceLLA = { {"alt", 0}, {"lat",  lat}, {"lon" , lon} };
 }
 
 const std::map<std::string, double>& FlightSession::getReferenceLLA() const
