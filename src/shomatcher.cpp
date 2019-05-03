@@ -1,9 +1,11 @@
 #include "shomatcher.hpp"
 #include "kdtree.h"
 #include "camera.h"
+#include  "cudamatcher.hpp"
 #include "RobustMatcher.h"
 #include <fstream>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/cudafeatures2d.hpp>
 #include "json.hpp"
 #include <set>
 
@@ -12,6 +14,7 @@ using cv::FeatureDetector;
 using cv::imread;
 using cv::Mat;
 using cv::ORB;
+using cv::cuda::GpuMat;
 using cv::Ptr;
 using cv::Vec3b;
 using cv::Scalar;
@@ -30,6 +33,22 @@ using std::vector;
 using std::string;
 using json = nlohmann::json;
 
+ShoMatcher::ShoMatcher(FlightSession flight, bool runCuda) : flight(flight), runCuda(runCuda)
+, kd(nullptr)
+, candidateImages()
+, detector_(cv::ORB::create(4000))
+, extractor_(cv::ORB::create(4000)) {
+    if (cv::cuda::getCudaEnabledDeviceCount()) {
+        cerr << "CUDA device detected. Running CUDA \n";
+        cv::cuda::printCudaDeviceInfo(cv::cuda::getDevice());
+        cudaEnabled = true;
+    }
+    if (cudaEnabled && runCuda) {
+        //Set CUDA ORB detector
+        detector_ = cv::cuda::ORB::create(4000);
+        extractor_ = cv::cuda::ORB::create(4000);
+    }
+}
 void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
 {
     set<pair<string, string>> alreadyPaired;
@@ -53,6 +72,7 @@ void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
             if (currentImageName != img->getFileName())
             {
                 count++;
+                //Make sure we are matching pairs already matched in reverse order
                 if (alreadyPaired.find(make_pair(currentImageName, img->getFileName())) == alreadyPaired.end()
                     || alreadyPaired.find(make_pair(img->getFileName(), currentImageName)) == alreadyPaired.end()) {
                     alreadyPaired.insert(make_pair(currentImageName, img->getFileName()));
@@ -143,8 +163,18 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
     std::vector<cv::KeyPoint> keypoints;
     std::vector<cv::Scalar> colors;
     cv::Mat descriptors;
-    this->detector_->detect(featureImage, keypoints);
-    this->extractor_->compute(featureImage, keypoints, descriptors);
+
+    if (cudaEnabled && runCuda) {
+        GpuMat cudaFeatureImg, cudaKeypoints,cudaDescriptors;
+        cudaFeatureImg.upload(featureImage);
+        auto cudaDetector =  detector_.dynamicCast<cv::cuda::ORB>();
+        cudaDetector->detectAndCompute(cudaFeatureImg, cv::noArray(), keypoints, cudaDescriptors);
+        cudaDescriptors.download(descriptors);
+    }
+    else {
+        detector_->detectAndCompute(featureImage, cv::noArray(), keypoints, descriptors);
+    }
+
     cout << "Extracted " << descriptors.rows << " points for  " << fileName << endl;
 
     for (auto &keypoint : keypoints) {
@@ -158,15 +188,21 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
     return this->flight.saveImageFeaturesFile(fileName, keypoints, descriptors, colors);
 }
 
+
 void ShoMatcher::runRobustFeatureMatching()
 {
     if (!this->candidateImages.size())
         return;
 
     RobustMatcher rmatcher;
+    cv::Ptr<CUDARobustMatcher> cMatcher;
+    if (cudaEnabled && runCuda) {
+        cMatcher = cv::makePtr<CUDARobustMatcher>();
+    }
 
     map<string, ImageFeatures> loadedFeatures;
     for (const auto&[queryImg, trainImages] : candidateImages) {
+        vector<string> trainImageSet;
         auto queryImagePath = flight.getImageDirectoryPath() / queryImg;
         ImageFeatures queryFeaturesSet;
         try {
@@ -179,6 +215,7 @@ void ShoMatcher::runRobustFeatureMatching()
         map<string, vector<DMatch>> matchSet;
         for (const auto trainImg : trainImages)
         {
+            trainImageSet.push_back(trainImg);
             ImageFeatures trainFeaturesSet;
             try {
                 trainFeaturesSet = loadedFeatures.at(trainImg);
@@ -188,8 +225,13 @@ void ShoMatcher::runRobustFeatureMatching()
                 loadedFeatures[trainImg] = trainFeaturesSet;
             }
             vector<DMatch> matches;
-
-            rmatcher.robustMatch(queryFeaturesSet.descriptors, trainFeaturesSet.descriptors, matches);
+            
+            if (cudaEnabled && runCuda) {
+                cMatcher->robustMatch(queryFeaturesSet.descriptors, trainFeaturesSet.descriptors, matches);
+            }
+            else {
+                rmatcher.robustMatch(queryFeaturesSet.descriptors, trainFeaturesSet.descriptors, matches);
+            }
 
             int trainIndex = this->flight.getImageIndex(trainImg);
             for (size_t i = 0; i < matches.size(); i++)

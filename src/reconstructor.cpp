@@ -167,7 +167,7 @@ tuple<double, Matx33d, ShoColumnVector3d> Reconstructor::_alignReconstructionWit
     for (const auto[imageName, shot] : rec.getReconstructionShots()) {
         auto shotOrigin = Mat(shot.getPose().getOrigin());
         shotOrigin = shotOrigin.reshape(1, 1);
-        cout << "Shot origin is " << shotOrigin << "\n\n";
+        //cout << "Shot origin is " << shotOrigin << "\n\n";
         shotOrigins.push_back(shotOrigin);
         Vec2d shotOrigin2D((double*)shotOrigin.colRange(0, 2).data);
         shotOrigins2D.push_back(shotOrigin2D);
@@ -200,7 +200,7 @@ tuple<double, Matx33d, ShoColumnVector3d> Reconstructor::_alignReconstructionWit
 
     Mat3d cvRPlane;
     eigen2cv(rPlane, cvRPlane);
-#if 0
+#if 1
     cout << "Size of CV r plane was " << cvRPlane.size() << "\n";
     cout << "Size of shot origins is " << shotOrigins.size() << "\n";
 
@@ -238,7 +238,7 @@ tuple<double, Matx33d, ShoColumnVector3d> Reconstructor::_alignReconstructionWit
         cout << "Type of t affine was " << tAffine.type() << "\n";
         cout << "Size of t affine was " << tAffine.size() << "\n";
         tAffine.push_back(Mat(ShoRowVector3d{ 0,0,1 }));
-        cout << "T affine was " << tAffine << "\n\n";
+        cout << "T from affine matrix was " << tAffine << "\n\n";
         //TODO apply scalar operation to s
         const auto s = pow(determinant(tAffine), 0.5);
         auto a = Mat(Matx33d::eye());
@@ -322,7 +322,7 @@ TwoViewPose Reconstructor::recoverTwoViewPoseWithHomography(CommonTrack track, M
 {
     const auto&[hom, points1, points2, homMask] = computePlaneHomography(track);
     homMask.copyTo(mask);
-    cout << "Homography was " << hom << endl;
+    //cout << "Homography was " << hom << endl;
     if (!hom.rows || !hom.cols)
         return { false, Mat(), Mat(), Mat() };
     vector<Mat> Rs_decomp, ts_decomp, normals_decomp;
@@ -373,7 +373,7 @@ float Reconstructor::computeReconstructabilityScore(int tracks, Mat mask,
     auto outliers = tracks - inliers;
     auto ratio = float(outliers) / tracks;
     if (ratio > 0.3)
-        return outliers;
+        return tracks;
     else
         return 0;
 }
@@ -385,23 +385,15 @@ void Reconstructor::computeReconstructability(
         Mat mask;
         auto[success, essentrialMat, rotation, translation] = this->recoverTwoCameraViewPose(track, mask);
         if (success) {
-            cout << "Computing reconstructability for " << track.imagePair.first << " and " << track.imagePair.second << "\n";
             track.rScore = computeReconstructabilityScore(track.commonTracks.size(), mask);
         }
         else {
             track.rScore = 0;
         }
     }
-    for (const auto& track : commonTracks) {
-        cout << "Track score before sorting is " << track.rScore << "\n";
-    }
    
     sort(std::begin(commonTracks), std::end(commonTracks),
         [](const CommonTrack& a, const CommonTrack& b) { return -a.rScore < - b.rScore; });
-
-    for (const auto& track : commonTracks) {
-        cout << "Track score after sorting is " << track.rScore << "\n";
-    }
    
 }
 
@@ -446,11 +438,13 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
                 continueReconstruction(rec, reconstructionImages);
                 string recFileName = flight.getImageDirectoryPath().parent_path().leaf().string() + "-" + 
                     to_string(reconstructions.size() + 1) + ".ply";
+            
                 rec.saveReconstruction(recFileName);
                 reconstructions.push_back(rec);
             }
         }
     }
+    cerr << "Generated a total of " << reconstructions.size() << " partial reconstruction \n";
     Reconstruction allReconstruction;
     for (auto & rec : reconstructions) {
         for (const auto[shotId, shot] : rec.getReconstructionShots()) {
@@ -503,11 +497,11 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
     Rodrigues(r, rVec);
     Mat distortion;
 
-    cout << "Rvec was " << rVec + '\n';
-    cout << "T was " << t << '\n';
     const auto shot1Image = flight.getImageSet()[flight.getImageIndex(track.imagePair.first)];
     const auto shot2Image = flight.getImageSet()[flight.getImageIndex(track.imagePair.second)];
+    cout << "Getting metadata for " << track.imagePair.first << "\n";
     ShotMetadata shot1Metadata(shot1Image.getMetadata(), flight);
+    cout << "Getting metadata for " << track.imagePair.second << "\n";
     ShotMetadata shot2Metadata(shot2Image.getMetadata(), flight);
     Shot shot1(track.imagePair.first, this->flight.getCamera(), Pose(), shot1Metadata);
     Shot shot2(track.imagePair.second, this->flight.getCamera(), Pose(rVec, t), shot2Metadata);
@@ -552,6 +546,7 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
             break;
 
         for (auto[imageName, numTracks] : candidates) {
+            cout << "Number of tracks is " << numTracks << "\n";
             auto imageVertex = getImageNode(imageName);
             auto [status, report] = resect(rec, imageVertex);
             if (!status)
@@ -816,13 +811,10 @@ void Reconstructor::bundle(Reconstruction& rec) {
     for (auto &[shotId, shot] : rec.getReconstructionShots()) {
         auto s = bundleAdjuster.GetShot(shotId);
         Mat rotation = (Mat_<double>(3, 1) << s.GetRX(), s.GetRY(), s.GetRZ());
-        cout << "Rotation was " << rotation << "\n";
         Mat translation = (Mat_<double>(3, 1) << s.GetTX(), s.GetTY(), s.GetTZ());
 
         shot.getPose().setRotationVector(rotation);
         shot.getPose().setTranslation(translation);
-
-        Pose testPose{ translation, rotation };
     }
 
     for (auto &[pointId, cloudPoint] : rec.getCloudPoints()) {
@@ -849,8 +841,8 @@ vector<pair<string, int>> Reconstructor::reconstructedPointForImages(const Recon
             }
             res.push_back(std::make_pair(imageName, commonTracks));
         }
-        std::sort(res.begin(), res.end(), [](pair<string, int> a, pair<string, int> b) {
-            return a.second < b.second;
+        std::sort(res.begin(), res.end(), [](const pair<string, int>& a, const pair<string, int>& b) {
+            return a.second > b.second;
         });
     }
     return res;
@@ -858,10 +850,10 @@ vector<pair<string, int>> Reconstructor::reconstructedPointForImages(const Recon
 void  Reconstructor::alignReconstruction(Reconstruction & rec)
 {
     const auto[s, a, b] = _alignReconstructionWithHorizontalOrientation(rec);
-#if 0
+#if 1
     cout << "s is " << s << "\n";
     cout << "a is " << a << "\n";
-    cout << "b ia " << b << "\n";
+    cout << "b is " << b << "\n";
 #endif
     _reconstructionSimilarity(rec, s, a, b);
 
@@ -917,7 +909,6 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
     vector<Point2d> fPoints;
     vector<Point3d> realWorldPoints;
     const auto[edgesBegin, edgesEnd] = boost::out_edges(imageVertex, this->tg);
-    cout << "Reconstruction has " << rec.getCloudPoints().size() << "tracks \n";
     for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
         const auto trackName = this->tg[*tracksIter].trackName;
         if (rec.hasTrack(trackName)) {
@@ -933,7 +924,7 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
             Bs.push_back(fBearing);
         }
     }
-    cout << "Size of bs is " << Bs.size() << "\n";
+
     if (Bs.size() < 5) {
         report.numCommonPoints = Bs.size();
         return make_tuple(false, report);
@@ -946,8 +937,6 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
         const auto shotName = tg[imageVertex].name;
         const auto shot = flight.getImageSet()[flight.getImageIndex(shotName)];
         ShotMetadata shotMetadata(shot.getMetadata(), flight);
-        cout << "Rotation from absolute ransac is " << pnpRot << "\n";
-        cout << "Translation from absolute ransac is " << pnpTrans << "\n";
         report.numCommonPoints = Bs.size();
         report.numInliers = cv::countNonZero(inliers);
         Shot recShot(shotName, flight.getCamera(), Pose(pnpRot, pnpTrans), shotMetadata);

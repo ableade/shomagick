@@ -2,6 +2,7 @@
 
 #include <string>
 #include <cmath>
+#include <iostream>
 #include <fstream>
 #include <opencv2/core.hpp>
 #include <exiv2/exiv2.hpp>
@@ -77,9 +78,8 @@ struct Location
 		auto b = 2.0;
 		auto a2 = pow(WGS84_A, b);
 		auto b2 = pow(WGS84_B, b);
-		auto longRad = toRadian(this->longitude);
-		auto latRad = toRadian(this->latitude);
-
+		auto longRad = toRadian(longitude);
+		auto latRad = toRadian(latitude);
 		auto l = 1.0 / sqrt(a2 * pow(cos(latRad), b) + b2 * pow(sin(latRad), 2));
 		auto x = (a2 * l + this->altitude) * cos(latRad) * cos(longRad);
 		auto y = (a2 * l + this->altitude) * cos(latRad) * sin(longRad);
@@ -91,13 +91,16 @@ struct Location
     cv::Point3d getTopcentricLocationCoordinates(std::map<std::string, double> reference) {
         const cv::Mat t = Location::topcentricTransformFromReferenceLLA(reference).inv();
         const auto locEcef = ecef();
-
         const auto tx = t.at<double>(0,0) * locEcef.x + t.at<double>(0,1) * locEcef.y + t.at<double>(0,2) * locEcef.z 
             + t.at<double>(0,3);
+
+        std::cout << "Tx " << tx << "\n";
         const auto ty = t.at<double>(1, 0) * locEcef.x + t.at<double>(1, 1) * locEcef.y + t.at<double>(1, 2) * locEcef.z
             + t.at<double>(1, 3);
+        std::cout << "Ty " << ty << "\n";
         const auto tz = t.at<double>(2, 0) * locEcef.x + t.at<double>(2, 1) * locEcef.y + t.at<double>(2, 2) * locEcef.z
             + t.at<double>(2, 3);
+        std::cout << "Tz " << tz << "\n";
 
         return { tx,ty, tz };
     }

@@ -23,22 +23,18 @@ class ShoMatcher
 {
 private:
     FlightSession flight;
+    bool runCuda = true;
     void *kd;
     int dimensions = 2;
     int featureSize = 5000;
+    bool cudaEnabled = false;
     std::map<std::string, std::vector<std::string>> candidateImages;
     cv::Ptr<cv::FeatureDetector> detector_;
     cv::Ptr<cv::DescriptorExtractor> extractor_;
     bool _extractFeature(std::string fileName, bool resize = false);
 
 public:
-    ShoMatcher(FlightSession flight)
-        : flight(flight)
-        , kd(nullptr)
-        , candidateImages()
-        , detector_(cv::ORB::create(4000))
-        , extractor_(cv::ORB::create(4000))
-    {}
+    ShoMatcher(FlightSession flight, bool runCuda = true);
     void getCandidateMatchesUsingSpatialSearch(double range = 0.000125);
     void getCandidateMatchesFromFile(std::string candidateFile);
     int extractFeatures(bool resize = false);
