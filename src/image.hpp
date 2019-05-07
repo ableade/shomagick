@@ -90,10 +90,11 @@ struct Location
 
     cv::Point3d getTopcentricLocationCoordinates(std::map<std::string, double> reference) {
         const cv::Mat t = Location::topcentricTransformFromReferenceLLA(reference).inv();
+        std::cout << "t was " << t << "\n";
         const auto locEcef = ecef();
+        std::cout << "Ecef is " << locEcef << "\n";
         const auto tx = t.at<double>(0,0) * locEcef.x + t.at<double>(0,1) * locEcef.y + t.at<double>(0,2) * locEcef.z 
             + t.at<double>(0,3);
-
         std::cout << "Tx " << tx << "\n";
         const auto ty = t.at<double>(1, 0) * locEcef.x + t.at<double>(1, 1) * locEcef.y + t.at<double>(1, 2) * locEcef.z
             + t.at<double>(1, 3);

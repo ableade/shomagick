@@ -534,7 +534,7 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
 void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& images) {
     bundle(rec);
     //removeOutliers(rec);
-    //alignReconstruction(rec);
+    alignReconstruction(rec);
     colorReconstruction(rec);
     rec.saveReconstruction("partialgreen.ply");
 
