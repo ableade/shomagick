@@ -457,6 +457,9 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
             if (!allReconstruction.hasTrack(to_string(trackId))) {
                 allReconstruction.addCloudPoint(cp);
             }
+            else {
+                cout << "Common track detected in all reconstruction \n";
+            }
         }
     }
     colorReconstruction(allReconstruction);
