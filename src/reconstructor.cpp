@@ -457,6 +457,9 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
             if (!allReconstruction.hasTrack(to_string(trackId))) {
                 allReconstruction.addCloudPoint(cp);
             }
+            else {
+                cout << "Common track detected in all reconstruction \n";
+            }
         }
     }
     colorReconstruction(allReconstruction);
@@ -534,7 +537,7 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
 void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& images) {
     bundle(rec);
     //removeOutliers(rec);
-    //alignReconstruction(rec);
+    alignReconstruction(rec);
     colorReconstruction(rec);
     rec.saveReconstruction("partialgreen.ply");
 
