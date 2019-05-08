@@ -1,6 +1,9 @@
 #pragma once
 #include "shot.h"
 
+const int BUNDLE_INTERVAL = 999999;
+const double NEW_POINTS_RATIO = 1.2;
+
 class CloudPoint {
 
     private:
@@ -30,6 +33,8 @@ class Reconstruction {
         std::map<std::string, Shot> shots;
         std::map<int, CloudPoint> cloudPoints;
         Camera camera;
+        int lastPointCount;
+        int lastShotCount;
 
     public:
         Reconstruction();
@@ -44,4 +49,7 @@ class Reconstruction {
         const Camera& getCamera() const;
         void saveReconstruction(const std::string recFileName) const;
         Camera& getCamera();
+        void updateLastCounts();
+        bool needsBundling();
+        bool needsRetriangulation();
 };

@@ -556,6 +556,19 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
 
             images.erase(imageName);
             triangulateShots(imageName, rec);
+            if (rec.needsRetriangulation()) {
+                bundle(rec);
+                retriangulate(rec);
+                bundle(rec);
+                alignReconstruction(rec);
+                rec.updateLastCounts();
+            }
+            else if (rec.needsBundling()) {
+                bundle(rec);
+                alignReconstruction(rec);
+                rec.updateLastCounts();
+            }
+
             cout << "Rec now has " << rec.getCloudPoints().size() << "points \n";
         }
         return;
@@ -863,7 +876,7 @@ bool Reconstructor::shouldBundle(const Reconstruction &rec)
 {
     auto static numPointsLast = rec.getCloudPoints().size();
     auto numShotsLast = rec.getReconstructionShots().size();
-    auto interval = 999999;
+    
     auto newPointsRatio = 1.2;
 
     auto maxPoints = numPointsLast * newPointsRatio;
