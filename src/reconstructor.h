@@ -95,7 +95,5 @@ public:
       double threshold = 0.004, int iterations = 1000, double probability = 0.999, int resectionInliers = 10 );
   std::vector<std::pair<std::string, int>> reconstructedPointForImages(const Reconstruction & rec, std::set<std::string>& images);
   void alignReconstruction(Reconstruction & rec);
-  bool shouldBundle(const Reconstruction &rec);
   void colorReconstruction(Reconstruction &rec);
-  bool shouldTriangulate();
 };

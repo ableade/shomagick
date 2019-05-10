@@ -167,14 +167,10 @@ tuple<double, Matx33d, ShoColumnVector3d> Reconstructor::_alignReconstructionWit
     for (const auto[imageName, shot] : rec.getReconstructionShots()) {
         auto shotOrigin = Mat(shot.getPose().getOrigin());
         shotOrigin = shotOrigin.reshape(1, 1);
-        //cout << "Shot origin is " << shotOrigin << "\n\n";
         shotOrigins.push_back(shotOrigin);
         Vec2d shotOrigin2D((double*)shotOrigin.colRange(0, 2).data);
         shotOrigins2D.push_back(shotOrigin2D);
-        cout << "Size of shot origins is now " << shotOrigins.size() << "\n";
-        cout << "Shot origins is now " << shotOrigins << "\n";
         const auto gpsPosition = shot.getMetadata().gpsPosition;
-        cout << "Gps position is now " << gpsPosition << "\n";
         gpsPositions.push_back({ gpsPosition.x, gpsPosition.y, gpsPosition.z });
         gpsPositions2D.push_back(Vec2d{ gpsPosition.x, gpsPosition.y });
         const auto[x, y, z] = shot.getOrientationVectors();
@@ -190,17 +186,12 @@ tuple<double, Matx33d, ShoColumnVector3d> Reconstructor::_alignReconstructionWit
     }
     Mat shotOriginsRowMean;
     reduce(shotOrigins, shotOriginsRowMean, 0, cv::REDUCE_AVG);
-    cout << "Size of shotorigins row mean is " << shotOriginsRowMean.size();
-    cout << "Shot origins row mean is " << shotOriginsRowMean << "\n";
-    cout << "plane is " << plane << "\n";
-    cout << "verticals is " << verticals << "\n";
     auto p = fitPlane(shotOriginsRowMean, plane, verticals);
     auto rPlane = calculateHorizontalPlanePosition(Mat(p));
-    cout << "R plane was " << rPlane << "\n";
 
     Mat3d cvRPlane;
     eigen2cv(rPlane, cvRPlane);
-#if 1
+#if 0
     cout << "Size of CV r plane was " << cvRPlane.size() << "\n";
     cout << "Size of shot origins is " << shotOrigins.size() << "\n";
 
@@ -208,7 +199,6 @@ tuple<double, Matx33d, ShoColumnVector3d> Reconstructor::_alignReconstructionWit
     cout << "Shot origins was " << shotOrigins << "\n";
 #endif
     const auto shotOriginsTranspose = shotOrigins.t();
-    cout << "Size of shot origins transpose is " << shotOriginsTranspose.size() << "\n";
     //TODO check this dotplane product
     Mat dotPlaneProduct = (cvRPlane * shotOrigins.t()).t();
     const auto shotOriginStds = getStdByAxis(shotOrigins, 0);
@@ -232,21 +222,14 @@ tuple<double, Matx33d, ShoColumnVector3d> Reconstructor::_alignReconstructionWit
         //auto tAffine = getAffine2dMatrixNoShearing(shotOrigins, Mat(gpsPositions));
        // auto tAffine = getAffine2dMatrixNoShearing(shotOrigins, shotOrigins);
 
-        cout << "Shot origins 2d is " << shotOrigins2D << "\n";
-        cout << "Gps positions is " << gpsPositions2D << "\n";
         tAffine = estimateAffinePartial2D(shotOrigins2D, gpsPositions2D);
-        cout << "Type of t affine was " << tAffine.type() << "\n";
-        cout << "Size of t affine was " << tAffine.size() << "\n";
         tAffine.push_back(Mat(ShoRowVector3d{ 0,0,1 }));
-        cout << "T from affine matrix was " << tAffine << "\n\n";
         //TODO apply scalar operation to s
         const auto s = pow(determinant(tAffine), 0.5);
         auto a = Mat(Matx33d::eye());
-        cout << "a is " << a << "\n";
         tAffine = tAffine / s;
         cv::Mat aBlock = a(cv::Rect(0, 0, 2, 2));
         tAffine.copyTo(aBlock);
-        cout << "CV r plane was " << cvRPlane << "\n";
         a *= cvRPlane;
         auto b3 = mean(shotOrigins.colRange(0, 2))[0] - mean(s * Mat(gpsPositions).reshape(1).colRange(0, 2))[0];
         ShoColumnVector3d b{ tAffine.at<double>(0, 2), tAffine.at<double>(1, 2), b3 };
@@ -540,16 +523,14 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
     alignReconstruction(rec);
     colorReconstruction(rec);
     rec.saveReconstruction("partialgreen.ply");
-
-
+    rec.updateLastCounts();
     while (1) {
         auto candidates = reconstructedPointForImages(rec, images);
-        cout << "size of candidates is " << candidates.size() << "\n";
         if (candidates.empty())
             break;
 
         for (auto[imageName, numTracks] : candidates) {
-            cout << "Number of tracks is " << numTracks << "\n";
+            auto before = rec.getCloudPoints().size();
             auto imageVertex = getImageNode(imageName);
             auto [status, report] = resect(rec, imageVertex);
             if (!status)
@@ -559,21 +540,32 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
 
             images.erase(imageName);
             triangulateShots(imageName, rec);
+
             if (rec.needsRetriangulation()) {
+                cout << "Reconstruction needs retriangulating \n";
                 bundle(rec);
                 retriangulate(rec);
                 bundle(rec);
+                //removeOutliers(rec);
                 alignReconstruction(rec);
                 rec.updateLastCounts();
             }
             else if (rec.needsBundling()) {
+                cout << "Reconstruction needs bundle adjustment \n";
                 bundle(rec);
+                //removeOutliers(rec);
                 alignReconstruction(rec);
                 rec.updateLastCounts();
             }
-
-            cout << "Rec now has " << rec.getCloudPoints().size() << "points \n";
+            auto after = rec.getCloudPoints().size();
+            if (after - before > 0)
+            {
+                cerr << "Added " << after - before << " points to the reconstruction \n";
+            }
         }
+        bundle(rec);
+        //removeOutliers(rec);
+        alignReconstruction(rec);
         return;
     }
 }
@@ -586,7 +578,7 @@ void Reconstructor::triangulateShots(string image1, Reconstruction &rec) {
 
     for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
         auto track = this->tg[*tracksIter].trackName;
-        this->triangulateTrack(track, rec);
+        triangulateTrack(track, rec);
     }
 }
 
@@ -607,16 +599,12 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec) {
             auto fBearing =
                 this->flight.getCamera().normalizedPointToBearingVec(fPoint);
             auto origin = this->getShotOrigin(shot);
-            // cout << "Origin for this shot was " << origin << endl;
             Eigen::Vector3d eOrigin;
             Eigen::Matrix3d eigenRotationInverse;
             cv2eigen(Mat(origin), eOrigin);
             auto rotationInverse = this->getRotationInverse(shot);
             cv2eigen(rotationInverse, eigenRotationInverse);
-            //cout << "Rotation inverse is " << eigenRotationInverse << endl;
             auto eigenRotationBearingProduct = eigenRotationInverse * fBearing;
-            // cout << "Rotation inverse times bearing us  " <<
-            // eigenRotationBearingProduct << endl;
             bearingList.push_back(eigenRotationBearingProduct);
             originList.push_back(eOrigin);
         }
@@ -703,6 +691,11 @@ void Reconstructor::singleViewBundleAdjustment(std::string shotId,
         catch (std::out_of_range &e) {
             // Pass
         }
+    }
+
+    for (const auto[shotId, shot] : rec.getReconstructionShots()) {
+        const auto g = shot.getMetadata().gpsPosition;
+        bundleAdjuster.AddPositionPrior(shotId, g.x, g.y, g.z, shot.getMetadata().gpsDop);
     }
 
     bundleAdjuster.SetLossFunction(LOSS_FUNCTION, LOSS_FUNCTION_TRESHOLD);
@@ -811,6 +804,11 @@ void Reconstructor::bundle(Reconstruction& rec) {
         }
     }
 
+    for (const auto[shotId, shot] : rec.getReconstructionShots()) {
+        const auto g = shot.getMetadata().gpsPosition;
+        bundleAdjuster.AddPositionPrior(shotId, g.x, g.y, g.z, shot.getMetadata().gpsDop);
+    }
+
     bundleAdjuster.SetLossFunction(LOSS_FUNCTION, LOSS_FUNCTION_TRESHOLD);
     bundleAdjuster.SetReprojectionErrorSD(REPROJECTION_ERROR_SD);
     bundleAdjuster.SetInternalParametersPriorSD(
@@ -866,27 +864,7 @@ vector<pair<string, int>> Reconstructor::reconstructedPointForImages(const Recon
 void  Reconstructor::alignReconstruction(Reconstruction & rec)
 {
     const auto[s, a, b] = _alignReconstructionWithHorizontalOrientation(rec);
-#if 1
-    cout << "s is " << s << "\n";
-    cout << "a is " << a << "\n";
-    cout << "b is " << b << "\n";
-#endif
     _reconstructionSimilarity(rec, s, a, b);
-
-}
-
-bool Reconstructor::shouldBundle(const Reconstruction &rec)
-{
-    auto static numPointsLast = rec.getCloudPoints().size();
-    auto numShotsLast = rec.getReconstructionShots().size();
-    
-    auto newPointsRatio = 1.2;
-
-    auto maxPoints = numPointsLast * newPointsRatio;
-    auto maxShots = numShotsLast + interval;
-
-    return rec.getCloudPoints().size() >= maxPoints ||
-        rec.getReconstructionShots().size() >= maxShots;
 }
 
 void Reconstructor::colorReconstruction(Reconstruction & rec)
@@ -899,13 +877,17 @@ void Reconstructor::colorReconstruction(Reconstruction & rec)
     }
 }
 
-bool Reconstructor::shouldTriangulate()
-{
-    return false;
-}
-
 void Reconstructor::removeOutliers(Reconstruction& rec) {
     const auto before = rec.getCloudPoints().size();
+    for (auto cp : rec.getCloudPoints()) {
+        const auto&[id, p] = cp;
+        if (p.getError() > BUNDLE_OUTLIER_THRESHOLD)
+        {
+            cout << p.getError() - BUNDLE_OUTLIER_THRESHOLD << "\n";
+            cout << "Reprojection error for this point is " << p.getError() << "\n";
+        }
+    }
+#if 0
     erase_if(
         rec.getCloudPoints(),
         [](const auto& cp) {
@@ -913,6 +895,7 @@ void Reconstructor::removeOutliers(Reconstruction& rec) {
         return p.getError() > BUNDLE_OUTLIER_THRESHOLD;
     }
     );
+#endif
     const auto removed = before - rec.getCloudPoints().size();
     cout << "Removed " << removed << " outliers from reconstruction \n";
 }
@@ -960,7 +943,8 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
         return { true, report };
     }
 
-    /*
+#if 0
+    
     const auto t = absolutePoseRansac(Bs, Xs, threshold, iterations, probability);
     cout << "T obtained was " << t << "\n";
     Matrix3d rotation;
@@ -995,7 +979,6 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
     reprojectedDifference = reprojectedBs - eigenBs;
     cout << "Reprojected difference is " << reprojectedDifference << "\n";
     cout << "Reprojected difference norm is" << reprojectedDifference.rowwise().norm()<< "\n";
-    /*
 
     const auto inliersMatrix = divReprojectedBs.rowwise() - eigenBs.colwise().norm();
         inliersMatrix < threshold).count();
@@ -1013,7 +996,7 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
         return make_tuple(true, report);
     }
     return make_tuple(false, report);
-      */
-    
+      
+#endif
     return make_tuple(false, report);
 }

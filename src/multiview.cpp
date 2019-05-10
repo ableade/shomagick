@@ -264,12 +264,9 @@ ShoRowVector4d fitPlane(Mat points, Mat vectors, Mat verticals)
     Scalar mean, stddev; //0:1st channel, 1:2nd channel and 2:3rd channel
     Mat pointsMat(points);
     meanStdDev(pointsMat.reshape(1,1), mean, stddev, cv::Mat());
-    std::cout << "Std of points was " << stddev[0] << "\n";
     const auto s = 1.0 / std::max(1e-8, stddev[0]);
-    std::cout << "S was " << s << "\n";
     Mat x;
     cv::convertPointsToHomogeneous(s* pointsMat, x);
-    std::cout << "Homogenous x is " << x << "\n";
     Mat a;
     //TODO investigate if this condition is needed
     if (!vectors.empty()) {
@@ -282,7 +279,6 @@ ShoRowVector4d fitPlane(Mat points, Mat vectors, Mat verticals)
     }
     a = a.reshape(1);
     auto[o, p] = nullSpace(a);
-    std::cout << "P returned from nullspace is " << p << "\n";
     p.at<double>(0, 3) /= s;
     const auto pRange = p.colRange(0, 3);
     //std::cout << "Type of prange is " << pRange.type() << "\n";
@@ -295,16 +291,11 @@ ShoRowVector4d fitPlane(Mat points, Mat vectors, Mat verticals)
         for (auto i = 0; i < verticals.rows; ++i) {
             const double* verticalsCurrentRowPtr = verticals.ptr<double>(i);
             ShoRowVector3d columnVertical(verticalsCurrentRowPtr);
-            std::cout << "Vertical is now " << columnVertical << "\n\n";
-            std::cout << "P range is now " << pRange << "\n";
             auto pRangeProduct = pRange.dot(Mat(columnVertical));
-            std::cout << "P range product was " << pRangeProduct << "\n";
             d+= ( pRange.dot(Mat(columnVertical)));
-            std::cout << "D is now " << d << "\n\n";
         }
         p *= sgn(d);
     }
-    std::cout << "P being returned is " << p << "\n";
     return p;
 }
 
@@ -393,32 +384,23 @@ std::tuple<cv::Mat, cv::Mat> nullSpace(cv::Mat a)
 {
     auto svd = cv::SVD();
     Mat u, s, vh;
-    std::cout << "A is " << a << "\n\n";
     svd.compute(a, u, s, vh, cv::SVD::FULL_UV);
-    std::cout << " u returned from svd is " << u << "\n\n";
-    std::cout << " S returned from svd is " << s << "\n\n";
-    std::cout << " VH returned from svd is " << vh << "\n\n";
     return std::make_tuple(s.row(u.rows - 1), vh.row(vh.rows - 1));
 }
 Matrix3d calculateHorizontalPlanePosition(cv::Mat p)
 {
-    std::cout << "P was " << p << "\n";
     const auto v0ColRange = p.colRange(0, 3);
     const auto v0 = Point3d(v0ColRange);
-    std::cout << "v0 was " << v0 << "\n";
     const Point3d v1{ 0.0, 0.1, 1.0 };
 
     const auto angle = calculateAngleBetweenVectors(v0, v1);
     const auto axis = v0.cross(v1);
-    std::cout << "Axis was " << axis << "\n";
     Vector3d eigenAxis;
     cv2eigen(Mat(axis), eigenAxis);
     const auto norm = eigenAxis.norm();
-    std::cout << "Norm was " << norm << "\n";
 
     if (norm > 0) {
         auto m = rotationMatrix(angle, eigenAxis, nullptr);
-        std::cout << "Rotation matrix was " << rotationMatrix << "\n";
         Matrix3d rot;
         rot = m.block<3, 3>(0, 0);
         return rot;
