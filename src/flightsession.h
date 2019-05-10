@@ -39,6 +39,7 @@ public:
     const boost::filesystem::path getImageDirectoryPath() const;
     const boost::filesystem::path getImageFeaturesPath() const;
     const boost::filesystem::path getImageMatchesPath() const;
+    const boost::filesystem::path getImageExifPath() const;
     const boost::filesystem::path getImageTracksPath() const;
     bool saveTracksFile(std::map<int, std::vector<int>> tracks);
     int getImageIndex(std::string imageName) const;
@@ -49,6 +50,7 @@ public:
         const cv::Mat& descriptors,
         const std::vector<cv::Scalar>& colors
     );
+    bool saveImageExifFile(std::string imageName, ImageMetadata imageExif);
     bool saveMatches(std::string fileName, const std::map<std::string, std::vector<cv::DMatch>>& matches);
     ImageFeatures loadFeatures(std::string imageName) const;
     const Camera& getCamera() const;

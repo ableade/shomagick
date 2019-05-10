@@ -1,6 +1,7 @@
 #include "image.hpp"
 #include <string>
-
+#include <fstream>
+#include "utilities.h"
 using std::string;
 
 const ImageMetadata & Img::getMetadata() const
@@ -42,20 +43,49 @@ ImageMetadata Img::extractExifFromImage(std::string imagePath)
     return imageExif;
 }
 
+void Img::extractExifFromFile(std::string imageExifFile, ImageMetadata& imgMetadata)
+{
+    assert(boost::filesystem::exists(imageExifFile));
+    std::ifstream exifFile(imageExifFile, std::ios::in);
+    boost::archive::text_iarchive ar(exifFile);
+    ar & imgMetadata;
+}
+
 Location Img::_extractCoordinatesFromExif(Exiv2::ExifData exifData)
 {
+    auto latitudeRef = 1;
+    auto longitudeRef = 1;
     Exiv2::ExifData::const_iterator end = exifData.end();
     Exiv2::Value::UniquePtr latV = Exiv2::Value::create(Exiv2::signedRational);
     Exiv2::Value::UniquePtr longV = Exiv2::Value::create(Exiv2::signedRational);
     Exiv2::Value::UniquePtr altV = Exiv2::Value::create(Exiv2::signedRational);
 
+
     auto longitudeKey = Exiv2::ExifKey("Exif.GPSInfo.GPSLongitude");
     auto latitudeKey = Exiv2::ExifKey("Exif.GPSInfo.GPSLatitude");
     auto altitudeKey = Exiv2::ExifKey("Exif.GPSInfo.GPSAltitude");
+    auto latitudeRefKey = Exiv2::ExifKey("Exif.GPSInfo.GPSLatitudeRef");
+    auto longitudeRefKey = Exiv2::ExifKey("Exif.GPSInfo.GPSLongitudeRef");
 
     const auto latPos = exifData.findKey(latitudeKey);
     const auto longPos = exifData.findKey(longitudeKey);
     const auto altPos = exifData.findKey(altitudeKey);
+    const auto latRefPos = exifData.findKey(latitudeRefKey);
+    const auto lonRefPos = exifData.findKey(longitudeRefKey);
+
+    if (latRefPos != exifData.end()) {
+        const auto latRef = latRefPos->getValue()->toString();
+        std::cout << "Lat ref  is " << latRef << "\n";
+        if (latRef == "S")
+            latitudeRef = -1;
+    }
+
+    if (lonRefPos != exifData.end()) {
+        const auto lonRef = lonRefPos->getValue()->toString();
+        std::cout << "Lon ref is " << lonRef << "\n";
+        if (lonRef == "W")
+            longitudeRef = -1;
+    }
 
     if (latPos == exifData.end() || longPos == exifData.end() || altPos == exifData.end())
         return {};
@@ -70,7 +100,7 @@ Location Img::_extractCoordinatesFromExif(Exiv2::ExifData exifData)
     auto dop = _extractDopFromExif(exifData);
 
     // TODO  check the alttude value that is being parsed.
-    return { longitude, latitude, altitude, dop };
+    return { longitudeRef * longitude, latitudeRef * latitude, altitude, dop };
 }
 
 Img::CameraMakeAndModel Img::_extractMakeAndModelFromExif(Exiv2::ExifData exifData)
@@ -113,7 +143,6 @@ int Img::_extractOrientationFromExif(Exiv2::ExifData imageExifData)
     return orientation;
 }
 
-Img::Img(string imagePath) {
-    imageFileName = parseFileNameFromPath(imagePath);
-    metadata = Img::extractExifFromImage(imagePath);
+Img::Img(string imageFileName) : imageFileName(imageFileName) {
+
 }

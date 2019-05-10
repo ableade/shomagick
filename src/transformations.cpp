@@ -29,7 +29,6 @@ Mat_<double> vectorNorm(InputArray src, int axis)
 double calculateAngleBetweenVectors(const cv::Point3d& v1, const cv::Point3d& v2, bool directed)
 {
     double cosAngle = v1.dot(v2) / (cv::norm(v1) * cv::norm(v2));
-    cout << "Cos angle is " << cosAngle << "\n\n";
     if (cosAngle > 1.0)
         return 0.0;
     else if (cosAngle < -1.0)

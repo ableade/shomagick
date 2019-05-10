@@ -105,7 +105,7 @@ void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNo
     for (const auto[imageFeatureNode, index] : this->imageFeatureNodes_)
     {
         int dSet = this->uf.findSet(index);
-        if (this->uf.sizeOfSet(dSet) >= this->minTrackLength)
+        if (this->uf.sizeOfSet(dSet) > this->minTrackLength)
         {
             this->tracks[dSet].push_back(index);
         }
@@ -207,7 +207,9 @@ set<pair<string, string>> ShoTracker::_getCombinations(const vector<string> &ima
                 aPair.push_back(images[i]);
             }
         }
-        combinations.insert(make_pair(aPair[0], aPair[1]));
+        if (aPair[0] != aPair[1])
+            combinations.insert(make_pair(aPair[0], aPair[1]));
+
     } while (std::prev_permutation(v.begin(), v.end()));
     return combinations;
 }

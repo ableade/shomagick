@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "catch.hpp"
 #include <iostream>
 #include <utility>
@@ -11,6 +10,8 @@
 #include "../src/utilities.h"
 
 using std::vector;
+using std::string;
+using std::endl;
 using  std::pair;
 
 SCENARIO("Testing the two view reconstruction between two images")
@@ -52,7 +53,7 @@ SCENARIO("Testing the two view reconstruction between two images")
     cv::Mat mask;
     for (const auto& track : commonTracks) {
         if (track.imagePair.first == image1 && track.imagePair.first == image2) {
-            t = reconstructor.recoverTwoCameraViewPose(im1, im2, track.commonTracks, mask);
+          //  t = reconstructor.recoverTwoCameraViewPose(im1, im2, track.commonTracks, mask);
         }
     }
     

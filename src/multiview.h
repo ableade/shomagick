@@ -80,3 +80,9 @@ opengv::transformation_t relativePoseRansac(opengv::bearingVectors_t bearings,
     double threshold,
     int iterations,
     double probability);
+
+cv::Mat homography_dlt(const std::vector< cv::Point2f > &x1, const std::vector< cv::Point2f > &x2);
+
+void pose_from_homography_dlt(const std::vector< cv::Point2f > &xw,
+    const std::vector< cv::Point2f > &xo,
+    cv::Mat &otw, cv::Mat &oRw);

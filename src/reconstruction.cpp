@@ -9,9 +9,9 @@ using std::string;
 using std::ofstream;
 using std::ios;
 
-Reconstruction::Reconstruction() : shots(), cloudPoints(), camera() {}
+Reconstruction::Reconstruction() : shots(), cloudPoints(), camera(), lastPointCount(), lastShotCount() {}
 
-Reconstruction::Reconstruction(Camera camera) :camera(camera) {}
+Reconstruction::Reconstruction(Camera camera) :camera(camera), lastPointCount(), lastShotCount() {}
 
 map<string, Shot>& Reconstruction::getReconstructionShots()
 {
@@ -56,6 +56,31 @@ Camera& Reconstruction::getCamera() {
     return camera;
 }
 
+void Reconstruction::updateLastCounts()
+{
+    lastPointCount = cloudPoints.size();
+    lastShotCount = shots.size();
+}
+
+bool Reconstruction::needsBundling()
+{
+    if (lastPointCount == 0 || lastShotCount == 0)
+        return false;
+
+    auto maxPoints = lastPointCount * NEW_POINTS_RATIO;
+    auto maxShots = lastShotCount + BUNDLE_INTERVAL;
+    
+    return (cloudPoints.size() >= maxPoints || shots.size() >= maxShots);
+}
+
+bool Reconstruction::needsRetriangulation()
+{
+    if (lastPointCount == 0 || lastShotCount == 0)
+        return false;
+
+    auto maxPoints = lastPointCount * NEW_POINTS_RATIO;
+    return (cloudPoints.size() > maxPoints);
+}
 
 void Reconstruction::saveReconstruction(const string recFileName) const
 {

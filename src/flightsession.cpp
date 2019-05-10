@@ -1,6 +1,10 @@
 #include "flightsession.h"
 #include "exiv2/exiv2.hpp"
 #include <iostream>
+#include <fstream>
+#include "utilities.h"
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 
 using namespace boost::filesystem;
 using cv::DMatch;
@@ -15,6 +19,7 @@ using std::vector;
 using std::cerr;
 using std::string;
 using std::endl;
+using std::ios;
 
 FlightSession::FlightSession() : imageSet(), imageDirectory(), imageDirectoryPath(), imageFeaturesPath(),
 imageTracksPath(), camera(), referenceLLA()
@@ -53,12 +58,26 @@ imageTracksPath(), camera(), referenceLLA()
     for (auto entry : v)
     {
         if (entry.path().extension().string() == ".jpg" || entry.path().extension().string() == ".png") {
-            Img img(entry.path().string());
-            this->imageSet.push_back(img);
+            const auto imageFileName = parseFileNameFromPath(entry.path().string());
+            const auto imageExifPath = getImageExifPath() / (imageFileName + ".dat");
+            ImageMetadata metadata;
+            if (exists(imageExifPath)) {
+                Img::extractExifFromFile(imageExifPath.string(), metadata);
+            } else{
+                metadata = Img::extractExifFromImage(entry.path().string());
+                saveImageExifFile(imageFileName, metadata);
+            }
+            Img img(imageFileName, metadata);
+            cout << "Read in image " << img.getFileName() << "\n";
+            cout << "Longitude of image is " << metadata.location.longitude << "\n";
+            cout << "Latitude of image is " << metadata.location.latitude << "\n";
+            cout << "Altitude of image is " << metadata.location.altitude << "\n";
+            imageSet.push_back(img);
         }
     }
     if (!calibrationFile.empty()) {
-        this->camera = Camera::getCameraFromCalibrationFile(calibrationFile);
+        assert(exists(calibrationFile));
+        camera = Camera::getCameraFromCalibrationFile(calibrationFile);
     }
     inventReferenceLLA();
     cout << "Found " << this->imageSet.size() << " usable images" << endl;
@@ -87,6 +106,11 @@ const path FlightSession::getImageFeaturesPath() const
 const path FlightSession::getImageMatchesPath() const
 {
     return this->imageMatchesPath;
+}
+
+const boost::filesystem::path FlightSession::getImageExifPath() const
+{
+    return exifPath;
 }
 
 /*
@@ -132,9 +156,18 @@ bool FlightSession::saveImageFeaturesFile(string imageName, const std::vector<cv
     return boost::filesystem::exists(imageFeaturePath);
 }
 
+bool FlightSession::saveImageExifFile(std::string imageName, ImageMetadata imageExif)
+{
+    auto imageExifPath = getImageExifPath() / (imageName + ".dat");
+    ofstream exifFile(imageExifPath, ios::binary);
+    boost::archive::text_oarchive ar(exifFile);
+    ar & imageExif;
+    return exists(imageExifPath);
+}
+
 bool FlightSession::saveMatches(string fileName, const std::map<string, vector<cv::DMatch>>& matches)
 {
-    auto imageMatchesPath = this->getImageMatchesPath() / (fileName + ".yaml");
+    auto imageMatchesPath = getImageMatchesPath() / (fileName + ".yaml");
     cout << "Writing file " << imageMatchesPath.string() << endl;
     cv::FileStorage fs(imageMatchesPath.string(), cv::FileStorage::WRITE);
     fs << "MatchCount" << (int)matches.size();
@@ -151,10 +184,9 @@ bool FlightSession::saveMatches(string fileName, const std::map<string, vector<c
 
 map<string, vector<DMatch>> FlightSession::loadMatches(string fileName) const
 {
-    cout << "Loading matches for " << fileName << endl;
     map<string, vector<DMatch>> allPairMatches;
 
-    auto imageMatchesPath = this->getImageMatchesPath() / (fileName + ".yaml");
+    auto imageMatchesPath = getImageMatchesPath() / (fileName + ".yaml");
     cv::FileStorage fs(imageMatchesPath.string(), cv::FileStorage::READ);
     FileNode cMatches = fs["candidateImageMatches"];
     FileNodeIterator it = cMatches.begin(), it_end = cMatches.end();
@@ -170,8 +202,7 @@ map<string, vector<DMatch>> FlightSession::loadMatches(string fileName) const
 
 ImageFeatures FlightSession::loadFeatures(string imageName) const
 {
-    cout << "Loading features for " << imageName << endl;
-    auto imageFeaturePath = this->getImageFeaturesPath() / (imageName + ".yaml");
+    auto imageFeaturePath = getImageFeaturesPath() / (imageName + ".yaml");
     cv::FileStorage fs(imageFeaturePath.string(), cv::FileStorage::READ);
     vector<KeyPoint> keypoints;
     Mat descriptors;
@@ -197,6 +228,11 @@ void FlightSession::setCamera(Camera camera)
     this->camera = camera;
 }
 
+namespace
+{
+
+} //namespace
+
 void FlightSession::inventReferenceLLA()
 {
     auto lat = 0.0;
@@ -207,19 +243,24 @@ void FlightSession::inventReferenceLLA()
     auto wLon = 0.0;
     const auto defaultDop = 15;
     for (const auto img : imageSet) {
-        auto dop = (img.getMetadata().location.dop != 0.0) ? img.getMetadata().location.dop : defaultDop;
-        auto w = 1.0 / std:: max(0.01, dop);
-        lat += img.getMetadata().location.latitude;
-        lon += img.getMetadata().location.longitude;
+        const auto dop = (img.getMetadata().location.dop != 0.0) ? img.getMetadata().location.dop : defaultDop;
+        const auto w = 1.0 / std:: max(0.01, dop);
+        lat += w * img.getMetadata().location.latitude;
+        cout << "Longitude of this image is " << img.getMetadata().location.longitude << "\n";
+        lon += w * img.getMetadata().location.longitude;
         wLat += w;
         wLon += w;
-        alt += img.getMetadata().location.altitude;
+        alt += w * img.getMetadata().location.altitude;
         wAlt += w;
-        lat /= wLat;
-        lon /= wLon;
-        alt /= wAlt;
     }
-    referenceLLA = { {"alt", alt}, {"lat",  lat}, {"lon" , lon} };
+    lat /= wLat;
+    lon /= wLon;
+    alt /= wAlt;
+    cout << "Reference altitude " << alt << "\n";
+    cout << "Reference latitude " << lat << "\n";
+    cout << "Reference longitude " << lon << "\n";
+
+    referenceLLA = { {"alt", 0}, {"lat",  lat}, {"lon" , lon} };
 }
 
 const std::map<std::string, double>& FlightSession::getReferenceLLA() const

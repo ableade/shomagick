@@ -144,6 +144,7 @@ Mat Camera::getNormalizedKMatrix() const {
         lensSize,   0.,          0.,
         0.,         lensSize,    0,
         0.,          0.,         1);
+
     return normK;
 }
 
@@ -218,7 +219,10 @@ double & Camera::getK2() {
 }
 
 double Camera::getPhysicalFocalLength() const {
-    return (double)this->getPixelFocal() / (double)max(this->height, this->width);
+    auto h = (scaledHeight) ? scaledHeight : height;
+    auto w = (scaledWidth) ? scaledWidth : width;
+
+    return (double)this->getPixelFocal() / (double)max(h, w);
 }
 
 double Camera::getK1() const {

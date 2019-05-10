@@ -10,6 +10,10 @@ extern "C" {
 #include <string.h>
 }
 
+#ifdef _WIN32
+#define GLOG_NO_ABBREVIATED_SEVERITIES
+#endif
+
 #include "ceres/ceres.h"
 #include "ceres/rotation.h"
 #include "ceres/loss_function.h"
