@@ -550,3 +550,8 @@ void pose_from_homography_dlt(vector<Point2f > &xw, vector<Point2f > &xo, Mat &o
         oRw.at<double>(i, 2) = c3.at<double>(i, 0);
     }
 }
+
+void decomposeSimilarityTransform(cv::Mat t)
+{
+    CV_Assert(t.rows == t.cols);
+}

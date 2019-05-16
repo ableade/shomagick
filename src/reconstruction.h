@@ -52,4 +52,7 @@ class Reconstruction {
         void updateLastCounts();
         bool needsBundling();
         bool needsRetriangulation();
+        void mergeReconstruction(const Reconstruction& rec);
+        void alignToGps();
+        void applySimilarity(double s, cv::Matx33d a, ShoColumnVector3d b);
 };

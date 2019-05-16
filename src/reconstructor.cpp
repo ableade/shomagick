@@ -237,30 +237,7 @@ tuple<double, Matx33d, ShoColumnVector3d> Reconstructor::_alignReconstructionWit
     }
 }
 
-#if 1
-void Reconstructor::_reconstructionSimilarity(Reconstruction & rec, double s, Matx33d a, ShoColumnVector3d b)
-{
-
-    for (auto &[trackId, cp] : rec.getCloudPoints()) {
-        const auto pointCoordinates = Mat(convertVecToRowVector(cp.getPosition()));
-        ShoColumnVector3d alignedCoordinate = (s *a) * (pointCoordinates);
-        alignedCoordinate += b;
-        cp.setPosition(Point3d{ alignedCoordinate(0,0), alignedCoordinate(1,0), alignedCoordinate(2,0) });
-    }
-
-    for (auto &[shotId, shot] : rec.getReconstructionShots()) {
-        const auto r = shot.getPose().getRotationMatrix();
-        const auto t = shot.getPose().getTranslation();
-        const auto rp = r * a.t();
-        const auto tp = -rp * b + s * t;
-        shot.getPose().setRotationVector(Mat(rp));
-        shot.getPose().setTranslation(tp);
-    }
-}
-#endif
-
-TwoViewPose Reconstructor::recoverTwoCameraViewPose(CommonTrack track,
-    Mat &mask) {
+TwoViewPose Reconstructor::recoverTwoCameraViewPose(CommonTrack track, Mat &mask) {
     vector<Point2f> points1;
     vector<Point2f> points2;
     this->_alignMatchingPoints(track, points1, points2);
@@ -428,6 +405,13 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
         }
     }
     cerr << "Generated a total of " << reconstructions.size() << " partial reconstruction \n";
+    if (reconstructions.size() > 1) {
+        //We have multiple partial reconstructions. Try to merge all of them
+        reconstructions[0].mergeReconstruction(reconstructions[1]);
+        string mergedRec = flight.getImageDirectoryPath().parent_path().leaf().string() + "merged.ply";
+        alignReconstruction(reconstructions[0]);
+        reconstructions[0].saveReconstruction(mergedRec);
+    }
     Reconstruction allReconstruction;
     for (auto & rec : reconstructions) {
         for (const auto[shotId, shot] : rec.getReconstructionShots()) {
@@ -864,7 +848,7 @@ vector<pair<string, int>> Reconstructor::reconstructedPointForImages(const Recon
 void  Reconstructor::alignReconstruction(Reconstruction & rec)
 {
     const auto[s, a, b] = _alignReconstructionWithHorizontalOrientation(rec);
-    _reconstructionSimilarity(rec, s, a, b);
+    rec.applySimilarity(s, a, b);
 }
 
 void Reconstructor::colorReconstruction(Reconstruction & rec)

@@ -86,3 +86,5 @@ cv::Mat homography_dlt(const std::vector< cv::Point2f > &x1, const std::vector< 
 void pose_from_homography_dlt(const std::vector< cv::Point2f > &xw,
     const std::vector< cv::Point2f > &xo,
     cv::Mat &otw, cv::Mat &oRw);
+
+void fitSimilarityTransform(int maxIterations = 1000, int treshold = 1);
