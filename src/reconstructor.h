@@ -60,7 +60,6 @@ private:
   std::vector<cv::DMatch> _getTrackDMatchesForImagePair(const CommonTrack track) const;
   void _addCameraToBundle(BundleAdjuster& ba, const Camera camera);
   void _getCameraFromBundle(BundleAdjuster& ba, Camera& cam);
-  std::tuple<double, cv::Matx33d, ShoColumnVector3d> _alignReconstructionWithHorizontalOrientation(Reconstruction& rec);
   void _computeTwoViewReconstructionInliers(opengv::bearingVectors_t b1, opengv::bearingVectors_t b2, 
       opengv::rotation_t r, opengv::translation_t t) const;
 
@@ -93,8 +92,5 @@ public:
   std::tuple<bool, ReconstructionReport> resect(Reconstruction & rec, const vertex_descriptor imageVetex,
       double threshold = 0.004, int iterations = 1000, double probability = 0.999, int resectionInliers = 10 );
   std::vector<std::pair<std::string, int>> reconstructedPointForImages(const Reconstruction & rec, std::set<std::string>& images);
-  void alignReconstruction(Reconstruction & rec);
   void colorReconstruction(Reconstruction &rec);
-  void alignReconstructions(std::map<int, CloudPoint> cp1, std::map<int, CloudPoint> cp2, std::set<int> commonTracks, int treshold=1);
-  Reconstruction mergeTwoReconstructions();
 };

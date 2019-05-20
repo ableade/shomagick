@@ -35,6 +35,7 @@ class Reconstruction {
         Camera camera;
         int lastPointCount;
         int lastShotCount;
+        bool usesGPS = true;
 
     public:
         Reconstruction();
@@ -55,4 +56,6 @@ class Reconstruction {
         void mergeReconstruction(const Reconstruction& rec);
         void alignToGps();
         void applySimilarity(double s, cv::Matx33d a, ShoColumnVector3d b);
+        void setGPS(bool useGps);
+        std::tuple<double, cv::Matx33d, ShoColumnVector3d> getGPSTransform();
 };

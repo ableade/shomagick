@@ -89,6 +89,7 @@ Location Img::_extractCoordinatesFromExif(Exiv2::ExifData exifData)
 
     if (latPos == exifData.end() || longPos == exifData.end() || altPos == exifData.end())
         return {};
+
     // Get a pointer to a copy of the value
     latV = latPos->getValue();
     longV = longPos->getValue();
@@ -100,7 +101,7 @@ Location Img::_extractCoordinatesFromExif(Exiv2::ExifData exifData)
     auto dop = _extractDopFromExif(exifData);
 
     // TODO  check the alttude value that is being parsed.
-    return { longitudeRef * longitude, latitudeRef * latitude, altitude, dop };
+    return {longitudeRef * longitude, latitudeRef * latitude, altitude, dop, false };
 }
 
 Img::CameraMakeAndModel Img::_extractMakeAndModelFromExif(Exiv2::ExifData exifData)

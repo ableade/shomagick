@@ -1,6 +1,9 @@
 #include "reconstruction.h"
 #include "reconstructor.h"
 #include "utilities.h"
+#include "multiview.h"
+#include <Eigen/Core>
+#include <opencv2/core/eigen.hpp>
 #include <fstream>
 #include <map>
 #include <string>
@@ -9,9 +12,17 @@ using std::map;
 using std::string;
 using std::ofstream;
 using std::ios;
+using std::tuple;
+using std::max_element;
+using std::make_tuple;
 using std::set;
+using std::max;
+using std::vector;
 using cv::Mat;
 using cv::Matx33d;
+using cv::eigen2cv;
+using cv::Mat3d;
+using cv::Vec2d;
 using cv::Point3d;
 
 Reconstruction::Reconstruction() : shots(), cloudPoints(), camera(), lastPointCount(), lastShotCount() {}
@@ -150,6 +161,15 @@ void Reconstruction::mergeReconstruction(const Reconstruction & rec)
     }
 }
 
+void Reconstruction::alignToGps()
+{
+    if (!usesGPS)
+        return;
+
+    const auto[s, a, b] = getGPSTransform();
+    applySimilarity(s, a, b);
+}
+
 void Reconstruction::applySimilarity(double s, Matx33d a, ShoColumnVector3d b)
 {
     for (auto &[trackId, cp] : cloudPoints) {
@@ -166,6 +186,95 @@ void Reconstruction::applySimilarity(double s, Matx33d a, ShoColumnVector3d b)
         const auto tp = -rp * b + s * t;
         shot.getPose().setRotationVector(Mat(rp));
         shot.getPose().setTranslation(tp);
+    }
+}
+
+void Reconstruction::setGPS(bool useGps)
+{
+    usesGPS = useGps;
+}
+
+tuple<double, cv::Matx33d, ShoColumnVector3d> Reconstruction::getGPSTransform()
+{
+    std::cout << "Aligning reconstruction \n";
+    double s;
+    Mat shotOrigins(0, 3, CV_64FC1);
+    Mat a;
+    vector <ShoRowVector3d>gpsPositions;
+    Mat gpsPositions2D, shotOrigins2D;
+    Mat plane(0, 3, CV_64FC1);
+    Mat verticals(0, 3, CV_64FC1);
+
+    for (const auto[imageName, shot] : shots) {
+        auto shotOrigin = Mat(shot.getPose().getOrigin());
+        shotOrigin = shotOrigin.reshape(1, 1);
+        shotOrigins.push_back(shotOrigin);
+        Vec2d shotOrigin2D((double*)shotOrigin.colRange(0, 2).data);
+        shotOrigins2D.push_back(shotOrigin2D);
+        const auto gpsPosition = shot.getMetadata().gpsPosition;
+        gpsPositions.push_back({ gpsPosition.x, gpsPosition.y, gpsPosition.z });
+        gpsPositions2D.push_back(Vec2d{ gpsPosition.x, gpsPosition.y });
+        const auto[x, y, z] = shot.getOrientationVectors();
+
+        // We always assume that the orientation type is always horizontal
+
+        //cout << "Size of x is " << Mat(x).size() << "\n\n";
+        //cout << "Type of x is " << Mat(x).type() << "\n\n";
+        //cout << "Size of plane is " << plane.size() << "\n\n";
+        plane.push_back(Mat(x));
+        plane.push_back(Mat(z));
+        verticals.push_back(-Mat(y));
+    }
+    Mat shotOriginsRowMean;
+    reduce(shotOrigins, shotOriginsRowMean, 0, cv::REDUCE_AVG);
+    auto p = fitPlane(shotOriginsRowMean, plane, verticals);
+    auto rPlane = calculateHorizontalPlanePosition(Mat(p));
+
+    Mat3d cvRPlane;
+    eigen2cv(rPlane, cvRPlane);
+#if 0
+    cout << "Size of CV r plane was " << cvRPlane.size() << "\n";
+    cout << "Size of shot origins is " << shotOrigins.size() << "\n";
+
+    cout << "R plane was " << cvRPlane << "\n";
+    cout << "Shot origins was " << shotOrigins << "\n";
+#endif
+    const auto shotOriginsTranspose = shotOrigins.t();
+    //TODO check this dotplane product
+    Mat dotPlaneProduct = (cvRPlane * shotOrigins.t()).t();
+    const auto shotOriginStds = getStdByAxis(shotOrigins, 0);
+    const auto maxOriginStdIt = max_element(shotOriginStds.begin(), shotOriginStds.end());
+    double maxOriginStd = shotOriginStds[std::distance(shotOriginStds.begin(), maxOriginStdIt)];
+    const auto gpsPositionStds = getStdByAxis(gpsPositions, 0);
+    const auto gpsStdIt = max_element(gpsPositionStds.begin(), gpsPositionStds.end());
+    double maxGpsPositionStd = gpsPositionStds[std::distance(gpsPositionStds.begin(), gpsStdIt)];
+    if (dotPlaneProduct.rows < 2 || maxOriginStd < 1e-8) {
+        s = dotPlaneProduct.rows / max(1e-8, maxOriginStd);
+        a = cvRPlane;
+
+        const auto originMeans = getMeanByAxis(shotOrigins, 0);
+        const auto gpsMeans = getMeanByAxis(gpsPositions, 0);
+        Mat b = Mat(gpsMeans) - Mat(originMeans);
+        return make_tuple(s, a, b);
+    }
+    else {
+        Mat tAffine(3, 3, CV_64FC1);
+        //Using input array a vector of Mat type elements with 3 channels stacks them horizontally 
+        //auto tAffine = getAffine2dMatrixNoShearing(shotOrigins, Mat(gpsPositions));
+       // auto tAffine = getAffine2dMatrixNoShearing(shotOrigins, shotOrigins);
+
+        tAffine = estimateAffinePartial2D(shotOrigins2D, gpsPositions2D);
+        tAffine.push_back(Mat(ShoRowVector3d{ 0,0,1 }));
+        //TODO apply scalar operation to s
+        const auto s = pow(determinant(tAffine), 0.5);
+        auto a = Mat(Matx33d::eye());
+        tAffine = tAffine / s;
+        cv::Mat aBlock = a(cv::Rect(0, 0, 2, 2));
+        tAffine.copyTo(aBlock);
+        a *= cvRPlane;
+        auto b3 = mean(shotOrigins.colRange(0, 2))[0] - mean(s * Mat(gpsPositions).reshape(1).colRange(0, 2))[0];
+        ShoColumnVector3d b{ tAffine.at<double>(0, 2), tAffine.at<double>(1, 2), b3 };
+        return make_tuple(s, a, b);
     }
 }
 

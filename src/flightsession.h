@@ -31,6 +31,7 @@ private:
     std::map<std::string, double> referenceLLA;
     // TODO Implement unimplemented functions in flightsession class
     std::string _extractProjectionTypeFromExif(Exiv2::ExifData exifData) const;
+    bool gpsDataPresent = true;
 
 public:
     FlightSession();
@@ -58,4 +59,5 @@ public:
     void setCamera(Camera camera);
     void inventReferenceLLA();
     const std::map<std::string, double>& getReferenceLLA() const;
+    bool hasGps();
 };

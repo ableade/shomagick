@@ -68,6 +68,10 @@ imageTracksPath(), camera(), referenceLLA()
                 saveImageExifFile(imageFileName, metadata);
             }
             Img img(imageFileName, metadata);
+            if (metadata.location.isEmpty) {
+                gpsDataPresent = false;
+                cout << "Has no GPS data\n";
+            }
             cout << "Read in image " << img.getFileName() << "\n";
             cout << "Longitude of image is " << metadata.location.longitude << "\n";
             cout << "Latitude of image is " << metadata.location.latitude << "\n";
@@ -105,7 +109,7 @@ const path FlightSession::getImageFeaturesPath() const
 
 const path FlightSession::getImageMatchesPath() const
 {
-    return this->imageMatchesPath;
+    return imageMatchesPath;
 }
 
 const boost::filesystem::path FlightSession::getImageExifPath() const
@@ -127,14 +131,14 @@ bool FlightSession::saveTracksFile(std::map <int, std::vector <int>> tracks) {
 
 const path FlightSession::getImageTracksPath() const
 {
-    return this->imageTracksPath;
+    return imageTracksPath;
 }
 
 int FlightSession::getImageIndex(string imageName) const
 {
-    for (size_t i = 0; i < this->imageSet.size(); ++i)
+    for (size_t i = 0; i < imageSet.size(); ++i)
     {
-        if (this->imageSet[i].getFileName() == imageName)
+        if (imageSet[i].getFileName() == imageName)
         {
             return i;
         }
@@ -144,7 +148,7 @@ int FlightSession::getImageIndex(string imageName) const
 bool FlightSession::saveImageFeaturesFile(string imageName, const std::vector<cv::KeyPoint> &keypoints, const cv::Mat &descriptors,
     const std::vector<cv::Scalar> &colors)
 {
-    auto imageFeaturePath = this->getImageFeaturesPath() / (imageName + ".yaml");
+    auto imageFeaturePath = getImageFeaturesPath() / (imageName + ".yaml");
     if (!boost::filesystem::exists(imageFeaturePath))
     {
         cv::FileStorage file(imageFeaturePath.string(), cv::FileStorage::WRITE);
@@ -266,4 +270,9 @@ void FlightSession::inventReferenceLLA()
 const std::map<std::string, double>& FlightSession::getReferenceLLA() const
 {
     return referenceLLA;
+}
+
+bool FlightSession::hasGps()
+{
+    return gpsDataPresent;
 }

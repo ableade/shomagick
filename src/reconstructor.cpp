@@ -28,7 +28,6 @@ using std::cerr;
 using std::string;
 using std::to_string;
 using std::endl;
-using std::max_element;
 using std::make_tuple;
 using cv::DMatch;
 using cv::Point2d;
@@ -42,8 +41,6 @@ using cv::Mat3d;
 using cv::Point3d;
 using cv::Scalar;
 using cv::Mat_;
-using cv::eigen2cv;
-using std::max;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::Matrix3d;
@@ -151,90 +148,6 @@ void Reconstructor::_getCameraFromBundle(BundleAdjuster &ba, Camera &cam) {
     cam.setFocalWithPhysical(c.GetFocal());
     cam.setK1(c.GetK1());
     cam.setK2(c.GetK2());
-}
-
-tuple<double, Matx33d, ShoColumnVector3d> Reconstructor::_alignReconstructionWithHorizontalOrientation(Reconstruction & rec)
-{
-    cout << "Aligning reconstruction \n";
-    double s;
-    Mat shotOrigins(0, 3, CV_64FC1);
-    Mat a;
-    vector <ShoRowVector3d>gpsPositions;
-    Mat gpsPositions2D, shotOrigins2D;
-    Mat plane(0, 3, CV_64FC1);
-    Mat verticals(0, 3, CV_64FC1);
-
-    for (const auto[imageName, shot] : rec.getReconstructionShots()) {
-        auto shotOrigin = Mat(shot.getPose().getOrigin());
-        shotOrigin = shotOrigin.reshape(1, 1);
-        shotOrigins.push_back(shotOrigin);
-        Vec2d shotOrigin2D((double*)shotOrigin.colRange(0, 2).data);
-        shotOrigins2D.push_back(shotOrigin2D);
-        const auto gpsPosition = shot.getMetadata().gpsPosition;
-        gpsPositions.push_back({ gpsPosition.x, gpsPosition.y, gpsPosition.z });
-        gpsPositions2D.push_back(Vec2d{ gpsPosition.x, gpsPosition.y });
-        const auto[x, y, z] = shot.getOrientationVectors();
-
-        // We always assume that the orientation type is always horizontal
-
-        //cout << "Size of x is " << Mat(x).size() << "\n\n";
-        //cout << "Type of x is " << Mat(x).type() << "\n\n";
-        //cout << "Size of plane is " << plane.size() << "\n\n";
-        plane.push_back(Mat(x));
-        plane.push_back(Mat(z));
-        verticals.push_back(-Mat(y));
-    }
-    Mat shotOriginsRowMean;
-    reduce(shotOrigins, shotOriginsRowMean, 0, cv::REDUCE_AVG);
-    auto p = fitPlane(shotOriginsRowMean, plane, verticals);
-    auto rPlane = calculateHorizontalPlanePosition(Mat(p));
-
-    Mat3d cvRPlane;
-    eigen2cv(rPlane, cvRPlane);
-#if 0
-    cout << "Size of CV r plane was " << cvRPlane.size() << "\n";
-    cout << "Size of shot origins is " << shotOrigins.size() << "\n";
-
-    cout << "R plane was " << cvRPlane << "\n";
-    cout << "Shot origins was " << shotOrigins << "\n";
-#endif
-    const auto shotOriginsTranspose = shotOrigins.t();
-    //TODO check this dotplane product
-    Mat dotPlaneProduct = (cvRPlane * shotOrigins.t()).t();
-    const auto shotOriginStds = getStdByAxis(shotOrigins, 0);
-    const auto maxOriginStdIt = max_element(shotOriginStds.begin(), shotOriginStds.end());
-    double maxOriginStd = shotOriginStds[std::distance(shotOriginStds.begin(), maxOriginStdIt)];
-    const auto gpsPositionStds = getStdByAxis(gpsPositions, 0);
-    const auto gpsStdIt = max_element(gpsPositionStds.begin(), gpsPositionStds.end());
-    double maxGpsPositionStd = gpsPositionStds[std::distance(gpsPositionStds.begin(), gpsStdIt)];
-    if (dotPlaneProduct.rows < 2 || maxOriginStd < 1e-8) {
-        s = dotPlaneProduct.rows / max(1e-8, maxOriginStd);
-        a = cvRPlane;
-
-        const auto originMeans = getMeanByAxis(shotOrigins, 0);
-        const auto gpsMeans = getMeanByAxis(gpsPositions, 0);
-        Mat b = Mat(gpsMeans) - Mat(originMeans);
-        return make_tuple(s, a, b);
-    }
-    else {
-        Mat tAffine(3, 3, CV_64FC1);
-        //Using input array a vector of Mat type elements with 3 channels stacks them horizontally 
-        //auto tAffine = getAffine2dMatrixNoShearing(shotOrigins, Mat(gpsPositions));
-       // auto tAffine = getAffine2dMatrixNoShearing(shotOrigins, shotOrigins);
-
-        tAffine = estimateAffinePartial2D(shotOrigins2D, gpsPositions2D);
-        tAffine.push_back(Mat(ShoRowVector3d{ 0,0,1 }));
-        //TODO apply scalar operation to s
-        const auto s = pow(determinant(tAffine), 0.5);
-        auto a = Mat(Matx33d::eye());
-        tAffine = tAffine / s;
-        cv::Mat aBlock = a(cv::Rect(0, 0, 2, 2));
-        tAffine.copyTo(aBlock);
-        a *= cvRPlane;
-        auto b3 = mean(shotOrigins.colRange(0, 2))[0] - mean(s * Mat(gpsPositions).reshape(1).colRange(0, 2))[0];
-        ShoColumnVector3d b{ tAffine.at<double>(0, 2), tAffine.at<double>(1, 2), b3 };
-        return make_tuple(s, a, b);
-    }
 }
 
 TwoViewPose Reconstructor::recoverTwoCameraViewPose(CommonTrack track, Mat &mask) {
@@ -367,7 +280,7 @@ Reconstructor::computePlaneHomography(CommonTrack commonTrack) const {
     Mat mask;
     auto hom = findHomography(points1, points2, mask, cv::RANSAC,
         REPROJECTION_ERROR_SD);
-    return std::make_tuple(hom, points1, points2, mask);
+    return make_tuple(hom, points1, points2, mask);
 }
 
 
@@ -409,7 +322,7 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
         //We have multiple partial reconstructions. Try to merge all of them
         reconstructions[0].mergeReconstruction(reconstructions[1]);
         string mergedRec = flight.getImageDirectoryPath().parent_path().leaf().string() + "merged.ply";
-        alignReconstruction(reconstructions[0]);
+        reconstructions[0].alignToGps();
         reconstructions[0].saveReconstruction(mergedRec);
     }
     Reconstruction allReconstruction;
@@ -439,6 +352,8 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
 {
     Reconstruction rec(flight.getCamera());
 
+    //Use gps if flight images have gps data in reconstruction
+    rec.setGPS(flight.hasGps());
     Mat mask;
     //TwoViewPose poseParameters = recoverTwoCameraViewPose(track, mask);
     TwoViewPose poseParameters = recoverTwoViewPoseWithHomography(track, mask);
@@ -504,7 +419,7 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
 void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& images) {
     bundle(rec);
     //removeOutliers(rec);
-    alignReconstruction(rec);
+    rec.alignToGps();
     colorReconstruction(rec);
     rec.saveReconstruction("partialgreen.ply");
     rec.updateLastCounts();
@@ -531,14 +446,14 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
                 retriangulate(rec);
                 bundle(rec);
                 //removeOutliers(rec);
-                alignReconstruction(rec);
+                rec.alignToGps();
                 rec.updateLastCounts();
             }
             else if (rec.needsBundling()) {
                 cout << "Reconstruction needs bundle adjustment \n";
                 bundle(rec);
                 //removeOutliers(rec);
-                alignReconstruction(rec);
+                rec.alignToGps();
                 rec.updateLastCounts();
             }
             auto after = rec.getCloudPoints().size();
@@ -549,7 +464,7 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
         }
         bundle(rec);
         //removeOutliers(rec);
-        alignReconstruction(rec);
+        rec.alignToGps();
         return;
     }
 }
@@ -567,7 +482,7 @@ void Reconstructor::triangulateShots(string image1, Reconstruction &rec) {
 }
 
 void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec) {
-    auto track = this->trackNodes[trackId];
+    auto track = trackNodes[trackId];
     std::pair<adjacency_iterator, adjacency_iterator> neighbors =
         boost::adjacent_vertices(track, this->tg);
     Eigen::Vector3d x;
@@ -677,9 +592,12 @@ void Reconstructor::singleViewBundleAdjustment(std::string shotId,
         }
     }
 
-    for (const auto[shotId, shot] : rec.getReconstructionShots()) {
-        const auto g = shot.getMetadata().gpsPosition;
-        bundleAdjuster.AddPositionPrior(shotId, g.x, g.y, g.z, shot.getMetadata().gpsDop);
+    if (flight.hasGps()) {
+        cout << "Using gps prior \n";
+        for (const auto[shotId, shot] : rec.getReconstructionShots()) {
+            const auto g = shot.getMetadata().gpsPosition;
+            bundleAdjuster.AddPositionPrior(shotId, g.x, g.y, g.z, shot.getMetadata().gpsDop);
+        }
     }
 
     bundleAdjuster.SetLossFunction(LOSS_FUNCTION, LOSS_FUNCTION_TRESHOLD);
@@ -788,9 +706,12 @@ void Reconstructor::bundle(Reconstruction& rec) {
         }
     }
 
-    for (const auto[shotId, shot] : rec.getReconstructionShots()) {
-        const auto g = shot.getMetadata().gpsPosition;
-        bundleAdjuster.AddPositionPrior(shotId, g.x, g.y, g.z, shot.getMetadata().gpsDop);
+    if (flight.hasGps()) {
+        cout << "Using gps prior \n";
+        for (const auto[shotId, shot] : rec.getReconstructionShots()) {
+            const auto g = shot.getMetadata().gpsPosition;
+            bundleAdjuster.AddPositionPrior(shotId, g.x, g.y, g.z, shot.getMetadata().gpsDop);
+        }
     }
 
     bundleAdjuster.SetLossFunction(LOSS_FUNCTION, LOSS_FUNCTION_TRESHOLD);
@@ -844,11 +765,6 @@ vector<pair<string, int>> Reconstructor::reconstructedPointForImages(const Recon
         });
     }
     return res;
-}
-void  Reconstructor::alignReconstruction(Reconstruction & rec)
-{
-    const auto[s, a, b] = _alignReconstructionWithHorizontalOrientation(rec);
-    rec.applySimilarity(s, a, b);
 }
 
 void Reconstructor::colorReconstruction(Reconstruction & rec)
