@@ -1,5 +1,6 @@
 #pragma once
 #include "shot.h"
+#include "flightsession.h"
 
 const int BUNDLE_INTERVAL = 999999;
 const double NEW_POINTS_RATIO = 1.2;
@@ -35,11 +36,12 @@ class Reconstruction {
         Camera camera;
         int lastPointCount;
         int lastShotCount;
-        bool usesGPS = true;
+        bool usesGPS = false;
 
     public:
         Reconstruction();
         Reconstruction(Camera camera);
+        void addShot(std::string shotId, Shot shot);
         std::map<std::string, Shot>& getReconstructionShots();
         const std::map<std::string, Shot>& getReconstructionShots() const;
         bool hasShot(std::string shotId) const;
@@ -55,7 +57,10 @@ class Reconstruction {
         bool needsRetriangulation();
         void mergeReconstruction(const Reconstruction& rec);
         void alignToGps();
+        void exportToMvs(const std::string mvsFileName, const FlightSession& flightSession);
         void applySimilarity(double s, cv::Matx33d a, ShoColumnVector3d b);
         void setGPS(bool useGps);
+        Shot getShot(std::string shotId);
+        bool usesGps() const;
         std::tuple<double, cv::Matx33d, ShoColumnVector3d> getGPSTransform();
 };

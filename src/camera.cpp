@@ -97,6 +97,21 @@ ostream & operator << (ostream &out, const Pose &p)
     return out;
 }
 
+std::ostream & operator<<(std::ostream & out, const Camera & c)
+{
+    out << "Initial physical focal " << c.getInitialPhysicalFocal() << "\n";
+    out << "Physical focal " << c.getPhysicalFocalLength() << "\n";
+    out << "Initial K1 " << c.getInitialK1() << "\n";
+    out << "Initial K2 " << c.getInitialK2() << "\n";
+    out << "K1 " << c.getK1() << "\n";
+    out << "K2 " << c.getK2() << "\n";
+    out << "Height " << c.getHeight() << "\n";
+    out << "Width " << c.getWidth() << "\n";
+    out << "Scaled height " << c.getScaledHeight() << "\n";
+    out << "Scaled width " << c.getScaledWidth() << "\n";
+    return out;
+}
+
 void Camera::_cvPointsToBearingVec(cv::Mat pRect, opengv::bearingVectors_t &bearings) const
 {
     double l;
@@ -354,22 +369,22 @@ void Camera::setScaledWidth(int w)
     scaledWidth = w;
 }
 
-int Camera::getHeight()
+int Camera::getHeight() const
 {
     return height;
 }
 
-int Camera::getScaledHeight()
+int Camera::getScaledHeight() const
 {
     return scaledHeight;
 }
 
-int Camera::getScaledWidth()
+int Camera::getScaledWidth() const
 {
     return scaledWidth;
 }
 
-int Camera::getWidth()
+int Camera::getWidth() const
 {
     return width;
 }

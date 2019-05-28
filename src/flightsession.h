@@ -27,6 +27,7 @@ private:
     boost::filesystem::path imageMatchesPath;
     boost::filesystem::path imageTracksPath;
     boost::filesystem::path exifPath;
+    boost::filesystem::path undistortedImagesPath;
     Camera camera;
     std::map<std::string, double> referenceLLA;
     // TODO Implement unimplemented functions in flightsession class
@@ -42,6 +43,7 @@ public:
     const boost::filesystem::path getImageMatchesPath() const;
     const boost::filesystem::path getImageExifPath() const;
     const boost::filesystem::path getImageTracksPath() const;
+    const boost::filesystem::path getUndistortedImagesDirectoryPath()const;
     bool saveTracksFile(std::map<int, std::vector<int>> tracks);
     int getImageIndex(std::string imageName) const;
     std::map<std::string, std::vector<cv::DMatch>> loadMatches(std::string fileName) const;
@@ -60,4 +62,5 @@ public:
     void inventReferenceLLA();
     const std::map<std::string, double>& getReferenceLLA() const;
     bool hasGps();
+    void undistort();
 };

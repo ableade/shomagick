@@ -67,6 +67,7 @@ class Camera
     std::vector<cv::Point2d> normalizeImageCoordinates(const std::vector<cv::Point2d>&) const;
     cv::Point2d denormalizeImageCoordinates(const cv::Point2d) const;
     std::vector<cv::Point2d> denormalizeImageCoordinates(const std::vector<cv::Point2d>&) const;
+    friend std::ostream & operator << (std::ostream& out, const  Camera & c);
     static Camera getCameraFromCalibrationFile(std::string calibFile);
     static Camera getCameraFromExifMetaData(std::string image);
     void setFocalWithPhysical(double physicalFocal);
@@ -74,10 +75,10 @@ class Camera
     void setK2(double k2);
     void setScaledHeight(int h);
     void setScaledWidth(int w);
-    int getHeight();
-    int getScaledHeight();
-    int getScaledWidth();
-    int getWidth();
+    int getHeight() const;
+    int getScaledHeight() const;
+    int getScaledWidth() const;
+    int getWidth() const;
     void setPixelFocal(double pixelFocal);
     double& getK1();
     double&  getK2();

@@ -29,10 +29,16 @@ Reconstruction::Reconstruction() : shots(), cloudPoints(), camera(), lastPointCo
 
 Reconstruction::Reconstruction(Camera camera) :camera(camera), lastPointCount(), lastShotCount() {}
 
+void Reconstruction::addShot(std::string shotId, Shot shot)
+{
+    shots[shotId] = shot;
+}
+
 map<string, Shot>& Reconstruction::getReconstructionShots()
 {
     return shots;
 }
+
 
 const map<string, Shot>& Reconstruction::getReconstructionShots() const
 {
@@ -150,7 +156,7 @@ void Reconstruction::mergeReconstruction(const Reconstruction & rec)
         auto r = rec;
 
         for (auto&[id, shot] : temp.getReconstructionShots()) {
-            r.getReconstructionShots()[id] = shot;
+            r.addShot(id, shot);
         }
 
         for (auto&[track, cp] : temp.getCloudPoints()) {
@@ -193,6 +199,17 @@ void Reconstruction::setGPS(bool useGps)
 {
     usesGPS = useGps;
 }
+
+Shot Reconstruction::getShot(std::string shotId)
+{
+    return shots.at(shotId);
+}
+
+bool Reconstruction::usesGps() const
+{
+    return usesGPS;
+}
+
 
 tuple<double, cv::Matx33d, ShoColumnVector3d> Reconstruction::getGPSTransform()
 {

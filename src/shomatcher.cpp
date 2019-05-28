@@ -160,6 +160,7 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
     if (resize && featureImage.size().width > FEATURE_PROCESS_SIZE) {
         cv::resize(modelImg, modelImg, { flight.getCamera().getScaledWidth(), flight.getCamera().getScaledHeight()}, 0, 0, cv::INTER_AREA);
         cv::resize(featureImage, featureImage, { flight.getCamera().getScaledWidth(), flight.getCamera().getScaledHeight() }, 0, 0, cv::INTER_AREA);
+        cout << "Size of feature image is " << featureImage.size() << "\n";
     }
 
     std::vector<cv::KeyPoint> keypoints;
