@@ -88,7 +88,7 @@ void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNo
             indexes.insert(index);
         else {
             std::ostringstream ss;
-            ss << "hell no!";
+            ss << "Duplicate image feature index found!";
             throw std::runtime_error{ ss.str() };
         }
     }
@@ -99,19 +99,35 @@ void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNo
         const auto rightFeatureGlobalID = imageFeatureNodes_.at(rightFeature);
         mergeFeatureTracks(leftFeature, rightFeature);
     }
-    cout << "Created a total of " << uf.numDisjointSets() << " tracks " << endl;
+    cout << "Created a total of " << uf.numDisjointSets() << " tracks" << endl;
 
     //Filter out bad tracks
-    for (const auto[imageFeatureNode, index] : this->imageFeatureNodes_)
+    for (const auto[imageFeatureNode, index] : imageFeatureNodes_)
     {
         int dSet = this->uf.findSet(index);
         if (this->uf.sizeOfSet(dSet) > this->minTrackLength)
         {
-            this->tracks[dSet].push_back(index);
+            tracks[dSet].push_back(index);
         }
     }
+   
+    set<int> badTracks;
+    for (const auto &[trackId, trackSet] : tracks) {
+        std::set<string> images;
+        for (auto imFeature : trackSet) {
+            const auto featureNode = retrieveFeatureByIndexValue(imFeature);
+            auto[_, inserted] = images.insert(featureNode.first);
+            if (inserted == false) {
+                badTracks.insert(trackId);
+                break;
+            }
+        }
+    }
+    for (auto badTrack : badTracks) {
+        tracks.erase(badTrack);
+    }
 
-    cout << "Found a total of " << this->tracks.size() << " good tracks " << endl;
+    cout << "Found a total of " << tracks.size() << " good tracks " << endl;
 }
 
 TrackGraph ShoTracker::buildTracksGraph(const std::vector<FeatureProperty> &props)
@@ -129,19 +145,19 @@ TrackGraph ShoTracker::buildTracksGraph(const std::vector<FeatureProperty> &prop
         for (size_t i = 0; i < trackSet.size(); ++i)
         {
             TrackGraph::vertex_descriptor imageNode;
-            auto feature = this->retrieveFeatureByIndexValue(trackSet[i]);
+            auto feature = retrieveFeatureByIndexValue(trackSet[i]);
             auto prop = props[trackSet[i]];
             auto imageName = feature.first;
-            if (this->imageNodes.find(imageName) == this->imageNodes.end())
+            if (imageNodes.find(imageName) == this->imageNodes.end())
             {
                 imageNode = boost::add_vertex(tg);
-                this->imageNodes[imageName] = imageNode;
+                imageNodes[imageName] = imageNode;
                 tg[imageNode].is_image = true;
                 tg[imageNode].name = imageName;
             }
             else
             {
-                imageNode = this->imageNodes[imageName];
+                imageNode = imageNodes[imageName];
             }
             auto e = EdgeProperty(prop, trackId, feature.first);
             boost::add_edge(imageNode, track, e, tg);
@@ -153,7 +169,7 @@ TrackGraph ShoTracker::buildTracksGraph(const std::vector<FeatureProperty> &prop
 vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
 {
     vector<CommonTrack> commonTracks;
-    map<pair<string, string>, std::vector<string>> _commonTracks;
+    map<pair<string, string>, std::set<string>> _commonTracks;
 #if 0
     for (auto it = this->trackNodes.begin(); it != this->trackNodes.end(); ++it)
 #endif
@@ -169,17 +185,15 @@ vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
             {
                 imageNeighbours.push_back(tg[vd].name);
             }
-            auto combinations = this->_getCombinations(imageNeighbours);
+            auto combinations = _getCombinations(imageNeighbours);
 
-            for (auto combination : combinations)
+            for (const auto &combination : combinations)
             {
-                _commonTracks[combination].push_back(vertexName);
+                _commonTracks[combination].insert(vertexName);
             }
         }
-    commonTracks.reserve(_commonTracks.size());
     for (auto pair : _commonTracks) {
-        set <string> trackset(pair.second.begin(), pair.second.end());
-        CommonTrack cTrack(pair.first, 0, trackset);
+        CommonTrack cTrack(pair.first, 0, pair.second);
         commonTracks.push_back(cTrack);
     }
     return commonTracks;
@@ -193,24 +207,13 @@ FeatureProperty ShoTracker::getFeatureProperty_(const ImageFeatures &imageFeatur
 
 set<pair<string, string>> ShoTracker::_getCombinations(const vector<string> &images) const
 {
-    auto r = 2;
-    std::vector<bool> v(images.size());
     set<pair<string, string>> combinations;
-    std::fill(v.begin(), v.begin() + r, true);
-    do
-    {
-        std::vector<string> aPair;
-        for (size_t i = 0; i < images.size(); ++i)
-        {
-            if (v[i])
-            {
-                aPair.push_back(images[i]);
-            }
+    for (size_t i = 0; i < images.size() -1; ++i) {
+        for (size_t j = i + 1; j < images.size(); ++j) {
+            auto pair = make_pair(images[i], images[j]);
+            combinations.insert(pair);
         }
-        if (aPair[0] != aPair[1])
-            combinations.insert(make_pair(aPair[0], aPair[1]));
-
-    } while (std::prev_permutation(v.begin(), v.end()));
+    }
     return combinations;
 }
 
@@ -228,7 +231,7 @@ bool ShoTracker::addFeatureToIndex(pair<string, int> feature, int featureIndex)
 
 map <int, vector <int>> ShoTracker::getTracks()
 {
-    return this->tracks;
+    return tracks;
 }
 
 std::pair<string, int> ShoTracker::retrieveFeatureByIndexValue(int index)
@@ -244,9 +247,9 @@ std::pair<string, int> ShoTracker::retrieveFeatureByIndexValue(int index)
 }
 
 const std::map<string, TrackGraph::vertex_descriptor> ShoTracker::getImageNodes() const {
-    return this->imageNodes;
+    return imageNodes;
 }
 
 const std::map<string, TrackGraph::vertex_descriptor> ShoTracker::getTrackNodes() const {
-    return this->trackNodes;
+    return trackNodes;
 }

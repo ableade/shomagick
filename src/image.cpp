@@ -75,14 +75,12 @@ Location Img::_extractCoordinatesFromExif(Exiv2::ExifData exifData)
 
     if (latRefPos != exifData.end()) {
         const auto latRef = latRefPos->getValue()->toString();
-        std::cout << "Lat ref  is " << latRef << "\n";
         if (latRef == "S")
             latitudeRef = -1;
     }
 
     if (lonRefPos != exifData.end()) {
         const auto lonRef = lonRefPos->getValue()->toString();
-        std::cout << "Lon ref is " << lonRef << "\n";
         if (lonRef == "W")
             longitudeRef = -1;
     }

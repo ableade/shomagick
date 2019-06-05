@@ -68,8 +68,10 @@ public:
   Reconstructor(FlightSession flight, TrackGraph tg, std::map<std::string, TrackGraph::vertex_descriptor> trackNodes, 
   std::map<std::string, TrackGraph::vertex_descriptor> imageNodes);
   TwoViewPose recoverTwoCameraViewPose(CommonTrack track, cv::Mat& mask);
+  TwoViewPose twoViewReconstructionRotation(CommonTrack track, cv::Mat &mask);
+  template <typename T>
   void twoViewReconstructionInliers(std::vector<cv::Mat>& Rs_decomp, std::vector<cv::Mat>& ts_decomp, std::vector<int> possibleSolutions,
-      std::vector<cv::Point2d> points1, std::vector<cv::Point2d> points2) const;
+      std::vector<cv::Point_<T>> points1, std::vector<cv::Point_<T>> points2) const;
   TwoViewPose recoverTwoViewPoseWithHomography(CommonTrack track, cv::Mat& mask);
   float computeReconstructabilityScore(int tracks, cv::Mat inliers, int treshold = 0.3);
   void computeReconstructability(const ShoTracker& tracker, std::vector<CommonTrack>& commonTracks);

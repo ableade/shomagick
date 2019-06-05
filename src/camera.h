@@ -6,7 +6,6 @@
 #include <ostream>
 #include "types.h"
 
-
 class Pose {
   private:
     ShoColumnVector3d translation;
@@ -55,18 +54,24 @@ class Camera
     cv::Mat getDistortionMatrix() const;
     void cvPointsToBearingVec(
     const std::vector<cv::Point2d>&, opengv::bearingVectors_t& ) const;
-    opengv::bearingVectors_t normalizedPointsToBearingVec(const std::vector<cv::Point2d>& points) const;
-    opengv::bearingVector_t  normalizedPointToBearingVec(const cv::Point2d& point) const;
+    template <typename T>
+    opengv::bearingVectors_t normalizedPointsToBearingVec(const std::vector<cv::Point_<T>>& points) const;
+    template <typename T>
+    opengv::bearingVector_t  normalizedPointToBearingVec(const cv::Point_<T>& point) const;
     cv::Point2d projectBearing(opengv::bearingVector_t);
     double getK1() const;
     double getK2() const;
     double getInitialK1() const;
     double getInitialK2() const;
     double getInitialPhysicalFocal() const;
-    cv::Point2d normalizeImageCoordinate(const cv::Point2d) const;
-    std::vector<cv::Point2d> normalizeImageCoordinates(const std::vector<cv::Point2d>&) const;
-    cv::Point2d denormalizeImageCoordinates(const cv::Point2d) const;
-    std::vector<cv::Point2d> denormalizeImageCoordinates(const std::vector<cv::Point2d>&) const;
+    template <typename T>
+    cv::Point_<T> normalizeImageCoordinate(const cv::Point_<T>&) const;
+    template <typename T>
+    cv::Point_<T>denormalizeImageCoordinates(const cv::Point_<T>&) const;
+    template<typename T>
+    std::vector<cv::Point_<T>> normalizeImageCoordinates(const std::vector<cv::Point_<T>>&) const;
+    template <typename T>
+    std::vector<cv::Point_<T>> denormalizeImageCoordinates(const std::vector<cv::Point_<T>>&) const;
     friend std::ostream & operator << (std::ostream& out, const  Camera & c);
     static Camera getCameraFromCalibrationFile(std::string calibFile);
     static Camera getCameraFromExifMetaData(std::string image);
@@ -83,4 +88,6 @@ class Camera
     double& getK1();
     double&  getK2();
 };
+
+#include "camera.inl"
 #endif

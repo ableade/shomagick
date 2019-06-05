@@ -148,7 +148,6 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
     }
     
     Mat modelImg = imread(modelimageNamePath.string(), SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM | SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM);
-    cout << "Model image name path is " << modelimageNamePath << "\n";
     cv::cvtColor(modelImg, modelImg, SHO_BGR2RGB);
     Mat featureImage = imread(modelimageNamePath.string(), SHO_GRAYSCALE);
 
