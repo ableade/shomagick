@@ -89,14 +89,14 @@ void  CUDARobustMatcher::robustMatch(const cv::Mat &image1, const cv::Mat &train
 {
 
     // 1a. Detection of the ORB features
-    this->computeKeyPoints(image1, keypoints1);
-    this->computeKeyPoints(trainImage, keypoints2);
+    computeKeyPoints(image1, keypoints1);
+    computeKeyPoints(trainImage, keypoints2);
 
     // 1b. Extraction of the ORB descriptors
     cv::Mat descriptors1;
     cv::Mat descriptors2;
-    this->computeDescriptors(image1, keypoints1, descriptors1);
-    this->computeDescriptors(trainImage, keypoints2, descriptors2);
+    computeDescriptors(image1, keypoints1, descriptors1);
+    computeDescriptors(trainImage, keypoints2, descriptors2);
 
     robustMatch(descriptors1, descriptors2, matches);
 }

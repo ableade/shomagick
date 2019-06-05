@@ -148,7 +148,6 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
     }
     
     Mat modelImg = imread(modelimageNamePath.string(), SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM | SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM);
-    cout << "Model image name path is " << modelimageNamePath << "\n";
     cv::cvtColor(modelImg, modelImg, SHO_BGR2RGB);
     Mat featureImage = imread(modelimageNamePath.string(), SHO_GRAYSCALE);
 
@@ -160,6 +159,7 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
     if (resize && featureImage.size().width > FEATURE_PROCESS_SIZE) {
         cv::resize(modelImg, modelImg, { flight.getCamera().getScaledWidth(), flight.getCamera().getScaledHeight()}, 0, 0, cv::INTER_AREA);
         cv::resize(featureImage, featureImage, { flight.getCamera().getScaledWidth(), flight.getCamera().getScaledHeight() }, 0, 0, cv::INTER_AREA);
+        cout << "Size of feature image is " << featureImage.size() << "\n";
     }
 
     std::vector<cv::KeyPoint> keypoints;

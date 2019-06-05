@@ -118,8 +118,9 @@ namespace boost {
                 ar & loc.latitude;
                 ar & loc.altitude;
                 ar & loc.dop;
+                ar & loc.isEmpty;
         }
-        
+
     } // namespace serialization
 } // namespace boost
 

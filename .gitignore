@@ -345,3 +345,9 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database 
 healthchecksdb
+
+# Cmake debug folder
+cmake-build-debug/
+
+# Data files folder
+data/

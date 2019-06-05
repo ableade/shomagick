@@ -43,6 +43,8 @@ struct Location
 	double latitude;
 	double altitude;
     double dop;
+    bool isEmpty = true;
+
 	double distanceTo(Location loc)
 	{
 		auto b = 2;

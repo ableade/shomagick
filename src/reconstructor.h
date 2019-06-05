@@ -39,7 +39,8 @@ const int NUM_PROCESESS = 1;
 const int MAX_ITERATIONS = 10;
 const auto LINEAR_SOLVER_TYPE = "DENSE_QR";
 const int MIN_INLIERS = 20;
-const int BUNDLE_OUTLIER_THRESHOLD = 0.006;
+const double BUNDLE_OUTLIER_THRESHOLD = 0.006;
+const bool OPTIMIZE_CAMERA_PARAEMETERS = true;
 
 class Reconstructor
 {
@@ -58,10 +59,8 @@ private:
   std::map<std::string, cv::Mat> rInverses;
   void _alignMatchingPoints(const CommonTrack track, std::vector<cv::Point2f>& points1, std::vector<cv::Point2f>& points2) const;
   std::vector<cv::DMatch> _getTrackDMatchesForImagePair(const CommonTrack track) const;
-  void _addCameraToBundle(BundleAdjuster& ba, const Camera camera);
+  void _addCameraToBundle(BundleAdjuster& ba, const Camera camera, bool fixCameras);
   void _getCameraFromBundle(BundleAdjuster& ba, Camera& cam);
-  std::tuple<double, cv::Matx33d, ShoColumnVector3d> _alignReconstructionWithHorizontalOrientation(Reconstruction& rec);
-  void _reconstructionSimilarity(Reconstruction & rec, double s, cv::Matx33d a, ShoColumnVector3d b);
   void _computeTwoViewReconstructionInliers(opengv::bearingVectors_t b1, opengv::bearingVectors_t b2, 
       opengv::rotation_t r, opengv::translation_t t) const;
 
@@ -69,8 +68,10 @@ public:
   Reconstructor(FlightSession flight, TrackGraph tg, std::map<std::string, TrackGraph::vertex_descriptor> trackNodes, 
   std::map<std::string, TrackGraph::vertex_descriptor> imageNodes);
   TwoViewPose recoverTwoCameraViewPose(CommonTrack track, cv::Mat& mask);
+  TwoViewPose twoViewReconstructionRotation(CommonTrack track, cv::Mat &mask);
+  template <typename T>
   void twoViewReconstructionInliers(std::vector<cv::Mat>& Rs_decomp, std::vector<cv::Mat>& ts_decomp, std::vector<int> possibleSolutions,
-      std::vector<cv::Point2d> points1, std::vector<cv::Point2d> points2) const;
+      std::vector<cv::Point_<T>> points1, std::vector<cv::Point_<T>> points2) const;
   TwoViewPose recoverTwoViewPoseWithHomography(CommonTrack track, cv::Mat& mask);
   float computeReconstructabilityScore(int tracks, cv::Mat inliers, int treshold = 0.3);
   void computeReconstructability(const ShoTracker& tracker, std::vector<CommonTrack>& commonTracks);
@@ -80,7 +81,7 @@ public:
   using OptionalReconstruction = std::optional<Reconstruction>;
   OptionalReconstruction beginReconstruction (CommonTrack track, const ShoTracker& tracker);
   void continueReconstruction(Reconstruction& rec, std::set<std::string>& images);
-  void triangulateShots(std::string image1, Reconstruction& rec);
+  void triangulateShotTracks(std::string image1, Reconstruction& rec);
   void triangulateTrack(std::string trackId, Reconstruction& rec);
   void retriangulate(Reconstruction& rec);
   ShoColumnVector3d getShotOrigin(const Shot& shot);
@@ -89,11 +90,11 @@ public:
   const vertex_descriptor getImageNode(const std::string imageName) const;
   const vertex_descriptor getTrackNode(std::string trackId) const;
   void plotTracks(CommonTrack track) const;
+  void exportToMvs(const Reconstruction& rec, const std::string mvsFileName);
   void bundle(Reconstruction& rec);
   void removeOutliers(Reconstruction & rec);
   std::tuple<bool, ReconstructionReport> resect(Reconstruction & rec, const vertex_descriptor imageVetex,
       double threshold = 0.004, int iterations = 1000, double probability = 0.999, int resectionInliers = 10 );
   std::vector<std::pair<std::string, int>> reconstructedPointForImages(const Reconstruction & rec, std::set<std::string>& images);
-  void alignReconstruction(Reconstruction & rec);
   void colorReconstruction(Reconstruction &rec);
 };

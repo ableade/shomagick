@@ -33,15 +33,16 @@ imageTracksPath(), camera(), referenceLLA()
     cerr << "Image directory is " << imageDirectory << endl;
     vector<directory_entry> v;
     assert(is_directory(imageDirectory));
-    this->imageDirectoryPath = path(imageDirectory);
+    imageDirectoryPath = path(imageDirectory);
 
-    this->imageFeaturesPath = this->imageDirectoryPath / "features";
-    this->imageMatchesPath = this->imageDirectoryPath / "matches";
-    this->imageTracksPath = this->imageDirectoryPath / "tracks";
-    this->exifPath = this->imageDirectoryPath / "exif";
+    imageFeaturesPath = imageDirectoryPath / "features";
+    imageMatchesPath = imageDirectoryPath / "matches";
+    imageTracksPath = imageDirectoryPath / "tracks";
+    exifPath = imageDirectoryPath / "exif";
+    undistortedImagesPath = imageDirectoryPath / "undisorted";
 
     const vector <boost::filesystem::path> allPaths{ imageFeaturesPath, imageMatchesPath,
-    imageTracksPath, exifPath };
+    imageTracksPath, exifPath, undistortedImagesPath };
 
     for (const auto path : allPaths) {
         cout << "Creating directory " << path.string() << endl;
@@ -68,10 +69,9 @@ imageTracksPath(), camera(), referenceLLA()
                 saveImageExifFile(imageFileName, metadata);
             }
             Img img(imageFileName, metadata);
-            cout << "Read in image " << img.getFileName() << "\n";
-            cout << "Longitude of image is " << metadata.location.longitude << "\n";
-            cout << "Latitude of image is " << metadata.location.latitude << "\n";
-            cout << "Altitude of image is " << metadata.location.altitude << "\n";
+            if (metadata.location.isEmpty) {
+                gpsDataPresent = false;
+            }
             imageSet.push_back(img);
         }
     }
@@ -105,7 +105,7 @@ const path FlightSession::getImageFeaturesPath() const
 
 const path FlightSession::getImageMatchesPath() const
 {
-    return this->imageMatchesPath;
+    return imageMatchesPath;
 }
 
 const boost::filesystem::path FlightSession::getImageExifPath() const
@@ -127,14 +127,19 @@ bool FlightSession::saveTracksFile(std::map <int, std::vector <int>> tracks) {
 
 const path FlightSession::getImageTracksPath() const
 {
-    return this->imageTracksPath;
+    return imageTracksPath;
+}
+
+const boost::filesystem::path FlightSession::getUndistortedImagesDirectoryPath() const
+{
+    return undistortedImagesPath;
 }
 
 int FlightSession::getImageIndex(string imageName) const
 {
-    for (size_t i = 0; i < this->imageSet.size(); ++i)
+    for (size_t i = 0; i < imageSet.size(); ++i)
     {
-        if (this->imageSet[i].getFileName() == imageName)
+        if (imageSet[i].getFileName() == imageName)
         {
             return i;
         }
@@ -144,7 +149,7 @@ int FlightSession::getImageIndex(string imageName) const
 bool FlightSession::saveImageFeaturesFile(string imageName, const std::vector<cv::KeyPoint> &keypoints, const cv::Mat &descriptors,
     const std::vector<cv::Scalar> &colors)
 {
-    auto imageFeaturePath = this->getImageFeaturesPath() / (imageName + ".yaml");
+    auto imageFeaturePath = getImageFeaturesPath() / (imageName + ".yaml");
     if (!boost::filesystem::exists(imageFeaturePath))
     {
         cv::FileStorage file(imageFeaturePath.string(), cv::FileStorage::WRITE);
@@ -215,7 +220,7 @@ ImageFeatures FlightSession::loadFeatures(string imageName) const
 }
 
 const Camera& FlightSession::getCamera() const {
-    return this->camera;
+    return camera;
 }
 
 Camera & FlightSession::getCamera()
@@ -246,7 +251,6 @@ void FlightSession::inventReferenceLLA()
         const auto dop = (img.getMetadata().location.dop != 0.0) ? img.getMetadata().location.dop : defaultDop;
         const auto w = 1.0 / std:: max(0.01, dop);
         lat += w * img.getMetadata().location.latitude;
-        cout << "Longitude of this image is " << img.getMetadata().location.longitude << "\n";
         lon += w * img.getMetadata().location.longitude;
         wLat += w;
         wLon += w;
@@ -256,9 +260,6 @@ void FlightSession::inventReferenceLLA()
     lat /= wLat;
     lon /= wLon;
     alt /= wAlt;
-    cout << "Reference altitude " << alt << "\n";
-    cout << "Reference latitude " << lat << "\n";
-    cout << "Reference longitude " << lon << "\n";
 
     referenceLLA = { {"alt", 0}, {"lat",  lat}, {"lon" , lon} };
 }
@@ -266,4 +267,30 @@ void FlightSession::inventReferenceLLA()
 const std::map<std::string, double>& FlightSession::getReferenceLLA() const
 {
     return referenceLLA;
+}
+
+bool FlightSession::hasGps()
+{
+    return gpsDataPresent;
+}
+
+void FlightSession::undistort()
+{
+    for (auto img : imageSet) {
+        auto imagePath = imageDirectoryPath / img.getFileName();
+        Mat distortedImage = cv::imread(imagePath.string(),
+            SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM |
+            SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM);
+        if (!distortedImage.data)
+            continue;
+        Mat undistortedImage;
+        cv::undistort(distortedImage, 
+            undistortedImage, 
+            camera.getKMatrix(), 
+            camera.getDistortionMatrix());
+        auto undistortedImagePath = undistortedImagesPath / img.getFileName();
+        undistortedImagePath.replace_extension("png");
+        cv::imwrite(undistortedImagePath.string(), undistortedImage);
+    }
+   
 }
