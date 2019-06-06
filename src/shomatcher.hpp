@@ -6,7 +6,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
-const int FEATURE_PROCESS_SIZE = 700;
+const int FEATURE_PROCESS_SIZE = 850;
 
 inline double dist_sq(double *a1, double *a2, int dims)
 {

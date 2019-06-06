@@ -209,10 +209,8 @@ double & Camera::getK2() {
 }
 
 double Camera::getPhysicalFocalLength() const {
-    auto h = (scaledHeight) ? scaledHeight : height;
-    auto w = (scaledWidth) ? scaledWidth : width;
 
-    return (double)this->getPixelFocal() / (double)max(h, w);
+    return (double)this->getPixelFocal() / (double)max(getHeight(), getWidth());
 }
 
 double Camera::getK1() const {

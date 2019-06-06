@@ -302,7 +302,7 @@ float Reconstructor::computeReconstructabilityScore(int tracks, Mat mask,
     cout << "Outliers was " << outliers << "\n";
     cout << "tracks was " << tracks << "\n";
     cout << "Ratio was " << ratio << "\n";
-    if (ratio >= 0.25)
+    if (ratio >= 0.15)
         return outliers;
     else
         return 0;
@@ -351,7 +351,7 @@ Reconstructor::computePlaneHomography(CommonTrack commonTrack) const {
 
 void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
     //undistort all images 
-    flight.undistort();
+    //flight.undistort();
     vector<Reconstruction> reconstructions;
     set<string> reconstructionImages;
     for (const auto it : this->imageNodes) {
