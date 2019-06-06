@@ -7,9 +7,11 @@
 #include "multiview.h"
 #include "transformations.h"
 #include <opengv/relative_pose/CentralRelativeAdapter.hpp>
+#include <opengv/relative_pose/methods.hpp>
 #include <opengv/triangulation/methods.hpp>
 #include "OpenMVSExporter.h"
 #include <Eigen/Core>
+#include <Eigen/Dense>
 #include <opencv2/core/eigen.hpp>
 #include "bundle.h"
 #include "utilities.h"
@@ -172,15 +174,22 @@ TwoViewPose Reconstructor::recoverTwoCameraViewPose(CommonTrack track, Mat &mask
     return std::make_tuple(true, essentialMatrix, r, t);
 }
 
-TwoViewPose Reconstructor::twoViewReconstructionRotation(CommonTrack track, cv::Mat & mask)
+TwoViewPose Reconstructor::twoViewReconstructionRotationOnly(CommonTrack track, cv::Mat & mask)
 {
     vector<Point2f> points1;
     vector<Point2f> points2;
     _alignMatchingPoints(track, points1, points2);
 
-    const auto bearings1 = flight.getCamera().normalizedPointsToBearingVec(points1);
-    const auto bearings2 = flight.getCamera().normalizedPointsToBearingVec(points2);
-    return {};
+    auto bearings1 = flight.getCamera().normalizedPointsToBearingVec(points1);
+    auto bearings2 = flight.getCamera().normalizedPointsToBearingVec(points2);
+
+    CentralRelativeAdapter adapter(bearings1, bearings2);
+    size_t iterations = 100;
+    rotation_t relativeRotation;
+    for (auto i = 0; i < iterations; ++i) {
+       relativeRotation = opengv::relative_pose::rotationOnly(adapter);
+    }
+   return  _computeRotationInliers(bearings1, bearings2, relativeRotation, mask);
 }
 
 template <typename T>
@@ -257,6 +266,34 @@ void Reconstructor::_computeTwoViewReconstructionInliers(opengv::bearingVectors_
 #endif
 }
 
+TwoViewPose Reconstructor::_computeRotationInliers(opengv::bearingVectors_t& b1, opengv::bearingVectors_t& b2, 
+    const opengv::rotation_t& rotation, Mat& cvMask) const
+{
+    const Eigen::Matrix<double, Dynamic, 3> bearings2 = Eigen::Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(b2.data()->data(), 
+        b2.size(), 3);
+    const Eigen::Matrix<double, Dynamic, 3> bearings1 = Eigen::Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(b1.data()->data(),
+        b1.size(), 3);
+    //cout << "Bearings 1 is " << bearings1 << "\n";
+    //cout << "Bearings 2 is " << bearings2 << "\n";
+
+    auto threshold = 4 * REPROJECTION_ERROR_SD;
+    MatrixXd bearingsRotated2(bearings1.rows(), bearings1.cols());
+    bearingsRotated2 = (rotation * (bearings2.transpose())).transpose();
+    MatrixXd  bearingsdiff(bearings1.rows(), bearings1.cols());
+    bearingsdiff = (bearingsRotated2 - bearings1);
+    //cout << "Bearings diff is " << bearingsdiff << "\n";
+    Eigen::MatrixXd maskDiff (bearings1.rows(), 1);
+    Eigen::MatrixXi mask(bearings1.rows(), 1);
+    maskDiff = bearingsdiff.rowwise().squaredNorm();
+    //cout << "mask is " << maskDiff << "\n";
+    mask = (maskDiff.array() < threshold).cast<int>();
+    eigen2cv(mask, cvMask);
+    Mat rotationCv;
+    eigen2cv(rotation, rotationCv);
+    //cout << "CV mask is now " << cvMask << "\n";
+    return { true, rotationCv, Mat(), Mat() };
+}
+
 float Reconstructor::computeReconstructabilityScore(int tracks, Mat mask,
     int tresh) {
     auto inliers = countNonZero(mask);
@@ -265,7 +302,7 @@ float Reconstructor::computeReconstructabilityScore(int tracks, Mat mask,
     cout << "Outliers was " << outliers << "\n";
     cout << "tracks was " << tracks << "\n";
     cout << "Ratio was " << ratio << "\n";
-    if (ratio >= 0.3)
+    if (ratio >= 0.25)
         return outliers;
     else
         return 0;
@@ -280,7 +317,8 @@ void Reconstructor::computeReconstructability(
 #if 1
         bool success{};
         Mat essentialMat, rotation, translation;
-        std::tie(success, essentialMat, rotation, translation) = recoverTwoViewPoseWithHomography(track, mask);
+        std::tie(success, essentialMat, rotation, translation) = twoViewReconstructionRotationOnly(track, mask);
+        //std::tie(success, essentialMat, rotation, translation) = recoverTwoViewPoseWithHomography(track, mask);
 #else
         auto[success, essentrialMat, rotation, translation] = recoverTwoViewPoseWithHomography(track, mask);
 #endif

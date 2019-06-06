@@ -54,12 +54,12 @@ void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
     set<pair<string, string>> alreadyPaired;
     this->buildKdTree();
     auto imageSet = flight.getImageSet();
-    for (const auto img: imageSet) {
+    for (const auto img : imageSet) {
         vector<string> matchSet;
         auto currentImageName = img.getFileName();
         void *result_set;
 
-        double pt[] = {img.getMetadata().location.longitude, img.getMetadata().location.latitude };
+        double pt[] = { img.getMetadata().location.longitude, img.getMetadata().location.latitude };
         result_set = kd_nearest_range(static_cast<kdtree *>(kd), pt, range);
         vector<double> pos(this->dimensions);
         int count = 0;
@@ -78,7 +78,7 @@ void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
                     alreadyPaired.insert(make_pair(currentImageName, img->getFileName()));
                     matchSet.push_back(img->getFileName());
                 }
-                
+
             }
             kd_res_next(static_cast<kdres *>(result_set));
         }
@@ -101,7 +101,7 @@ void ShoMatcher::getCandidateMatchesFromFile(string candidatesFile) {
     }
 }
 
-int ShoMatcher::extractFeatures(bool resize) 
+int ShoMatcher::extractFeatures(bool resize)
 {
     //set feature process size to -1 to avoid resizing
     if (FEATURE_PROCESS_SIZE != -1 && resize) {
@@ -116,21 +116,39 @@ int ShoMatcher::extractFeatures(bool resize)
     if (!this->candidateImages.size())
         return 0;
 
-    for (auto it = candidateImages.begin(); it != candidateImages.end(); it++)
+#pragma omp parallel shared(detected)
     {
-        if (detected.find(it->first) == detected.end() && _extractFeature(it->first, resize))
+#pragma omp for
+        for (auto i = 0; i < candidateImages.size(); ++i)
+            //for (auto it = candidateImages.begin(); it != candidateImages.end(); it++)
         {
-            detected.insert(it->first);
-        }
-
-        for (auto _it = it->second.begin(); _it != it->second.end(); ++_it)
-        {
-            if (detected.find(*_it) == detected.end())
+            auto it = candidateImages.begin();
+            advance(it, i);
+#pragma omp critical 
             {
-                if (_extractFeature(*_it, resize))
+                if (detected.find(it->first) == detected.end() && _extractFeature(it->first, resize))
                 {
-                    detected.insert(*_it);
+                    detected.insert(it->first);
                 }
+            }
+
+
+            for (auto j = 0; j < it->second.size(); ++j)
+                //for (auto _it = it->second.begin(); _it != it->second.end(); ++_it)
+            {
+                auto _it = it->second.begin();
+                advance(_it, j);
+#pragma omp critical
+                {
+                    if (detected.find(*_it) == detected.end())
+                    {
+                        if (_extractFeature(*_it, resize))
+                        {
+                            detected.insert(*_it);
+                        }
+                    }
+                }
+
             }
         }
     }
@@ -143,10 +161,10 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
     auto modelimageNamePath = flight.getImageDirectoryPath() / (fileName);
     if (boost::filesystem::exists(imageFeaturePath)) {
         //Use existing file instead.
-        cerr << "Using " << imageFeaturePath.string()<< " for features \n";
+        cerr << "Using " << imageFeaturePath.string() << " for features \n";
         return true;
     }
-    
+
     Mat modelImg = imread(modelimageNamePath.string(), SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM | SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM);
     cv::cvtColor(modelImg, modelImg, SHO_BGR2RGB);
     Mat featureImage = imread(modelimageNamePath.string(), SHO_GRAYSCALE);
@@ -157,7 +175,7 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
         return false;
 
     if (resize && featureImage.size().width > FEATURE_PROCESS_SIZE) {
-        cv::resize(modelImg, modelImg, { flight.getCamera().getScaledWidth(), flight.getCamera().getScaledHeight()}, 0, 0, cv::INTER_AREA);
+        cv::resize(modelImg, modelImg, { flight.getCamera().getScaledWidth(), flight.getCamera().getScaledHeight() }, 0, 0, cv::INTER_AREA);
         cv::resize(featureImage, featureImage, { flight.getCamera().getScaledWidth(), flight.getCamera().getScaledHeight() }, 0, 0, cv::INTER_AREA);
         cout << "Size of feature image is " << featureImage.size() << "\n";
     }
@@ -167,9 +185,9 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
     cv::Mat descriptors;
 
     if (cudaEnabled && runCuda) {
-        GpuMat cudaFeatureImg, cudaKeypoints,cudaDescriptors;
+        GpuMat cudaFeatureImg, cudaKeypoints, cudaDescriptors;
         cudaFeatureImg.upload(featureImage);
-        auto cudaDetector =  detector_.dynamicCast<cv::cuda::ORB>();
+        auto cudaDetector = detector_.dynamicCast<cv::cuda::ORB>();
         cudaDetector->detectAndCompute(cudaFeatureImg, cv::noArray(), keypoints, cudaDescriptors);
         cudaDescriptors.download(descriptors);
     }
@@ -184,7 +202,7 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
             colors.push_back(modelImg.at<uchar>(keypoint.pt));
         else if (channels == 3)
             colors.push_back(modelImg.at<Vec3b>(keypoint.pt));
-    
+
         keypoint.pt = this->flight.getCamera().normalizeImageCoordinate(keypoint.pt);
     }
     return this->flight.saveImageFeaturesFile(fileName, keypoints, descriptors, colors);
@@ -227,7 +245,7 @@ void ShoMatcher::runRobustFeatureMatching()
                 loadedFeatures[trainImg] = trainFeaturesSet;
             }
             vector<DMatch> matches;
-            
+
             if (cudaEnabled && runCuda) {
                 cMatcher->robustMatch(queryFeaturesSet.descriptors, trainFeaturesSet.descriptors, matches);
             }

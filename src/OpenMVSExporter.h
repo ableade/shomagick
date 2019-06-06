@@ -58,10 +58,9 @@ namespace csfm {
 
             MVS::Interface::Vertex vertex;
             vertex.X = coordinates;
-            for (int i = 0; i < shot_ids.size(); ++i) {
-                std::string shot_id = shot_ids[i];
+            for (auto shot: shot_ids) {
                 MVS::Interface::Vertex::View view;
-                view.imageID = image_ids_[shot_id];
+                view.imageID = image_ids_[shot];
                 view.confidence = 0;
                 vertex.views.push_back(view);
             } 

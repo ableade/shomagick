@@ -63,12 +63,14 @@ private:
   void _getCameraFromBundle(BundleAdjuster& ba, Camera& cam);
   void _computeTwoViewReconstructionInliers(opengv::bearingVectors_t b1, opengv::bearingVectors_t b2, 
       opengv::rotation_t r, opengv::translation_t t) const;
+  TwoViewPose _computeRotationInliers(opengv::bearingVectors_t& b1, opengv::bearingVectors_t& b2,
+      const opengv::rotation_t& rotation, cv::Mat& cvMask) const;
 
 public:
   Reconstructor(FlightSession flight, TrackGraph tg, std::map<std::string, TrackGraph::vertex_descriptor> trackNodes, 
   std::map<std::string, TrackGraph::vertex_descriptor> imageNodes);
   TwoViewPose recoverTwoCameraViewPose(CommonTrack track, cv::Mat& mask);
-  TwoViewPose twoViewReconstructionRotation(CommonTrack track, cv::Mat &mask);
+  TwoViewPose twoViewReconstructionRotationOnly(CommonTrack track, cv::Mat &mask);
   template <typename T>
   void twoViewReconstructionInliers(std::vector<cv::Mat>& Rs_decomp, std::vector<cv::Mat>& ts_decomp, std::vector<int> possibleSolutions,
       std::vector<cv::Point_<T>> points1, std::vector<cv::Point_<T>> points2) const;
