@@ -298,14 +298,14 @@ float Reconstructor::computeReconstructabilityScore(int tracks, Mat mask,
     int tresh) {
     auto inliers = countNonZero(mask);
     auto outliers = tracks - inliers;
-    auto ratio = float(outliers) / tracks;
+    auto ratio = float(inliers) / tracks;
     cout << "Outliers was " << outliers << "\n";
     cout << "tracks was " << tracks << "\n";
     cout << "Ratio was " << ratio << "\n";
-    if (ratio >= 0.15)
-        return outliers;
+    if (tracks > 100)
+        return ratio;
     else
-        return 0;
+        return 1.0;
 }
 
 void Reconstructor::computeReconstructability(
@@ -317,8 +317,8 @@ void Reconstructor::computeReconstructability(
 #if 1
         bool success{};
         Mat essentialMat, rotation, translation;
-        std::tie(success, essentialMat, rotation, translation) = twoViewReconstructionRotationOnly(track, mask);
-        //std::tie(success, essentialMat, rotation, translation) = recoverTwoViewPoseWithHomography(track, mask);
+        //std::tie(success, essentialMat, rotation, translation) = twoViewReconstructionRotationOnly(track, mask);
+        std::tie(success, essentialMat, rotation, translation) = recoverTwoCameraViewPose(track, mask);
 #else
         auto[success, essentrialMat, rotation, translation] = recoverTwoViewPoseWithHomography(track, mask);
 #endif
@@ -326,12 +326,12 @@ void Reconstructor::computeReconstructability(
             track.rScore = computeReconstructabilityScore(track.commonTracks.size(), mask);
         }
         else {
-            track.rScore = 0;
+            track.rScore = 1.0;
         }
     }
    
     sort(std::begin(commonTracks), std::end(commonTracks),
-        [](const CommonTrack& a, const CommonTrack& b) { return -a.rScore < - b.rScore; });
+        [](const CommonTrack& a, const CommonTrack& b) { return a.rScore <  b.rScore; });
    
 }
 
