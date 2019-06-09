@@ -102,7 +102,7 @@ void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNo
     cout << "Created a total of " << uf.numDisjointSets() << " tracks" << endl;
 
     //Filter out bad tracks
-    for (const auto[imageFeatureNode, index] : imageFeatureNodes_)
+    for (const auto& [imageFeatureNode, index] : imageFeatureNodes_)
     {
         int dSet = this->uf.findSet(index);
         if (this->uf.sizeOfSet(dSet) > this->minTrackLength)

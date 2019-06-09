@@ -164,7 +164,7 @@ bool FlightSession::saveImageFeaturesFile(string imageName, const std::vector<cv
 bool FlightSession::saveImageExifFile(std::string imageName, ImageMetadata imageExif)
 {
     auto imageExifPath = getImageExifPath() / (imageName + ".dat");
-    ofstream exifFile(imageExifPath, ios::binary);
+    boost::filesystem::ofstream exifFile(imageExifPath, ios::binary);
     boost::archive::text_oarchive ar(exifFile);
     ar & imageExif;
     return exists(imageExifPath);

@@ -15,7 +15,7 @@
 class CUDARobustMatcher
 {
 public:
-    CUDARobustMatcher() : detector_(cv::cuda::ORB::create(numFeatures)), extractor_(cv::ORB::create(numFeatures)), ratio_(0.8f)
+    CUDARobustMatcher(int numFeatures = 8000) : detector_(cv::cuda::ORB::create(numFeatures)), extractor_(cv::ORB::create(numFeatures)), ratio_(0.8f)
     {
         // ORB is the default feature
         // BruteFroce matcher with Norm Hamming is the default matcher
