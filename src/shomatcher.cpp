@@ -1,11 +1,9 @@
 #include "shomatcher.hpp"
 #include "kdtree.h"
 #include "camera.h"
-#include  "cudamatcher.hpp"
 #include "RobustMatcher.h"
 #include <fstream>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/cudafeatures2d.hpp>
 #include "json.hpp"
 #include <set>
 
@@ -13,9 +11,6 @@ using cv::DMatch;
 using cv::FeatureDetector;
 using cv::imread;
 using cv::Mat;
-using cv::ORB;
-using cv::cuda::GpuMat;
-using cv::Ptr;
 using cv::Vec3b;
 using cv::Scalar;
 using cv::drawMatches;
@@ -33,35 +28,25 @@ using std::vector;
 using std::string;
 using json = nlohmann::json;
 
-ShoMatcher::ShoMatcher(FlightSession flight, bool runCuda) : flight(flight), runCuda(runCuda)
-, kd(nullptr)
-, candidateImages()
-, detector_(cv::ORB::create(4000))
-, extractor_(cv::ORB::create(4000)) {
-    if (cv::cuda::getCudaEnabledDeviceCount()) {
-        cerr << "CUDA device detected. Running CUDA \n";
-        cv::cuda::printCudaDeviceInfo(cv::cuda::getDevice());
-        cudaEnabled = true;
-    }
-    if (cudaEnabled && runCuda) {
-        //Set CUDA ORB detector
-        detector_ = cv::cuda::ORB::create(4000);
-        extractor_ = cv::cuda::ORB::create(4000);
-    }
+ShoMatcher::ShoMatcher(FlightSession flight, bool runCuda) : flight_(flight), runCuda_(runCuda)
+, kd_(nullptr)
+, candidateImages(), rMatcher_()
+{
+
 }
 void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
 {
     set<pair<string, string>> alreadyPaired;
     this->buildKdTree();
-    auto imageSet = flight.getImageSet();
+    auto imageSet = flight_.getImageSet();
     for (const auto img : imageSet) {
         vector<string> matchSet;
         auto currentImageName = img.getFileName();
         void *result_set;
 
         double pt[] = { img.getMetadata().location.longitude, img.getMetadata().location.latitude };
-        result_set = kd_nearest_range(static_cast<kdtree *>(kd), pt, range);
-        vector<double> pos(this->dimensions);
+        result_set = kd_nearest_range(static_cast<kdtree *>(kd_), pt, range);
+        vector<double> pos(this->dimensions_);
         int count = 0;
         while (!kd_res_end(static_cast<kdres *>(result_set)))
         {
@@ -105,11 +90,11 @@ int ShoMatcher::extractFeatures(bool resize)
 {
     //set feature process size to -1 to avoid resizing
     if (FEATURE_PROCESS_SIZE != -1 && resize) {
-        auto maxSize = max(flight.getCamera().getHeight(), flight.getCamera().getWidth());
-        int fx = flight.getCamera().getWidth() * FEATURE_PROCESS_SIZE / maxSize;
-        int fy = flight.getCamera().getHeight() * FEATURE_PROCESS_SIZE / maxSize;
-        flight.getCamera().setScaledHeight(fy);
-        flight.getCamera().setScaledWidth(fx);
+        auto maxSize = max(flight_.getCamera().getHeight(), flight_.getCamera().getWidth());
+        int fx = flight_.getCamera().getWidth() * FEATURE_PROCESS_SIZE / maxSize;
+        int fy = flight_.getCamera().getHeight() * FEATURE_PROCESS_SIZE / maxSize;
+        flight_.getCamera().setScaledHeight(fy);
+        flight_.getCamera().setScaledWidth(fx);
     }
 
     set<string> detected;
@@ -157,8 +142,8 @@ int ShoMatcher::extractFeatures(bool resize)
 
 bool ShoMatcher::_extractFeature(string fileName, bool resize)
 {
-    auto imageFeaturePath = flight.getImageFeaturesPath() / (fileName + ".yaml");
-    auto modelimageNamePath = flight.getImageDirectoryPath() / (fileName);
+    auto imageFeaturePath = flight_.getImageFeaturesPath() / (fileName + ".yaml");
+    auto modelimageNamePath = flight_.getImageDirectoryPath() / (fileName);
     if (boost::filesystem::exists(imageFeaturePath)) {
         //Use existing file instead.
         cerr << "Using " << imageFeaturePath.string() << " for features \n";
@@ -175,8 +160,8 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
         return false;
 
     if (resize && featureImage.size().width > FEATURE_PROCESS_SIZE) {
-        cv::resize(modelImg, modelImg, { flight.getCamera().getScaledWidth(), flight.getCamera().getScaledHeight() }, 0, 0, cv::INTER_AREA);
-        cv::resize(featureImage, featureImage, { flight.getCamera().getScaledWidth(), flight.getCamera().getScaledHeight() }, 0, 0, cv::INTER_AREA);
+        cv::resize(modelImg, modelImg, { flight_.getCamera().getScaledWidth(), flight_.getCamera().getScaledHeight() }, 0, 0, cv::INTER_AREA);
+        cv::resize(featureImage, featureImage, { flight_.getCamera().getScaledWidth(), flight_.getCamera().getScaledHeight() }, 0, 0, cv::INTER_AREA);
         cout << "Size of feature image is " << featureImage.size() << "\n";
     }
 
@@ -184,16 +169,7 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
     std::vector<cv::Scalar> colors;
     cv::Mat descriptors;
 
-    if (cudaEnabled && runCuda) {
-        GpuMat cudaFeatureImg, cudaKeypoints, cudaDescriptors;
-        cudaFeatureImg.upload(featureImage);
-        auto cudaDetector = detector_.dynamicCast<cv::cuda::ORB>();
-        cudaDetector->detectAndCompute(cudaFeatureImg, cv::noArray(), keypoints, cudaDescriptors);
-        cudaDescriptors.download(descriptors);
-    }
-    else {
-        detector_->detectAndCompute(featureImage, cv::noArray(), keypoints, descriptors);
-    }
+    rMatcher_.detectAndCompute(featureImage, keypoints, descriptors);
 
     cout << "Extracted " << descriptors.rows << " points for  " << fileName << endl;
 
@@ -203,9 +179,9 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
         else if (channels == 3)
             colors.push_back(modelImg.at<Vec3b>(keypoint.pt));
 
-        keypoint.pt = this->flight.getCamera().normalizeImageCoordinate(keypoint.pt);
+        keypoint.pt = this->flight_.getCamera().normalizeImageCoordinate(keypoint.pt);
     }
-    return this->flight.saveImageFeaturesFile(fileName, keypoints, descriptors, colors);
+    return flight_.saveImageFeaturesFile(fileName, keypoints, descriptors, colors);
 }
 
 
@@ -214,22 +190,16 @@ void ShoMatcher::runRobustFeatureMatching()
     if (!this->candidateImages.size())
         return;
 
-    RobustMatcher rmatcher;
-    cv::Ptr<CUDARobustMatcher> cMatcher;
-    if (cudaEnabled && runCuda) {
-        cMatcher = cv::makePtr<CUDARobustMatcher>();
-    }
-
     map<string, ImageFeatures> loadedFeatures;
     for (const auto&[queryImg, trainImages] : candidateImages) {
         vector<string> trainImageSet;
-        auto queryImagePath = flight.getImageDirectoryPath() / queryImg;
+        auto queryImagePath = flight_.getImageDirectoryPath() / queryImg;
         ImageFeatures queryFeaturesSet;
         try {
             queryFeaturesSet = loadedFeatures.at(queryImg);
         }
         catch (std::out_of_range e) {
-            queryFeaturesSet = flight.loadFeatures(queryImg);
+            queryFeaturesSet = flight_.loadFeatures(queryImg);
             loadedFeatures[queryImg] = queryFeaturesSet;
         }
         map<string, vector<DMatch>> matchSet;
@@ -241,19 +211,12 @@ void ShoMatcher::runRobustFeatureMatching()
                 trainFeaturesSet = loadedFeatures.at(trainImg);
             }
             catch (std::out_of_range e) {
-                trainFeaturesSet = flight.loadFeatures(trainImg);
+                trainFeaturesSet = flight_.loadFeatures(trainImg);
                 loadedFeatures[trainImg] = trainFeaturesSet;
             }
             vector<DMatch> matches;
-
-            if (cudaEnabled && runCuda) {
-                cMatcher->robustMatch(queryFeaturesSet.descriptors, trainFeaturesSet.descriptors, matches);
-            }
-            else {
-                rmatcher.robustMatch(queryFeaturesSet.descriptors, trainFeaturesSet.descriptors, matches);
-            }
-
-            int trainIndex = this->flight.getImageIndex(trainImg);
+            rMatcher_.robustMatch(queryFeaturesSet.descriptors, trainFeaturesSet.descriptors, matches);
+            int trainIndex = this->flight_.getImageIndex(trainImg);
             for (size_t i = 0; i < matches.size(); i++)
             {
                 //Update train index so we know what image we matched against when we are running the tracking pipeline
@@ -262,18 +225,18 @@ void ShoMatcher::runRobustFeatureMatching()
             matchSet[trainImg] = matches;
             cout << queryImg << " - " << trainImg << " has " << matches.size() << "candidate matches" << endl;
         }
-        this->flight.saveMatches(queryImg, matchSet);
+        this->flight_.saveMatches(queryImg, matchSet);
     }
 }
 
 void ShoMatcher::buildKdTree()
 {
-    kd = kd_create(this->dimensions);
-    for (auto &img : this->flight.getImageSet())
+    kd_ = kd_create(this->dimensions_);
+    for (auto &img : this->flight_.getImageSet())
     {
         auto pos = vector<double>{ img.getMetadata().location.longitude, img.getMetadata().location.latitude };
         void *dt = &img;
-        assert(kd_insert(static_cast<kdtree *>(kd), pos.data(), dt) == 0);
+        assert(kd_insert(static_cast<kdtree *>(kd_), pos.data(), dt) == 0);
     }
 
 }
@@ -285,19 +248,19 @@ map<string, std::vector<string>> ShoMatcher::getCandidateImages() const
 
 void ShoMatcher::plotMatches(string img1, string img2) const {
     Mat imageMatches;
-    Mat image1 = imread((this->flight.getImageDirectoryPath() / img1).string(),
+    Mat image1 = imread((this->flight_.getImageDirectoryPath() / img1).string(),
         cv::IMREAD_GRAYSCALE);
-    Mat image2 = imread((this->flight.getImageDirectoryPath() / img2).string(),
+    Mat image2 = imread((this->flight_.getImageDirectoryPath() / img2).string(),
         cv::IMREAD_GRAYSCALE);
-    auto img1Matches = this->flight.loadMatches(img1);
-    auto kp1 = this->flight.loadFeatures(img1).getKeypoints();
-    auto kp2 = this->flight.loadFeatures(img2).getKeypoints();
+    auto img1Matches = this->flight_.loadMatches(img1);
+    auto kp1 = this->flight_.loadFeatures(img1).getKeypoints();
+    auto kp2 = this->flight_.loadFeatures(img2).getKeypoints();
     for (auto& kp : kp1) {
-        kp.pt = this->flight.getCamera().denormalizeImageCoordinates(kp.pt);
+        kp.pt = this->flight_.getCamera().denormalizeImageCoordinates(kp.pt);
     }
 
     for (auto& kp : kp2) {
-        kp.pt = this->flight.getCamera().denormalizeImageCoordinates(kp.pt);
+        kp.pt = this->flight_.getCamera().denormalizeImageCoordinates(kp.pt);
     }
     if (img1Matches.find(img2) != img1Matches.end()) {
         auto matches = img1Matches[img2];

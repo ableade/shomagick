@@ -22,17 +22,16 @@ class FlightSession
 private:
     std::vector<Img> imageSet;
     std::string imageDirectory;
-    boost::filesystem::path imageDirectoryPath;
-    boost::filesystem::path imageFeaturesPath;
-    boost::filesystem::path imageMatchesPath;
-    boost::filesystem::path imageTracksPath;
-    boost::filesystem::path exifPath;
-    boost::filesystem::path undistortedImagesPath;
-    Camera camera;
-    std::map<std::string, double> referenceLLA;
-    // TODO Implement unimplemented functions in flightsession class
+    boost::filesystem::path imageDirectoryPath_;
+    boost::filesystem::path imageFeaturesPath_;
+    boost::filesystem::path imageMatchesPath_;
+    boost::filesystem::path imageTracksPath_;
+    boost::filesystem::path exifPath_;
+    boost::filesystem::path undistortedImagesPath_;
+    Camera camera_;
+    std::map<std::string, double> referenceLLA_;
     std::string _extractProjectionTypeFromExif(Exiv2::ExifData exifData) const;
-    bool gpsDataPresent = true;
+    bool gpsDataPresent_ = true;
 
 public:
     FlightSession();
