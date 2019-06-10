@@ -1,5 +1,6 @@
 #include "HahogFeatureDetector.h"
 #include "bootstrap.h"
+#include <iostream>
 
 extern "C" {
 #include "vl/covdet.h"
@@ -15,8 +16,8 @@ HahogFeatureDetector::~HahogFeatureDetector()
     vl_covdet_delete(covdet_);
 }
 
-HahogFeatureDetector::HahogFeatureDetector(float peakThreshold, int edgeThreshold, int targetNumFeatures, bool useAdaptiveSupression) :peakTreshhold_(peakThreshold),
-edgeThreshold_(edgeThreshold), featuresSize_(targetNumFeatures), useAdaptiveSupression_(useAdaptiveSupression)
+HahogFeatureDetector::HahogFeatureDetector(int targetNumFeatures, float peakThreshold, int edgeThreshold,  bool useAdaptiveSupression) :featuresSize_(targetNumFeatures), peakTreshhold_(peakThreshold),
+edgeThreshold_(edgeThreshold),  useAdaptiveSupression_(useAdaptiveSupression)
 {
     sift_ = vl_sift_new(16, 16, 1, 3, 0);
     covdet_ = vl_covdet_new(VL_COVDET_METHOD_HESSIAN);
@@ -26,9 +27,9 @@ HahogFeatureDetector::HahogFeatureDetector()
 {
 }
 
-cv::Ptr<HahogFeatureDetector> HahogFeatureDetector::create(float peakThreshold, int edgeThreshold, int targetNumFeatures, bool useAdaptiveSupression)
+cv::Ptr<HahogFeatureDetector> HahogFeatureDetector::create(int targetNumFeatures, float peakThreshold, int edgeThreshold,  bool useAdaptiveSupression)
 {
-    return cv::makePtr<HahogFeatureDetector>(peakThreshold, edgeThreshold, targetNumFeatures, useAdaptiveSupression);
+    return cv::makePtr<HahogFeatureDetector>(targetNumFeatures, peakThreshold, edgeThreshold,  useAdaptiveSupression);
 }
 
 void HahogFeatureDetector::detect(cv::InputArray image, std::vector<cv::KeyPoint>& keypoints, cv::InputArray mask)
@@ -86,7 +87,14 @@ void HahogFeatureDetector::compute(cv::InputArray image, std::vector<cv::KeyPoin
 
 void HahogFeatureDetector::detectAndCompute(cv::InputArray image, cv::InputArray mask, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors, bool useProvidedKeypoints)
 {
-    auto imFlat = image.getMat().reshape(1, 1);
+    cv::Mat mat = image.getMat();
+    cv::Mat imFlat = mat.reshape(1, 1).clone();
+    if (imFlat.isContinuous()) {
+        std::cout << "We have continious \n";
+    }
+    std::cout << "Rows * cols m flat " << imFlat.rows * imFlat.cols << "\n";
+    std::cout << "Rows *m flat " << imFlat.rows << "\n";
+    std::cout << "Cols *m flat " << imFlat.cols << "\n";
     // set various parameters (optional)
     vl_covdet_set_first_octave(covdet_, 0);
     //vl_covdet_set_octave_resolution(covdet, octaveResolution);
@@ -96,7 +104,12 @@ void HahogFeatureDetector::detectAndCompute(cv::InputArray image, cv::InputArray
     vl_covdet_set_target_num_features(covdet_, featuresSize_);
     vl_covdet_set_use_adaptive_suppression(covdet_, useAdaptiveSupression_);
 
-    vl_covdet_put_image(covdet_, reinterpret_cast<float*>(imFlat.data), image.cols(), image.rows());
+    std::vector<float> buffer;
+    buffer.assign((float*)imFlat.data, (float*)imFlat.data + imFlat.total());
+    //const float* buffer = imFlat.ptr<float>(0);
+    //vl_covdet_put_image(covdet_, buffer, image.cols(), image.rows());
+
+    vl_covdet_put_image(covdet_, buffer.data(), image.cols(), image.rows());
 
     //clock_t t_scalespace = clock();
 

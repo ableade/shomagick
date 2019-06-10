@@ -28,9 +28,12 @@ using std::vector;
 using std::string;
 using json = nlohmann::json;
 
-ShoMatcher::ShoMatcher(FlightSession flight, bool runCuda) : flight_(flight), runCuda_(runCuda)
-, kd_(nullptr)
-, candidateImages(), rMatcher_()
+ShoMatcher::ShoMatcher(FlightSession flight, bool runCuda)
+    : flight_(flight)
+    , runCuda_(runCuda)
+    , kd_(nullptr)
+    , candidateImages()
+    , rMatcher_(RobustMatcher::create(RobustMatcher::Feature::surf))
 {
 
 }
@@ -169,7 +172,7 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
     std::vector<cv::Scalar> colors;
     cv::Mat descriptors;
 
-    rMatcher_.detectAndCompute(featureImage, keypoints, descriptors);
+    rMatcher_->detectAndCompute(featureImage, keypoints, descriptors);
 
     cout << "Extracted " << descriptors.rows << " points for  " << fileName << endl;
 
@@ -215,7 +218,7 @@ void ShoMatcher::runRobustFeatureMatching()
                 loadedFeatures[trainImg] = trainFeaturesSet;
             }
             vector<DMatch> matches;
-            rMatcher_.robustMatch(queryFeaturesSet.descriptors, trainFeaturesSet.descriptors, matches);
+            rMatcher_->robustMatch(queryFeaturesSet.descriptors, trainFeaturesSet.descriptors, matches);
             int trainIndex = this->flight_.getImageIndex(trainImg);
             for (size_t i = 0; i < matches.size(); i++)
             {

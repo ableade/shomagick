@@ -15,14 +15,34 @@
 
 class RobustMatcher
 {
+    
 public:
+    enum class Feature { orb, hahog, sift, surf };
+
+#if 0
     RobustMatcher(
         int numFeatures = 8000,
         double ratio = 0.8
     );
-        
+#else
+    RobustMatcher(
+        bool cudaEnabled,
+        double ratio,
+        cv::Ptr<cv::FeatureDetector> detector,
+        cv::Ptr<cv::FeatureDetector> extractor,
+        cv::Ptr<cv::DescriptorMatcher> matcher,
+        cv::Ptr<cv::cuda::DescriptorMatcher> cMatcher
+    );
+#endif
+      
+
     virtual ~RobustMatcher();
 
+    static cv::Ptr<RobustMatcher> createHahogMatcher(const bool cudaEnabled, const int numFeatures, const double ratio);
+    static cv::Ptr<RobustMatcher> createSiftMatcher(const bool cudaEnabled, const int numFeatures, const double ratio);
+    static cv::Ptr<RobustMatcher> createSurfMatcher(const bool cudaEnabled, const int numFeatures, const double ratio, const int minHessian = 1000);
+    // creates a robust matcher with chosen feature detection algorithm
+    static cv::Ptr<RobustMatcher> create(Feature alg, int numFeatures = 8000, double ratio = 0.8);
     // Set the feature detector
     void setFeatureDetector(const cv::Ptr<cv::FeatureDetector> &detect) { detector_ = detect; }
 

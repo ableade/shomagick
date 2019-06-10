@@ -30,7 +30,7 @@ private:
     int featureSize_ = 5000;
     std::map<std::string, std::vector<std::string>> candidateImages;
     bool _extractFeature(std::string fileName, bool resize = false);
-    RobustMatcher rMatcher_;
+    cv::Ptr<RobustMatcher> rMatcher_;
 
 public:
     ShoMatcher(FlightSession flight, bool runCuda = true);

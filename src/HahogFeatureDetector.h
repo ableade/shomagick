@@ -21,26 +21,25 @@ private:
 public:
     virtual ~HahogFeatureDetector();
 
-    HahogFeatureDetector(float peakThreshold, int edgeThreshold, int targetNumFeatures, bool useAdaptiveSupression);
+    HahogFeatureDetector(int targetNumFeatures, float peakThreshold, int edgeThreshold,  bool useAdaptiveSupression);
 
     HahogFeatureDetector();
 
-    static cv::Ptr<HahogFeatureDetector> create(float peakThreshold = HAHOG_PEAK_THRESHOLD,
+    static cv::Ptr<HahogFeatureDetector> create(int target_num_features = 8000, float peakThreshold = HAHOG_PEAK_THRESHOLD,
         int edgeThreshold = HAHOG_EDGE_TRESHOLD,
-        int target_num_features = 8000,
         bool use_adaptive_suppression = false);
 
     void detect(
         cv::InputArray image,
         std::vector<cv::KeyPoint>& keypoints,
         cv::InputArray mask = cv::noArray()
-    );
+    ) override;
 
     void compute(
         cv::InputArray image,
         std::vector<cv::KeyPoint>& keypoints,
         cv::OutputArray descriptors
-    );
+    ) override;
 
     void detectAndCompute(
         cv::InputArray image,
@@ -48,6 +47,6 @@ public:
         std::vector<cv::KeyPoint>& keypoints,
         cv::OutputArray descriptors,
         bool useProvidedKeypoints = false
-    );
+    ) override;
 
 };
