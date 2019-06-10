@@ -7,7 +7,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
-const int FEATURE_PROCESS_SIZE = 850;
+const int FEATURE_PROCESS_SIZE = 2000;
 
 inline double dist_sq(double *a1, double *a2, int dims)
 {
@@ -30,7 +30,7 @@ private:
     int featureSize_ = 5000;
     std::map<std::string, std::vector<std::string>> candidateImages;
     bool _extractFeature(std::string fileName, bool resize = false);
-    RobustMatcher rMatcher_;
+    cv::Ptr<RobustMatcher> rMatcher_;
 
 public:
     ShoMatcher(FlightSession flight, bool runCuda = true);
