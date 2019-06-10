@@ -3,6 +3,8 @@
 #define _USE_OPENCV
 #include "MVSInterface.h" 
 #include <map>
+#include <vector>
+#include <string>
 #include <opencv2/core.hpp>
 
 

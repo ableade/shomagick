@@ -105,7 +105,7 @@ void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNo
     for (const auto& [imageFeatureNode, index] : imageFeatureNodes_)
     {
         int dSet = this->uf.findSet(index);
-        if (this->uf.sizeOfSet(dSet) > this->minTrackLength)
+        if (this->uf.sizeOfSet(dSet) >= this->minTrackLength)
         {
             tracks[dSet].push_back(index);
         }

@@ -317,8 +317,8 @@ void Reconstructor::computeReconstructability(
 #if 1
         bool success{};
         Mat essentialMat, rotation, translation;
-        //std::tie(success, essentialMat, rotation, translation) = twoViewReconstructionRotationOnly(track, mask);
-        std::tie(success, essentialMat, rotation, translation) = recoverTwoCameraViewPose(track, mask);
+        std::tie(success, essentialMat, rotation, translation) = twoViewReconstructionRotationOnly(track, mask);
+        //std::tie(success, essentialMat, rotation, translation) = recoverTwoViewPoseWithHomography(track, mask);
 #else
         auto[success, essentrialMat, rotation, translation] = recoverTwoViewPoseWithHomography(track, mask);
 #endif
@@ -444,13 +444,18 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
 
     const auto shot1Image = flight.getImageSet()[flight.getImageIndex(track.imagePair.first)];
     const auto shot2Image = flight.getImageSet()[flight.getImageIndex(track.imagePair.second)];
-    cout << "Getting metadata for " << track.imagePair.first << "\n";
     ShotMetadata shot1Metadata(shot1Image.getMetadata(), flight);
-    cout << "Getting metadata for " << track.imagePair.second << "\n";
     ShotMetadata shot2Metadata(shot2Image.getMetadata(), flight);
-    cout << "Camera used for shot is " << flight.getCamera() << '\n';
     Shot shot1(track.imagePair.first, flight.getCamera(), Pose(), shot1Metadata);
+    cout << "Rotation used for begin reconstruction was " << rVec << "\n";
+    cout << "Translation used for begin reconstruction was " << t << "\n";
+#if 0
+    cv::Mat osfmRotation = (cv::Mat_<double>(3, 1) << 0.17370912, -0.0872051, -2.86990343);
+    cv::Vec3d osfmTranslation{ -0.04845348, -0.12741307, 0.2943762 };
+    Shot shot2(track.imagePair.second, flight.getCamera(), Pose(osfmRotation, osfmTranslation), shot2Metadata);
+#else
     Shot shot2(track.imagePair.second, flight.getCamera(), Pose(rVec, t), shot2Metadata);
+#endif
 
     rec.addShot(shot1.getId(), shot1);
     rec.addShot(shot2.getId(), shot2);
