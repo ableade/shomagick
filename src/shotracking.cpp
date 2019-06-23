@@ -70,7 +70,7 @@ void ShoTracker::createFeatureNodes(vector<pair<ImageFeatureNode, ImageFeatureNo
     }
     assert(props.size() == featureIndex);
     uf = UnionFind(this->imageFeatureNodes_.size());
-    cout << "Created a total of " << this->imageFeatureNodes_.size() << " feature nodes " << endl;
+    cout << "Created a total of " << imageFeatureNodes_.size() << " feature nodes " << endl;
 }
 
 ImageFeatures ShoTracker::_loadImageFeatures(const string fileName) {
@@ -82,16 +82,6 @@ ImageFeatures ShoTracker::_loadImageFeatures(const string fileName) {
 
 void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNode>> &features)
 {
-    set <int> indexes;
-    for (const auto&[node, index] : imageFeatureNodes_) {
-        if (indexes.find(index) == indexes.end())
-            indexes.insert(index);
-        else {
-            std::ostringstream ss;
-            ss << "Duplicate image feature index found!";
-            throw std::runtime_error{ ss.str() };
-        }
-    }
     cout << "Creating tracks" << endl;
     for (const auto&[leftFeature, rightFeature] : features)
     {
@@ -104,8 +94,8 @@ void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNo
     //Filter out bad tracks
     for (const auto& [imageFeatureNode, index] : imageFeatureNodes_)
     {
-        int dSet = this->uf.findSet(index);
-        if (this->uf.sizeOfSet(dSet) >= this->minTrackLength)
+        int dSet = uf.findSet(index);
+        if (uf.sizeOfSet(dSet) >= this->minTrackLength)
         {
             tracks[dSet].push_back(index);
         }

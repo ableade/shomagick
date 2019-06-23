@@ -51,10 +51,10 @@ public:
     using ImageNodes = std::map<ImageName, TrackGraph::vertex_descriptor>;
 
 private:
-  FlightSession flight;
-  TrackGraph tg;
-  TrackNodes trackNodes;
-  ImageNodes imageNodes;
+  FlightSession flight_;
+  TrackGraph tg_;
+  TrackNodes trackNodes_;
+  ImageNodes imageNodes_;
   std::map<std::string, ShoColumnVector3d> shotOrigins;
   std::map<std::string, cv::Mat> rInverses;
   void _alignMatchingPoints(const CommonTrack track, std::vector<cv::Point2f>& points1, std::vector<cv::Point2f>& points2) const;

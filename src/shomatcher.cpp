@@ -33,7 +33,7 @@ ShoMatcher::ShoMatcher(FlightSession flight, bool runCuda)
     , runCuda_(runCuda)
     , kd_(nullptr)
     , candidateImages()
-    , rMatcher_(RobustMatcher::create(RobustMatcher::Feature::surf))
+    , rMatcher_(RobustMatcher::create(RobustMatcher::Feature::orb))
 {
 
 }

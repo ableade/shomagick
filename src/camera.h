@@ -33,14 +33,14 @@ class Camera
     cv::Mat cameraMatrix;
     cv::Mat_<double> distortionCoefficients;
     void _cvPointsToBearingVec(cv::Mat pRect, opengv::bearingVectors_t& ) const;
-    int height;
-    int width;
-    int scaledHeight;
-    int scaledWidth;
-    std::string cameraMake;
-    std::string cameraModel;
-    float initialK1;
-    float initialK2;
+    int height_;
+    int width_;
+    int scaledHeight_;
+    int scaledWidth_;
+    std::string cameraMake_;
+    std::string cameraModel_;
+    float initialK1_;
+    float initialK2_;
     float initialPhysicalFocal;
 
   public:
