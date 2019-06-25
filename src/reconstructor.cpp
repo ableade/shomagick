@@ -455,7 +455,7 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
 #if 0
     cv::Mat osfmRotation = (cv::Mat_<double>(3, 1) << 0.17370912, -0.0872051, -2.86990343);
     cv::Vec3d osfmTranslation{ -0.04845348, -0.12741307, 0.2943762 };
-    Shot shot2(track.imagePair.second, flight.getCamera(), Pose(osfmRotation, osfmTranslation), shot2Metadata);
+    Shot shot2(track.imagePair.second, flight_.getCamera(), Pose(osfmRotation, osfmTranslation), shot2Metadata);
 #else
     Shot shot2(track.imagePair.second, flight_.getCamera(), Pose(rVec, t), shot2Metadata);
     // Test to see if we match open sfm
