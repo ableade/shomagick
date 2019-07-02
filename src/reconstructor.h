@@ -35,7 +35,7 @@ const double RADIAL_DISTORTION_P2_SD = 0.01;
 //The standard deviation of the third radial distortion parameter
 const double RADIAL_DISTORTION_K3_SD = 0.01;
 // Number of threads to use
-const int NUM_PROCESESS = 1;
+const int NUM_PROCESESS = 8;
 const int MAX_ITERATIONS = 10;
 const auto LINEAR_SOLVER_TYPE = "DENSE_QR";
 const int MIN_INLIERS = 20;

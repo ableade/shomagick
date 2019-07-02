@@ -74,7 +74,7 @@ SCENARIO("Testing the projection for a perspective camera")
     }
 }
 
-SCENARIO("Testing the bearing direction of a camera")
+SCENARIO("Testing the bearing direction of the ray that hits the principal point")
 {
     GIVEN("a perspective camera and pixel [0.0,0.0]  ")
     {
@@ -89,6 +89,36 @@ SCENARIO("Testing the bearing direction of a camera")
         WHEN("the bearing direction of the center pixel is calculated")
         {
             const auto expectedBearing = Eigen::Vector3d{ 0,0,1 };
+            const auto actualBearing = c.normalizedPointToBearingVec(
+                testPoint
+            );
+
+            THEN("the bearing vector should be [0,0,1]")
+            {
+                INFO("expected: " << expectedBearing);
+                INFO("actual: " << actualBearing);
+                REQUIRE(allClose(expectedBearing, actualBearing));
+
+            }
+        }
+    }
+}
+
+SCENARIO("Testing the bearing direction of a camera at [0.03, 0.04]")
+{
+    GIVEN("a perspective camera and pixel [0.0,0.0]  ")
+    {
+        const auto testPoint = cv::Point2d{ 0.03,0.04};
+        const auto physicalLens = 0.6;
+        const auto height = 600;
+        const auto width = 800;
+        const auto dist1 = -0.1;
+        const auto dist2 = 0.01;
+
+        auto c = getPerspectiveCamera(physicalLens, height, width, dist1, dist2);
+        WHEN("the bearing direction of the center pixel is calculated")
+        {
+            const auto expectedBearing = Eigen::Vector3d{0.0498616991051048,  0.066482265473473,   0.9965409772507433 };
             const auto actualBearing = c.normalizedPointToBearingVec(
                 testPoint
             );

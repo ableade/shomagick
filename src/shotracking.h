@@ -100,12 +100,12 @@ public:
     typedef int GloballyUniqueImageFeatureId;
 private:
     std::map<ImageFeatureNode, GloballyUniqueImageFeatureId> imageFeatureNodes_;
-    std::map<int, std::vector<int>> tracks;
+    std::map<int, std::vector<int>> tracks_;
     UnionFind uf;
     int minTrackLength = 2;
     bool addFeatureToIndex(std::pair<std::string, int> feature, int featureIndex);
-    std::map<std::string, TrackGraph::vertex_descriptor> imageNodes;
-    std::map<std::string, TrackGraph::vertex_descriptor> trackNodes;
+    std::map<std::string, TrackGraph::vertex_descriptor> imageNodes_;
+    std::map<std::string, TrackGraph::vertex_descriptor> trackNodes_;
     std::map<std::string, ImageFeatures> imageFeatures;
     std::set<std::pair<std::string, std::string>> _getCombinations(const std::vector<std::string>& images) const;
     FeatureProperty getFeatureProperty_(const ImageFeatures& imageFeatures, ImageFeatureNode fNode) const;

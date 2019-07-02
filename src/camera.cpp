@@ -193,11 +193,12 @@ void Camera::setPixelFocal(double pixelFocal)
 {
     CV_Assert(pixelFocal > 1);
     cameraMatrix.at<double>(0, 0) = pixelFocal;
+    cameraMatrix.at<double>(1, 1) = pixelFocal;
 }
 
 double & Camera::getK1()
 {
-    return this->getDistortionMatrix().at<double>(0, 0);
+    return getDistortionMatrix().at<double>(0, 0);
 }
 
 double & Camera::getK2() {
