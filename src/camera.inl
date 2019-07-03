@@ -15,8 +15,8 @@ inline std::vector<cv::Point_<T>> Camera::normalizeImageCoordinates(const std::v
 template <typename T>
 inline cv::Point_<T> Camera::normalizeImageCoordinate(const cv::Point_<T>& pixelCoords) const
 {
-    auto h = (scaledHeight) ? scaledHeight : height;
-    auto w = (scaledWidth) ? scaledWidth : width;
+    auto h = (scaledHeight_) ? scaledHeight_ : height_;
+    auto w = (scaledWidth_) ? scaledWidth_ : width_;
 
     const auto size = std::max(w, h);
 
@@ -63,15 +63,15 @@ inline opengv::bearingVector_t Camera::normalizedPointToBearingVec(const cv::Poi
 template<typename T>
 inline cv::Point_<T> Camera::denormalizeImageCoordinates(const cv::Point_<T>& normalizedCoords) const
 {
-    auto h = (scaledHeight) ? scaledHeight : height;
-    auto w = (scaledWidth) ? scaledWidth : width;
+    auto h = (scaledHeight_) ? scaledHeight_ : height_;
+    auto w = (scaledWidth_) ? scaledWidth_ : width_;
 
     const auto size = std::max(w, h);
     auto normX = normalizedCoords.x;
     auto normY = normalizedCoords.y;
 
-    float pixelX = ((normX * width  * size / (1.0f * w)) + w / 2.0f) - 0.5;
-    float pixelY = ((normY * height * size / (1.0f * h)) + h / 2.0f) - 0.5;
+    float pixelX = ((normX * width_  * size / (1.0f * w)) + w / 2.0f) - 0.5;
+    float pixelY = ((normY * height_ * size / (1.0f * h)) + h / 2.0f) - 0.5;
 
     return { pixelX, pixelY };
 }

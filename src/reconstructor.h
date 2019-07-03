@@ -35,7 +35,7 @@ const double RADIAL_DISTORTION_P2_SD = 0.01;
 //The standard deviation of the third radial distortion parameter
 const double RADIAL_DISTORTION_K3_SD = 0.01;
 // Number of threads to use
-const int NUM_PROCESESS = 1;
+const int NUM_PROCESESS = 8;
 const int MAX_ITERATIONS = 10;
 const auto LINEAR_SOLVER_TYPE = "DENSE_QR";
 const int MIN_INLIERS = 20;
@@ -51,10 +51,10 @@ public:
     using ImageNodes = std::map<ImageName, TrackGraph::vertex_descriptor>;
 
 private:
-  FlightSession flight;
-  TrackGraph tg;
-  TrackNodes trackNodes;
-  ImageNodes imageNodes;
+  FlightSession flight_;
+  TrackGraph tg_;
+  TrackNodes trackNodes_;
+  ImageNodes imageNodes_;
   std::map<std::string, ShoColumnVector3d> shotOrigins;
   std::map<std::string, cv::Mat> rInverses;
   void _alignMatchingPoints(const CommonTrack track, std::vector<cv::Point2f>& points1, std::vector<cv::Point2f>& points2) const;
@@ -63,12 +63,14 @@ private:
   void _getCameraFromBundle(BundleAdjuster& ba, Camera& cam);
   void _computeTwoViewReconstructionInliers(opengv::bearingVectors_t b1, opengv::bearingVectors_t b2, 
       opengv::rotation_t r, opengv::translation_t t) const;
+  TwoViewPose _computeRotationInliers(opengv::bearingVectors_t& b1, opengv::bearingVectors_t& b2,
+      const opengv::rotation_t& rotation, cv::Mat& cvMask) const;
 
 public:
   Reconstructor(FlightSession flight, TrackGraph tg, std::map<std::string, TrackGraph::vertex_descriptor> trackNodes, 
   std::map<std::string, TrackGraph::vertex_descriptor> imageNodes);
   TwoViewPose recoverTwoCameraViewPose(CommonTrack track, cv::Mat& mask);
-  TwoViewPose twoViewReconstructionRotation(CommonTrack track, cv::Mat &mask);
+  TwoViewPose twoViewReconstructionRotationOnly(CommonTrack track, cv::Mat &mask);
   template <typename T>
   void twoViewReconstructionInliers(std::vector<cv::Mat>& Rs_decomp, std::vector<cv::Mat>& ts_decomp, std::vector<int> possibleSolutions,
       std::vector<cv::Point_<T>> points1, std::vector<cv::Point_<T>> points2) const;

@@ -2,11 +2,12 @@
 
 #include "flightsession.h"
 #include <boost/filesystem.hpp>
+#include "RobustMatcher.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
-const int FEATURE_PROCESS_SIZE = 700;
+const int FEATURE_PROCESS_SIZE = 2000;
 
 inline double dist_sq(double *a1, double *a2, int dims)
 {
@@ -22,16 +23,14 @@ inline double dist_sq(double *a1, double *a2, int dims)
 class ShoMatcher
 {
 private:
-    FlightSession flight;
-    bool runCuda = true;
-    void *kd;
-    int dimensions = 2;
-    int featureSize = 5000;
-    bool cudaEnabled = false;
+    FlightSession flight_;
+    bool runCuda_ = true;
+    void *kd_;
+    int dimensions_ = 2;
+    int featureSize_ = 5000;
     std::map<std::string, std::vector<std::string>> candidateImages;
-    cv::Ptr<cv::FeatureDetector> detector_;
-    cv::Ptr<cv::DescriptorExtractor> extractor_;
     bool _extractFeature(std::string fileName, bool resize = false);
+    cv::Ptr<RobustMatcher> rMatcher_;
 
 public:
     ShoMatcher(FlightSession flight, bool runCuda = true);

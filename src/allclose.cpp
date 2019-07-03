@@ -70,8 +70,8 @@ bool allClose_(
     const double tolerance
 ) {
     for (auto i = 0; i < a.cols; i++) {
-        const auto lhsElem = a.at<T>(i);
-        const auto rhsElem = b.at<T>(i);
+        const auto lhsElem = a.template at<T>(i);
+        const auto rhsElem = b.template at<T>(i);
 
         if (fabs(lhsElem - rhsElem) > tolerance)
         {

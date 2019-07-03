@@ -81,23 +81,5 @@ namespace transformationtests
                 }
             }
         }
-    }
-
-    
-    SCENARIO("Test superimposition of a random matrix")
-    {
-        GIVEN("Given a random 3 x 10 matrix superimposed unto itself")
-        {
-            const auto v0 = Matrix<double,Dynamic, Dynamic, RowMajor>::Random(3, 10);
-            WHEN("We superimpose this matrix onto itself") {
-                const auto result = superImpositionMatrix(v0, v0);
-                const Matrix4d expected = Matrix4d::Identity();
-                THEN("The result should be as close to the 4 x 4 identity matrix") {
-                    INFO(result);
-                    INFO(expected);
-                    REQUIRE(allCloseEigen(result, expected));
-                }
-            }
-        }
-    }  
+    } 
 }

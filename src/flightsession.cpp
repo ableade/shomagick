@@ -21,28 +21,28 @@ using std::string;
 using std::endl;
 using std::ios;
 
-FlightSession::FlightSession() : imageSet(), imageDirectory(), imageDirectoryPath(), imageFeaturesPath(),
-imageTracksPath(), camera(), referenceLLA()
+FlightSession::FlightSession() : imageSet(), imageDirectory(), imageDirectoryPath_(), imageFeaturesPath_(),
+imageTracksPath_(), camera_(), referenceLLA_()
 {
 
 }
 
-FlightSession::FlightSession(string imageDirectory, string calibrationFile) : imageSet(), imageDirectory(imageDirectory), imageDirectoryPath(), imageFeaturesPath(),
-imageTracksPath(), camera(), referenceLLA()
+FlightSession::FlightSession(string imageDirectory, string calibrationFile) : imageSet(), imageDirectory(imageDirectory), imageDirectoryPath_(), imageFeaturesPath_(),
+imageTracksPath_(), camera_(), referenceLLA_()
 {
     cerr << "Image directory is " << imageDirectory << endl;
     vector<directory_entry> v;
     assert(is_directory(imageDirectory));
-    imageDirectoryPath = path(imageDirectory);
+    imageDirectoryPath_ = path(imageDirectory);
 
-    imageFeaturesPath = imageDirectoryPath / "features";
-    imageMatchesPath = imageDirectoryPath / "matches";
-    imageTracksPath = imageDirectoryPath / "tracks";
-    exifPath = imageDirectoryPath / "exif";
-    undistortedImagesPath = imageDirectoryPath / "undisorted";
+    imageFeaturesPath_ = imageDirectoryPath_ / "features";
+    imageMatchesPath_ = imageDirectoryPath_ / "matches";
+    imageTracksPath_ = imageDirectoryPath_ / "tracks";
+    exifPath_ = imageDirectoryPath_ / "exif";
+    undistortedImagesPath_ = imageDirectoryPath_ / "undisorted";
 
-    const vector <boost::filesystem::path> allPaths{ imageFeaturesPath, imageMatchesPath,
-    imageTracksPath, exifPath, undistortedImagesPath };
+    const vector <boost::filesystem::path> allPaths{ imageFeaturesPath_, imageMatchesPath_,
+    imageTracksPath_, exifPath_, undistortedImagesPath_ };
 
     for (const auto path : allPaths) {
         cout << "Creating directory " << path.string() << endl;
@@ -70,14 +70,14 @@ imageTracksPath(), camera(), referenceLLA()
             }
             Img img(imageFileName, metadata);
             if (metadata.location.isEmpty) {
-                gpsDataPresent = false;
+                gpsDataPresent_ = false;
             }
             imageSet.push_back(img);
         }
     }
     if (!calibrationFile.empty()) {
         assert(exists(calibrationFile));
-        camera = Camera::getCameraFromCalibrationFile(calibrationFile);
+        camera_ = Camera::getCameraFromCalibrationFile(calibrationFile);
     }
     inventReferenceLLA();
     cout << "Found " << this->imageSet.size() << " usable images" << endl;
@@ -95,22 +95,22 @@ vector<Img> FlightSession::getImageSet() const
 
 const path FlightSession::getImageDirectoryPath() const
 {
-    return this->imageDirectoryPath;
+    return this->imageDirectoryPath_;
 }
 
 const path FlightSession::getImageFeaturesPath() const
 {
-    return this->imageFeaturesPath;
+    return this->imageFeaturesPath_;
 }
 
 const path FlightSession::getImageMatchesPath() const
 {
-    return imageMatchesPath;
+    return imageMatchesPath_;
 }
 
 const boost::filesystem::path FlightSession::getImageExifPath() const
 {
-    return exifPath;
+    return exifPath_;
 }
 
 /*
@@ -127,12 +127,12 @@ bool FlightSession::saveTracksFile(std::map <int, std::vector <int>> tracks) {
 
 const path FlightSession::getImageTracksPath() const
 {
-    return imageTracksPath;
+    return imageTracksPath_;
 }
 
 const boost::filesystem::path FlightSession::getUndistortedImagesDirectoryPath() const
 {
-    return undistortedImagesPath;
+    return undistortedImagesPath_;
 }
 
 int FlightSession::getImageIndex(string imageName) const
@@ -164,7 +164,7 @@ bool FlightSession::saveImageFeaturesFile(string imageName, const std::vector<cv
 bool FlightSession::saveImageExifFile(std::string imageName, ImageMetadata imageExif)
 {
     auto imageExifPath = getImageExifPath() / (imageName + ".dat");
-    ofstream exifFile(imageExifPath, ios::binary);
+    boost::filesystem::ofstream exifFile(imageExifPath, ios::binary);
     boost::archive::text_oarchive ar(exifFile);
     ar & imageExif;
     return exists(imageExifPath);
@@ -220,17 +220,17 @@ ImageFeatures FlightSession::loadFeatures(string imageName) const
 }
 
 const Camera& FlightSession::getCamera() const {
-    return camera;
+    return camera_;
 }
 
 Camera & FlightSession::getCamera()
 {
-    return camera;
+    return camera_;
 }
 
 void FlightSession::setCamera(Camera camera)
 {
-    this->camera = camera;
+    this->camera_ = camera;
 }
 
 namespace
@@ -261,23 +261,23 @@ void FlightSession::inventReferenceLLA()
     lon /= wLon;
     alt /= wAlt;
 
-    referenceLLA = { {"alt", 0}, {"lat",  lat}, {"lon" , lon} };
+    referenceLLA_ = { {"alt", 0}, {"lat",  lat}, {"lon" , lon} };
 }
 
 const std::map<std::string, double>& FlightSession::getReferenceLLA() const
 {
-    return referenceLLA;
+    return referenceLLA_;
 }
 
 bool FlightSession::hasGps()
 {
-    return gpsDataPresent;
+    return gpsDataPresent_;
 }
 
 void FlightSession::undistort()
 {
     for (auto img : imageSet) {
-        auto imagePath = imageDirectoryPath / img.getFileName();
+        auto imagePath = imageDirectoryPath_ / img.getFileName();
         Mat distortedImage = cv::imread(imagePath.string(),
             SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM |
             SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM);
@@ -286,9 +286,9 @@ void FlightSession::undistort()
         Mat undistortedImage;
         cv::undistort(distortedImage, 
             undistortedImage, 
-            camera.getKMatrix(), 
-            camera.getDistortionMatrix());
-        auto undistortedImagePath = undistortedImagesPath / img.getFileName();
+            camera_.getKMatrix(), 
+            camera_.getDistortionMatrix());
+        auto undistortedImagePath = undistortedImagesPath_ / img.getFileName();
         undistortedImagePath.replace_extension("png");
         cv::imwrite(undistortedImagePath.string(), undistortedImage);
     }

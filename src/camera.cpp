@@ -21,7 +21,7 @@ using opengv::bearingVectors_t;
 Matx33d Pose::getRotationMatrix() const
 {
     Mat rods;
-    Rodrigues(this->rotation, rods);
+    Rodrigues(rotation, rods);
     return rods;
 }
 
@@ -39,12 +39,8 @@ cv::Mat Pose::getRotationMatrixInverse() const {
 
 ShoColumnVector3d Pose::getOrigin() const
 {
-    Mat tRot;
-    auto origin = -(this->getRotationMatrix());
-   // std::cout << "Rotation matrix is " << origin << std::endl;
-
-    //std::cout << "Rotation matrix transpose is " << tRot << std::endl;
-    auto t = Mat(origin.t() * Mat(this->translation));
+    auto origin = -(getRotationMatrix());
+    auto t = Mat(origin.t() * Mat(translation));
     return t;
 }
 
@@ -127,34 +123,34 @@ void Camera::_cvPointsToBearingVec(cv::Mat pRect, opengv::bearingVectors_t &bear
         bearings.push_back(bearing);
     }
 }
-Camera::Camera() : cameraMatrix(), distortionCoefficients(), height(), width(),  cameraMake(),
-    cameraModel(), initialK1(), initialK2(), initialPhysicalFocal()
+Camera::Camera() : cameraMatrix(), distortionCoefficients(), height_(), width_(),  cameraMake_(),
+    cameraModel_(), initialK1_(), initialK2_(), initialPhysicalFocal()
 {
     int dimension = 3;
     this->cameraMatrix = cv::Mat::eye(dimension, dimension, CV_32F);
-    this->cameraMake = "";
-    this->cameraModel = "";
+    this->cameraMake_ = "";
+    this->cameraModel_ = "";
     this->initialPhysicalFocal = 0.0;
-    this->initialK1 = 0.0;
-    this->initialK2 = 0.0;
+    this->initialK1_ = 0.0;
+    this->initialK2_ = 0.0;
 }
 
 Camera::Camera(Mat cameraMatrix, Mat distortion, int height, int width, int scaledHeight, int scaledWidth) : 
-    scaledHeight(scaledHeight), scaledWidth(scaledWidth), cameraMatrix(cameraMatrix), distortionCoefficients(distortion), height(height),
-width(width),cameraMake(),
-cameraModel(),  initialK1(),  initialK2(), initialPhysicalFocal() {
+    scaledHeight_(scaledHeight), scaledWidth_(scaledWidth), cameraMatrix(cameraMatrix), distortionCoefficients(distortion), height_(height),
+width_(width),cameraMake_(),
+cameraModel_(),  initialK1_(),  initialK2_(), initialPhysicalFocal() {
     assert (!cameraMatrix.empty());
     assert(!distortionCoefficients.empty());
     assert(height !=0 && width != 0);
-    this->initialK1 = this->getK1();
-    this->initialK2 = this->getK2();
+    this->initialK1_ = this->getK1();
+    this->initialK2_ = this->getK2();
     this->initialPhysicalFocal = this->getPhysicalFocalLength();
 }
 
 Mat Camera::getKMatrix() { return this->cameraMatrix; }
 
 Mat Camera::getNormalizedKMatrix() const {
-    auto lensSize = this->getPhysicalFocalLength();
+    auto lensSize = getPhysicalFocalLength();
 
     Mat normK = (cv::Mat_<double>(3, 3) <<
         lensSize,   0.,          0.,
@@ -197,11 +193,12 @@ void Camera::setPixelFocal(double pixelFocal)
 {
     CV_Assert(pixelFocal > 1);
     cameraMatrix.at<double>(0, 0) = pixelFocal;
+    cameraMatrix.at<double>(1, 1) = pixelFocal;
 }
 
 double & Camera::getK1()
 {
-    return this->getDistortionMatrix().at<double>(0, 0);
+    return getDistortionMatrix().at<double>(0, 0);
 }
 
 double & Camera::getK2() {
@@ -209,10 +206,8 @@ double & Camera::getK2() {
 }
 
 double Camera::getPhysicalFocalLength() const {
-    auto h = (scaledHeight) ? scaledHeight : height;
-    auto w = (scaledWidth) ? scaledWidth : width;
 
-    return (double)this->getPixelFocal() / (double)max(h, w);
+    return (double)this->getPixelFocal() / (double)max(getHeight(), getWidth());
 }
 
 double Camera::getK1() const {
@@ -224,11 +219,11 @@ double Camera::getK2() const{
 }
 
 double Camera::getInitialK1() const {
-    return this->initialK1;
+    return this->initialK1_;
 }
 
 double Camera::getInitialK2() const {
-    return this->initialK2;
+    return this->initialK2_;
 }
 
 double Camera::getInitialPhysicalFocal() const {
@@ -267,7 +262,7 @@ Camera Camera::getCameraFromExifMetaData(std::string image)
 
 void Camera::setFocalWithPhysical(double physicalFocal)
 {
-   auto pixelFocal = physicalFocal * (double)max(this->height, this->width);
+   auto pixelFocal = physicalFocal * (double)max(height_, width_);
    setPixelFocal(pixelFocal);
 }
 
@@ -283,30 +278,30 @@ void Camera::setK2(double k2)
 
 void Camera::setScaledHeight(int h)
 {
-    scaledHeight = h;
+    scaledHeight_ = h;
 }
 
 void Camera::setScaledWidth(int w)
 {
-    scaledWidth = w;
+    scaledWidth_ = w;
 }
 
 int Camera::getHeight() const
 {
-    return height;
+    return height_;
 }
 
 int Camera::getScaledHeight() const
 {
-    return scaledHeight;
+    return scaledHeight_;
 }
 
 int Camera::getScaledWidth() const
 {
-    return scaledWidth;
+    return scaledWidth_;
 }
 
 int Camera::getWidth() const
 {
-    return width;
+    return width_;
 }

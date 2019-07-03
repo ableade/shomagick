@@ -6,26 +6,222 @@
  */
 
 #include "RobustMatcher.h"
+#include "HahogFeatureDetector.h"
 #include <iostream>
 #include <time.h>
-
+#include <opencv2/cudafeatures2d.hpp>
 #include <opencv2/features2d/features2d.hpp>
+#include <opencv2/xfeatures2d.hpp>
+#include <opencv2/xfeatures2d/cuda.hpp>
 using std::cout;
+using std::cerr;
 using std::endl;
+using cv::cuda::GpuMat;
+using cv::xfeatures2d::SIFT;
+using cv::xfeatures2d::SURF;
+
+namespace
+{
+    bool checkIfCudaEnabled()
+    {
+        // ORB is the default feature detector
+        if (cv::cuda::getCudaEnabledDeviceCount()) {
+            cerr << "CUDA device detected. Running CUDA \n";
+            cv::cuda::printCudaDeviceInfo(cv::cuda::getDevice());
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+} //namespace
+
+RobustMatcher::RobustMatcher(
+    const bool cudaEnabled,
+    const double ratio,
+    cv::Ptr<cv::FeatureDetector> detector,
+    cv::Ptr<cv::FeatureDetector> extractor,
+    cv::Ptr<cv::DescriptorMatcher> matcher,
+    cv::Ptr<cv::cuda::DescriptorMatcher> cMatcher
+)
+    : cudaEnabled_( cudaEnabled )
+    , ratio_( ratio )
+    , detector_( detector )
+    , extractor_( extractor )
+    , matcher_( matcher )
+    , cMatcher_( cMatcher )
+{
+}
+
 
 RobustMatcher::~RobustMatcher()
 {
   // TODO Auto-generated destructor stub
 }
 
+namespace
+{
+    cv::Ptr<RobustMatcher> createOrbMatcher(
+        const bool cudaEnabled,
+        const int numFeatures,
+        const double ratio
+    )
+    {
+        cv::Ptr<cv::DescriptorMatcher> matcher;
+        cv::Ptr<cv::cuda::DescriptorMatcher> cMatcher;
+
+        if ( cudaEnabled )
+        {
+            cMatcher = cv::cuda::DescriptorMatcher::createBFMatcher(cv::NORM_HAMMING);
+        }
+        else
+        {
+            constexpr auto crossCheck = false;
+            matcher = cv::makePtr<cv::BFMatcher>(cv::NORM_HAMMING, crossCheck);
+        }
+
+        return cv::makePtr<RobustMatcher>(
+            cudaEnabled,
+            ratio,
+            cv::ORB::create(numFeatures),
+            cv::ORB::create(numFeatures),
+            matcher,
+            cMatcher
+        );
+    }
+
+} //namespace
+
+cv::Ptr<RobustMatcher> RobustMatcher::createHahogMatcher(const bool cudaEnabled, const int numFeatures, const double ratio)
+{
+    cv::Ptr<cv::DescriptorMatcher> matcher;
+    cv::Ptr<cv::cuda::DescriptorMatcher> cMatcher;
+
+    if (cudaEnabled)
+    {
+        cMatcher = cv::cuda::DescriptorMatcher::createBFMatcher();
+    }
+    else
+    {
+        matcher = cv::makePtr<cv::BFMatcher>();
+    }
+
+    return cv::makePtr<RobustMatcher>(
+        cudaEnabled,
+        ratio,
+        HahogFeatureDetector::create(numFeatures),
+        HahogFeatureDetector::create(numFeatures),
+        matcher,
+        cMatcher
+        );
+}
+
+cv::Ptr<RobustMatcher> RobustMatcher::createSiftMatcher(const bool cudaEnabled, const int numFeatures, const double ratio)
+{
+    cv::Ptr<cv::DescriptorMatcher> matcher;
+    cv::Ptr<cv::cuda::DescriptorMatcher> cMatcher;
+
+    if (cudaEnabled)
+    {
+        cMatcher = cv::cuda::DescriptorMatcher::createBFMatcher();
+    }
+    else
+    {
+        matcher = cv::makePtr<cv::BFMatcher>();
+    }
+
+    return cv::makePtr<RobustMatcher>(
+        cudaEnabled,
+        ratio,
+        SIFT::create(numFeatures),
+        SIFT::create(numFeatures),
+        matcher,
+        cMatcher
+        );
+}
+
+cv::Ptr<RobustMatcher> RobustMatcher::createSurfMatcher(const bool cudaEnabled, const int numFeatures, const double ratio, const int minHessian)
+{
+    cv::Ptr<cv::DescriptorMatcher> matcher;
+    cv::Ptr<cv::cuda::DescriptorMatcher> cMatcher;
+
+    if (cudaEnabled)
+    {
+        cMatcher = cv::cuda::DescriptorMatcher::createBFMatcher();
+    }
+    else
+    {
+        matcher = cv::makePtr<cv::BFMatcher>();
+    }
+
+    return cv::makePtr<RobustMatcher>(
+        cudaEnabled,
+        ratio,
+        SURF::create(minHessian),
+        SURF::create(minHessian),
+        matcher,
+        cMatcher
+        );
+}
+
+cv::Ptr<RobustMatcher> RobustMatcher::create(Feature alg, const int numFeatures, const double ratio )
+{
+    const auto cudaEnabled = checkIfCudaEnabled();
+
+    switch ( alg )
+    {
+    case Feature::hahog:
+        return RobustMatcher::createHahogMatcher(cudaEnabled, numFeatures, ratio);
+
+    case Feature::sift:
+        return RobustMatcher::createSiftMatcher(cudaEnabled, numFeatures, ratio);
+
+    case Feature::surf:
+        return RobustMatcher::createSurfMatcher(cudaEnabled, numFeatures, ratio);
+
+    default:
+        return createOrbMatcher(cudaEnabled, numFeatures, ratio);
+
+    }
+}
+
 void RobustMatcher::computeKeyPoints(const cv::Mat &image, std::vector<cv::KeyPoint> &keypoints)
 {
+    cv::Ptr<cv::cuda::ORB> cudaMatcher;
+    if (cudaEnabled_ && (cudaMatcher = matcher_.dynamicCast<cv::cuda::ORB>())) {
+        GpuMat cudaFeatureImg;
+        cudaFeatureImg.upload(image);
+        detector_->detect(cudaFeatureImg, keypoints);
+        return;
+    }
   detector_->detect(image, keypoints);
 }
 
 void RobustMatcher::computeDescriptors(const cv::Mat &image, std::vector<cv::KeyPoint> &keypoints, cv::Mat &descriptors)
 {
+    cv::Ptr<cv::cuda::ORB> cudaMatcher;
+    if (cudaEnabled_ && (cudaMatcher = matcher_.dynamicCast<cv::cuda::ORB>())) {
+        GpuMat cudaFeatureImg, cudaDescriptors;
+        cudaFeatureImg.upload(image);
+        extractor_->compute(cudaFeatureImg, keypoints, cudaDescriptors);
+        cudaDescriptors.download(descriptors);
+        return;
+    }
   extractor_->compute(image, keypoints, descriptors);
+}
+
+void RobustMatcher::detectAndCompute(const cv::Mat & image, std::vector<cv::KeyPoint>& keypoints, cv::Mat & descriptors)
+{
+    cv::Ptr<cv::cuda::ORB> cudaMatcher;
+    if (cudaEnabled_ && (cudaMatcher = matcher_.dynamicCast<cv::cuda::ORB>())) {
+        GpuMat cudaFeatureImg, cudaDescriptors;
+        cudaFeatureImg.upload(image);
+        detector_->detectAndCompute(cudaFeatureImg, cv::noArray(), keypoints, cudaDescriptors);
+        cudaDescriptors.download(descriptors);
+        return;
+    }
+    detector_->detectAndCompute(image, cv::Mat(), keypoints, descriptors);
 }
 
 int RobustMatcher::ratioTest(std::vector<std::vector<cv::DMatch>> &matches)
@@ -55,9 +251,11 @@ int RobustMatcher::ratioTest(std::vector<std::vector<cv::DMatch>> &matches)
   return removed;
 }
 
-void RobustMatcher::symmetryTest(const std::vector<std::vector<cv::DMatch>> &matches1,
-                                 const std::vector<std::vector<cv::DMatch>> &matches2,
-                                 std::vector<cv::DMatch> &symMatches)
+void RobustMatcher::symmetryTest(
+    const std::vector<std::vector<cv::DMatch>> &matches1,
+    const std::vector<std::vector<cv::DMatch>> &matches2,
+    std::vector<cv::DMatch> &symMatches
+)
 {
 
   // for all matches image 1 -> image 2
@@ -99,16 +297,12 @@ void RobustMatcher::symmetryTest(const std::vector<std::vector<cv::DMatch>> &mat
 void RobustMatcher::robustMatch(const cv::Mat &image1, const cv::Mat &trainImage, std::vector<cv::DMatch> &matches,
                                 std::vector<cv::KeyPoint> &keypoints1, std::vector<cv::KeyPoint> &keypoints2)
 {
-
-  // 1a. Detection of the ORB features
-  this->computeKeyPoints(image1, keypoints1);
-  this->computeKeyPoints(trainImage, keypoints2);
-
-  // 1b. Extraction of the ORB descriptors
   cv::Mat descriptors1;
   cv::Mat descriptors2;
-  this->computeDescriptors(image1, keypoints1, descriptors1);
-  this->computeDescriptors(trainImage, keypoints2, descriptors2);
+
+
+  detectAndCompute(image1, keypoints1, descriptors1);
+  detectAndCompute(trainImage, keypoints2, descriptors2);
 
   robustMatch(descriptors1, descriptors2, matches);
 }
@@ -119,14 +313,29 @@ void RobustMatcher::robustMatch(
     std::vector<cv::DMatch>& matches
 )
 {
-  // 2. Match the two image descriptors
-  std::vector<std::vector<cv::DMatch>> matches12, matches21;
+    std::vector<std::vector<cv::DMatch>> matches12, matches21;
 
-  // 2a. From image 1 to image 2
-  matcher_->knnMatch(descriptors1, descriptors2, matches12, 2); // return 2 nearest neighbours 
+    // Symmetric matching using two nearest neighbours. Use CUDA if available
+    if (cudaEnabled_) {
+        cv::cuda::GpuMat gDescriptors1, gDescriptors2;
+        gDescriptors1.upload(descriptors1);
+        gDescriptors2.upload(descriptors2);
 
-  // 2b. From image 2 to image 1
-  matcher_->knnMatch(descriptors2, descriptors1, matches21, 2); // return 2 nearest neighbours
+        // Image 1 to 2 matching
+        cMatcher_->knnMatch(gDescriptors1, gDescriptors2, matches12, 2); // return 2 nearest neighbours 
+
+        // Image 2 to 1 matching
+        cMatcher_->knnMatch(gDescriptors2, gDescriptors1, matches21, 2); // return 2 nearest neighbours
+    }
+    else {
+        // From image 1 to image 2
+        matcher_->knnMatch(descriptors1, descriptors2, matches12, 2);  
+
+        // From image 2 to image 1
+        matcher_->knnMatch(descriptors2, descriptors1, matches21, 2); 
+    }
+
+
   // 3. Remove matches for which NN ratio is > than threshold
   // clean image 1 -> image 2 matches
   ratioTest(matches12);
@@ -135,6 +344,22 @@ void RobustMatcher::robustMatch(
 
   // 4. Remove non-symmetrical matches
   symmetryTest(matches12, matches21, matches);
+}
+
+void RobustMatcher::fastRobustMatch(
+    const cv::Mat queryImg, 
+    std::vector<cv::DMatch>& goodMatches, 
+    std::vector<cv::KeyPoint>& queryKeypoints, 
+    const cv::Mat & trainImg, 
+    std::vector<cv::KeyPoint>& trainKeypoints
+)
+{
+    cv::Mat descriptors1;
+    cv::Mat descriptors2;
+    detectAndCompute(queryImg, queryKeypoints, descriptors1);
+    detectAndCompute(trainImg, trainKeypoints, descriptors2);
+
+    robustMatch(descriptors1, descriptors2, goodMatches);
 }
 
 void RobustMatcher::fastRobustMatch(const cv::Mat descriptors1, const cv::Mat descriptors2, std::vector<cv::DMatch> &matches)

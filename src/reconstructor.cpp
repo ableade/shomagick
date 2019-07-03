@@ -6,10 +6,12 @@
 #include <algorithm>
 #include "multiview.h"
 #include "transformations.h"
-#include <opengv/relative_pose/CentralRelativeAdapter.hpp>
+#include <opengv/relative_pose/CentralRelativeAdapter.hpp>  
+#include <opengv/relative_pose/methods.hpp>
 #include <opengv/triangulation/methods.hpp>
 #include "OpenMVSExporter.h"
 #include <Eigen/Core>
+#include <Eigen/Dense>
 #include <opencv2/core/eigen.hpp>
 #include "bundle.h"
 #include "utilities.h"
@@ -63,10 +65,10 @@ Reconstructor::Reconstructor(
     FlightSession flight, TrackGraph tg,
     std::map<string, TrackGraph::vertex_descriptor> trackNodes,
     std::map<string, TrackGraph::vertex_descriptor> imageNodes)
-    : flight(flight),
-    tg(tg),
-    trackNodes(trackNodes),
-    imageNodes(imageNodes),
+    : flight_(flight),
+    tg_(tg),
+    trackNodes_(trackNodes),
+    imageNodes_(imageNodes),
     shotOrigins(),
     rInverses() {}
 
@@ -78,20 +80,20 @@ void Reconstructor::_alignMatchingPoints(const CommonTrack track,
 
     const auto tracks = track.commonTracks;
     map<string, Point2d> aPoints1, aPoints2;
-    const auto[edges1Begin, edges1End] = boost::out_edges(im1, tg);
-    const auto[edges2Begin, edges2End] = boost::out_edges(im2, tg);
+    const auto[edges1Begin, edges1End] = boost::out_edges(im1, tg_);
+    const auto[edges2Begin, edges2End] = boost::out_edges(im2, tg_);
 
     for (auto edgeIt = edges1Begin; edgeIt != edges1End; ++edgeIt) {
-        if (tracks.find(this->tg[*edgeIt].trackName) != tracks.end()) {
-            aPoints1[this->tg[*edgeIt].trackName] =
-                this->tg[*edgeIt].fProp.coordinates;
+        if (tracks.find(this->tg_[*edgeIt].trackName) != tracks.end()) {
+            aPoints1[this->tg_[*edgeIt].trackName] =
+                this->tg_[*edgeIt].fProp.coordinates;
         }
     }
 
     for (auto edgeIt = edges2Begin; edgeIt != edges2End; ++edgeIt) {
-        if (tracks.find(this->tg[*edgeIt].trackName) != tracks.end()) {
-            aPoints2[this->tg[*edgeIt].trackName] =
-                this->tg[*edgeIt].fProp.coordinates;
+        if (tracks.find(this->tg_[*edgeIt].trackName) != tracks.end()) {
+            aPoints2[this->tg_[*edgeIt].trackName] =
+                this->tg_[*edgeIt].fProp.coordinates;
         }
     }
 
@@ -111,19 +113,19 @@ vector<DMatch> Reconstructor::_getTrackDMatchesForImagePair(
     const auto tracks = track.commonTracks;
     map<string, ImageFeatureNode> aPoints1, aPoints2;
     pair<out_edge_iterator, out_edge_iterator> im1Edges =
-        boost::out_edges(im1, this->tg);
+        boost::out_edges(im1, this->tg_);
     pair<out_edge_iterator, out_edge_iterator> im2Edges =
-        boost::out_edges(im2, this->tg);
+        boost::out_edges(im2, this->tg_);
     for (; im1Edges.first != im1Edges.second; ++im1Edges.first) {
-        if (tracks.find(tg[*im1Edges.first].trackName) != tracks.end()) {
-            aPoints1[tg[*im1Edges.first].trackName] =
-               tg[*im1Edges.first].fProp.featureNode;
+        if (tracks.find(tg_[*im1Edges.first].trackName) != tracks.end()) {
+            aPoints1[tg_[*im1Edges.first].trackName] =
+               tg_[*im1Edges.first].fProp.featureNode;
         }
     }
     for (; im2Edges.first != im2Edges.second; ++im2Edges.first) {
-        if (tracks.find(this->tg[*im2Edges.first].trackName) != tracks.end()) {
-            aPoints2[this->tg[*im2Edges.first].trackName] =
-                this->tg[*im2Edges.first].fProp.featureNode;
+        if (tracks.find(this->tg_[*im2Edges.first].trackName) != tracks.end()) {
+            aPoints2[this->tg_[*im2Edges.first].trackName] =
+                this->tg_[*im2Edges.first].fProp.featureNode;
         }
     }
 
@@ -154,8 +156,8 @@ void Reconstructor::_getCameraFromBundle(BundleAdjuster &ba, Camera &cam) {
 TwoViewPose Reconstructor::recoverTwoCameraViewPose(CommonTrack track, Mat &mask) {
     vector<Point2f> points1;
     vector<Point2f> points2;
-    this->_alignMatchingPoints(track, points1, points2);
-    const auto kMatrix = flight.getCamera().getNormalizedKMatrix();
+    _alignMatchingPoints(track, points1, points2);
+    const auto kMatrix = flight_.getCamera().getNormalizedKMatrix();
     Mat essentialMatrix = findEssentialMat(points1, points2, kMatrix);
 
     if (essentialMatrix.rows == 12 && essentialMatrix.cols == 3) {
@@ -172,15 +174,22 @@ TwoViewPose Reconstructor::recoverTwoCameraViewPose(CommonTrack track, Mat &mask
     return std::make_tuple(true, essentialMatrix, r, t);
 }
 
-TwoViewPose Reconstructor::twoViewReconstructionRotation(CommonTrack track, cv::Mat & mask)
+TwoViewPose Reconstructor::twoViewReconstructionRotationOnly(CommonTrack track, cv::Mat & mask)
 {
     vector<Point2f> points1;
     vector<Point2f> points2;
     _alignMatchingPoints(track, points1, points2);
 
-    const auto bearings1 = flight.getCamera().normalizedPointsToBearingVec(points1);
-    const auto bearings2 = flight.getCamera().normalizedPointsToBearingVec(points2);
-    return {};
+    auto bearings1 = flight_.getCamera().normalizedPointsToBearingVec(points1);
+    auto bearings2 = flight_.getCamera().normalizedPointsToBearingVec(points2);
+
+    CentralRelativeAdapter adapter(bearings1, bearings2);
+    size_t iterations = 100;
+    rotation_t relativeRotation;
+    for (auto i = 0; i < iterations; ++i) {
+       relativeRotation = opengv::relative_pose::rotationOnly(adapter);
+    }
+   return  _computeRotationInliers(bearings1, bearings2, relativeRotation, mask);
 }
 
 template <typename T>
@@ -188,8 +197,8 @@ void Reconstructor::twoViewReconstructionInliers(vector<Mat>& Rs_decomp, vector<
     vector<Point_<T>> points1, vector<Point_<T>> points2) const
 {
     
-    auto bearings1 = flight.getCamera().normalizedPointsToBearingVec(points1);
-    auto bearings2 = flight.getCamera().normalizedPointsToBearingVec(points2);
+    auto bearings1 = flight_.getCamera().normalizedPointsToBearingVec(points1);
+    auto bearings2 = flight_.getCamera().normalizedPointsToBearingVec(points2);
 
     for (auto solution : possibleSolutions) {
         auto r = Rs_decomp[solution];
@@ -212,8 +221,9 @@ TwoViewPose Reconstructor::recoverTwoViewPoseWithHomography(CommonTrack track, M
     if (!hom.rows || !hom.cols)
         return { false, Mat(), Mat(), Mat() };
     vector<Mat> rsDecomp, tsDecomp, normals_decomp;
-    auto gHom = flight.getCamera().getNormalizedKMatrix() * hom * flight.getCamera().getNormalizedKMatrix().inv();
-    int solutions = decomposeHomographyMat(gHom, flight.getCamera().getNormalizedKMatrix(), rsDecomp, tsDecomp, normals_decomp);
+    Mat gHom = flight_.getCamera().getNormalizedKMatrix() * hom * flight_.getCamera().getNormalizedKMatrix().inv();
+    gHom /= gHom.at<double>(2, 2);
+    int solutions = decomposeHomographyMat(gHom, flight_.getCamera().getNormalizedKMatrix(), rsDecomp, tsDecomp, normals_decomp);
     vector<int> filteredSolutions;
     cv::filterHomographyDecompByVisibleRefpoints(rsDecomp, normals_decomp, points1, points2, filteredSolutions, homMask);
     if (filteredSolutions.size() > 0) {
@@ -257,15 +267,36 @@ void Reconstructor::_computeTwoViewReconstructionInliers(opengv::bearingVectors_
 #endif
 }
 
+TwoViewPose Reconstructor::_computeRotationInliers(opengv::bearingVectors_t& b1, opengv::bearingVectors_t& b2, 
+    const opengv::rotation_t& rotation, Mat& cvMask) const
+{
+    const Eigen::Matrix<double, Dynamic, 3> bearings2 = Eigen::Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(b2.data()->data(), 
+        b2.size(), 3);
+    const Eigen::Matrix<double, Dynamic, 3> bearings1 = Eigen::Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(b1.data()->data(),
+        b1.size(), 3);
+
+    auto threshold = 4 * REPROJECTION_ERROR_SD;
+    MatrixXd bearingsRotated2(bearings1.rows(), bearings1.cols());
+    bearingsRotated2 = (rotation * (bearings2.transpose())).transpose();
+    MatrixXd  bearingsdiff(bearings1.rows(), bearings1.cols());
+    bearingsdiff = (bearingsRotated2 - bearings1);
+    Eigen::MatrixXd maskDiff (bearings1.rows(), 1);
+    Eigen::MatrixXi mask(bearings1.rows(), 1);
+    maskDiff = bearingsdiff.rowwise().norm();
+    mask = (maskDiff.array() < threshold).cast<int>();
+    eigen2cv(mask, cvMask);
+    Mat rotationCv;
+    eigen2cv(rotation, rotationCv);
+    return { true, rotationCv, Mat(), Mat() };
+}
+
 float Reconstructor::computeReconstructabilityScore(int tracks, Mat mask,
     int tresh) {
+    //We use rotation only corrspondence to compute the reconstruction score
     auto inliers = countNonZero(mask);
     auto outliers = tracks - inliers;
-    auto ratio = float(outliers) / tracks;
-    cout << "Outliers was " << outliers << "\n";
-    cout << "tracks was " << tracks << "\n";
-    cout << "Ratio was " << ratio << "\n";
-    if (ratio >= 0.3)
+    auto ratio = float(inliers) / tracks;
+    if (1.0 - ratio >= 0.3)
         return outliers;
     else
         return 0;
@@ -275,25 +306,20 @@ void Reconstructor::computeReconstructability(
     const ShoTracker &tracker, vector<CommonTrack>& commonTracks) {
     auto imageNodes = tracker.getImageNodes();
     for (auto &track : commonTracks) {
-        cout << "Track is " << track.imagePair.first << " - " << track.imagePair.second << " ";
         Mat mask;
-#if 1
         bool success{};
         Mat essentialMat, rotation, translation;
-        std::tie(success, essentialMat, rotation, translation) = recoverTwoViewPoseWithHomography(track, mask);
-#else
-        auto[success, essentrialMat, rotation, translation] = recoverTwoViewPoseWithHomography(track, mask);
-#endif
+        std::tie(success, essentialMat, rotation, translation) = twoViewReconstructionRotationOnly(track, mask);
         if (success) {
             track.rScore = computeReconstructabilityScore(track.commonTracks.size(), mask);
         }
         else {
-            track.rScore = 0;
+            track.rScore = 0.0;
         }
     }
    
     sort(std::begin(commonTracks), std::end(commonTracks),
-        [](const CommonTrack& a, const CommonTrack& b) { return -a.rScore < - b.rScore; });
+        [](const CommonTrack& a, const CommonTrack& b) { return a.rScore >  b.rScore; });
    
 }
 
@@ -303,7 +329,7 @@ std::tuple<Mat, vector<Point2f>, vector<Point2f>, Mat>
 Reconstructor::computePlaneHomography(CommonTrack commonTrack) const {
     vector<Point2f> points1;
     vector<Point2f> points2;
-    this->_alignMatchingPoints(commonTrack, points1, points2);
+    _alignMatchingPoints(commonTrack, points1, points2);
     Mat mask;
     auto hom = findHomography(points1, points2, mask, cv::RANSAC,
         REPROJECTION_ERROR_SD);
@@ -313,35 +339,33 @@ Reconstructor::computePlaneHomography(CommonTrack commonTrack) const {
 
 void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
     //undistort all images 
-    flight.undistort();
+    //flight.undistort();
     vector<Reconstruction> reconstructions;
     set<string> reconstructionImages;
-    for (const auto it : this->imageNodes) {
+    for (const auto it : this->imageNodes_) {
         reconstructionImages.insert(it.first);
     }
-    auto commonTracks = tracker.commonTracks(this->tg);
+    auto commonTracks = tracker.commonTracks(this->tg_);
     computeReconstructability(tracker, commonTracks);
     for (auto track : commonTracks) {
         if (reconstructionImages.find(track.imagePair.first) !=
             reconstructionImages.end() &&
             reconstructionImages.find(track.imagePair.second) !=
             reconstructionImages.end()) {
-            cout << "Score of this track was " << track.rScore << "\n";
 
-            cout << "Starting reconstruction with " << track.imagePair.first
+            cerr << "Starting reconstruction with " << track.imagePair.first
                 << " and "
                 << " and " << track.imagePair.second << '\n';
-            cout << "Score of this track is " << track.rScore << "\n";
             auto optRec = beginReconstruction(track, tracker);
             if (optRec) {
                 auto rec = *optRec;
                 reconstructionImages.erase(track.imagePair.first);
                 reconstructionImages.erase(track.imagePair.second);
                 continueReconstruction(rec, reconstructionImages);
-                string recFileName = flight.getImageDirectoryPath().parent_path().leaf().string() + "-" + 
+                string recFileName = flight_.getImageDirectoryPath().parent_path().leaf().string() + "-" + 
                     to_string(reconstructions.size() + 1) + ".ply";
             
-                string mvsFileName = flight.getImageDirectoryPath().parent_path().leaf().string() + "-" +
+                string mvsFileName = flight_.getImageDirectoryPath().parent_path().leaf().string() + "-" +
                     to_string(reconstructions.size() + 1) + ".mvs";
                 colorReconstruction(rec);
                 rec.saveReconstruction(recFileName);
@@ -354,28 +378,23 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
     if (reconstructions.size() > 1) {
         //We have multiple partial reconstructions. Try to merge all of them
         reconstructions[0].mergeReconstruction(reconstructions[1]);
-        string mergedRec = flight.getImageDirectoryPath().parent_path().leaf().string() + "merged.ply";
+        string mergedRec = flight_.getImageDirectoryPath().parent_path().leaf().string() + "merged.ply";
         reconstructions[0].alignToGps();
         reconstructions[0].saveReconstruction(mergedRec);
     }
-    Reconstruction allReconstruction;
+    auto totalPoints = 0;
     for (auto & rec : reconstructions) {
-        for (const auto[shotId, shot] : rec.getReconstructionShots()) {
-            if (!allReconstruction.hasShot(shotId)) {
-                allReconstruction.addShot(shotId, shot);
-            }
-        }
-
+        totalPoints += rec.getCloudPoints().size();
     }
-    cout << "Total number of points in all reconstructions is " << allReconstruction.getCloudPoints().size() << "\n\n";
+    cerr << "Total number of points in all reconstructions is " << totalPoints << "\n";
 }
 
 Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonTrack track, const ShoTracker &tracker)
 {
-    Reconstruction rec(flight.getCamera());
+    Reconstruction rec(flight_.getCamera());
 
     //Disable gps alignment. Alignment is broken
-    rec.setGPS(flight.hasGps());
+    rec.setGPS(flight_.hasGps());
     Mat mask;
     //TwoViewPose poseParameters = recoverTwoCameraViewPose(track, mask);
     TwoViewPose poseParameters = recoverTwoViewPoseWithHomography(track, mask);
@@ -392,27 +411,23 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
         return std::nullopt;
     }
 
-# if 1
     auto inliers = countNonZero(mask);
     if (inliers <= 5)
     {
-        cout << "This pair failed to adequately reconstruct" << endl;
+        cerr << "This pair failed to adequately reconstruct" << endl;
         return std::nullopt;
     }
-#endif
+
     Mat rVec;
     Rodrigues(r, rVec);
     Mat distortion;
 
-    const auto shot1Image = flight.getImageSet()[flight.getImageIndex(track.imagePair.first)];
-    const auto shot2Image = flight.getImageSet()[flight.getImageIndex(track.imagePair.second)];
-    cout << "Getting metadata for " << track.imagePair.first << "\n";
-    ShotMetadata shot1Metadata(shot1Image.getMetadata(), flight);
-    cout << "Getting metadata for " << track.imagePair.second << "\n";
-    ShotMetadata shot2Metadata(shot2Image.getMetadata(), flight);
-    cout << "Camera used for shot is " << flight.getCamera() << '\n';
-    Shot shot1(track.imagePair.first, flight.getCamera(), Pose(), shot1Metadata);
-    Shot shot2(track.imagePair.second, flight.getCamera(), Pose(rVec, t), shot2Metadata);
+    const auto shot1Image = flight_.getImageSet()[flight_.getImageIndex(track.imagePair.first)];
+    const auto shot2Image = flight_.getImageSet()[flight_.getImageIndex(track.imagePair.second)];
+    ShotMetadata shot1Metadata(shot1Image.getMetadata(), flight_);
+    ShotMetadata shot2Metadata(shot2Image.getMetadata(), flight_);
+    Shot shot1(track.imagePair.first, flight_.getCamera(), Pose(), shot1Metadata);
+    Shot shot2(track.imagePair.second, flight_.getCamera(), Pose(rVec, t), shot2Metadata);
 
     rec.addShot(shot1.getId(), shot1);
     rec.addShot(shot2.getId(), shot2);
@@ -421,21 +436,15 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
     if (rec.getCloudPoints().size() < MIN_INLIERS)
     {
         //return None
-        cout << "Initial motion did not generate enough points : " << rec.getCloudPoints().size() << endl;
+        cerr << "Initial motion did not generate enough points : " << rec.getCloudPoints().size() << endl;
         return std::nullopt;
     }
-
     colorReconstruction(rec);
     rec.saveReconstruction("green.ply");
-    cout << "Generated " << rec.getCloudPoints().size()
-        << "points from initial motion " << endl;
-
-
-#if 1
+    cerr << "Generated " << rec.getCloudPoints().size() << "points from initial motion " << endl;
     singleViewBundleAdjustment(track.imagePair.second, rec);
     retriangulate(rec);
     singleViewBundleAdjustment(track.imagePair.second, rec);
-#endif
     return rec;
 }
 
@@ -460,12 +469,12 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
 
             singleViewBundleAdjustment(imageName, rec);
             rec.saveReconstruction("partialgreen.ply");
-            cout << "Adding " << imageName << " to the reconstruction \n";
+            cerr << "Adding " << imageName << " to the reconstruction \n";
             images.erase(imageName);
             triangulateShotTracks(imageName, rec);
 
             if (rec.needsRetriangulation()) {
-                cout << "Retriangulating reconstruction \n";
+                cerr << "Retriangulating reconstruction \n";
                 bundle(rec);
                 retriangulate(rec);
                 bundle(rec);
@@ -474,17 +483,16 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
                 rec.updateLastCounts();
             }
             else if (rec.needsBundling()) {
-                cout << "Running bundle adjustment \n";
                 bundle(rec);
                 removeOutliers(rec);
                 rec.alignToGps();
                 rec.updateLastCounts();
             }
             else {
-                //TODO implement bundle local
+                //TODO implement local neighbourhood shot bundling
             }
             auto after = rec.getCloudPoints().size();
-            if (after - before > 0)
+            if (after - before > 0 && before > 0)
             {
                 cerr << "Added " << after - before << " points to the reconstruction \n";
             }
@@ -498,12 +506,12 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
 
 void Reconstructor::triangulateShotTracks(string image1, Reconstruction &rec) {
     cout << "Triangulating tracks for "<< image1 << '\n';
-    auto im1 = imageNodes[image1];
+    auto im1 = imageNodes_[image1];
 
-    const auto[edgesBegin, edgesEnd] = boost::out_edges(im1, this->tg);
+    const auto[edgesBegin, edgesEnd] = boost::out_edges(im1, this->tg_);
 
     for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
-        auto track = tg[*tracksIter].trackName;
+        auto track = tg_[*tracksIter].trackName;
         if(rec.getCloudPoints().find(stoi(track)) == rec.getCloudPoints().end())
             triangulateTrack(track, rec);
     }
@@ -512,21 +520,20 @@ void Reconstructor::triangulateShotTracks(string image1, Reconstruction &rec) {
 void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec) {
     rInverses.clear();
     shotOrigins.clear();
-    auto track = trackNodes[trackId];
+    auto track = trackNodes_[trackId];
     std::pair<adjacency_iterator, adjacency_iterator> neighbors =
-        boost::adjacent_vertices(track, this->tg);
+        boost::adjacent_vertices(track, this->tg_);
     Eigen::Vector3d x;
     vector<Eigen::Vector3d> originList, bearingList;
     for (; neighbors.first != neighbors.second; ++neighbors.first) {
-        auto shotId = this->tg[*neighbors.first].name;
+        auto shotId = this->tg_[*neighbors.first].name;
         if (rec.hasShot(shotId)) {
             auto shot = rec.getShot(shotId);
-            auto edgePair = boost::edge(track, this->imageNodes[shotId], this->tg);
+            auto edgePair = boost::edge(track, this->imageNodes_[shotId], this->tg_);
             auto edgeDescriptor = edgePair.first;
-            auto fCol = this->tg[edgeDescriptor].fProp.color;
-            auto fPoint = this->tg[edgeDescriptor].fProp.coordinates;
-            auto fBearing =
-                this->flight.getCamera().normalizedPointToBearingVec(fPoint);
+            auto fCol = tg_[edgeDescriptor].fProp.color;
+            auto fPoint = tg_[edgeDescriptor].fProp.coordinates;
+            auto fBearing =flight_.getCamera().normalizedPointToBearingVec(fPoint);
             auto origin = getShotOrigin(shot);
             Eigen::Vector3d eOrigin;
             Eigen::Matrix3d eigenRotationInverse;
@@ -554,12 +561,12 @@ void Reconstructor::retriangulate(Reconstruction& rec) {
     set<string> tracks;
     for (const auto[imageName, shot] : rec.getReconstructionShots()) {
         try {
-            const auto imageVertex = imageNodes.at(imageName);
+            const auto imageVertex = imageNodes_.at(imageName);
             const auto[edgesBegin, edgesEnd] =
-                boost::out_edges(imageVertex, this->tg);
+                boost::out_edges(imageVertex, this->tg_);
 
             for (auto edgesIter = edgesBegin; edgesIter != edgesEnd; ++edgesIter) {
-                const auto trackName = this->tg[*edgesIter].trackName;
+                const auto trackName = this->tg_[*edgesIter].trackName;
                 tracks.insert(trackName);
             }
         }
@@ -575,15 +582,15 @@ void Reconstructor::retriangulate(Reconstruction& rec) {
 
 ShoColumnVector3d Reconstructor::getShotOrigin(const Shot& shot) {
     auto shotId = shot.getId();
-    if (shotOrigins.find(shotId) == this->shotOrigins.end()) {
+    if (shotOrigins.find(shotId) == shotOrigins.end()) {
         shotOrigins[shotId] = shot.getPose().getOrigin();
     }
-    return this->shotOrigins[shotId];
+    return shotOrigins[shotId];
 }
 
 Mat Reconstructor::getRotationInverse(const Shot& shot) {
     auto shotId = shot.getId();
-    if (rInverses.find(shotId) == this->rInverses.end()) {
+    if (rInverses.find(shotId) == rInverses.end()) {
         auto rotationInverse = shot.getPose().getRotationMatrixInverse();
         rInverses[shotId] = rotationInverse;
     }
@@ -605,16 +612,16 @@ void Reconstructor::singleViewBundleAdjustment(std::string shotId,
         r(2), t(0), t(1),
         t(2), false);
 
-    auto im1 = this->imageNodes[shotId];
+    auto im1 = imageNodes_[shotId];
 
-    const auto[edgesBegin, edgesEnd] = boost::out_edges(im1, this->tg);
+    const auto[edgesBegin, edgesEnd] = boost::out_edges(im1, this->tg_);
 
     for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
-        auto trackId = this->tg[*tracksIter].trackName;
+        auto trackId = tg_[*tracksIter].trackName;
         try {
             const auto track = rec.getCloudPoints().at(stoi(trackId));
             const auto p = track.getPosition();
-            const auto featureCoords = this->tg[*tracksIter].fProp.coordinates;
+            const auto featureCoords = this->tg_[*tracksIter].fProp.coordinates;
             bundleAdjuster.AddPoint(trackId, p.x, p.y, p.z, true);
             bundleAdjuster.AddObservation(shotId, trackId, featureCoords.x,
                 featureCoords.y);
@@ -624,12 +631,13 @@ void Reconstructor::singleViewBundleAdjustment(std::string shotId,
         }
     }
 
-    if (flight.hasGps() && rec.usesGps()) {
+#if 1
+    if (flight_.hasGps() && rec.usesGps()) {
         cout << "Using gps prior \n";
         const auto g = shot.getMetadata().gpsPosition;
         bundleAdjuster.AddPositionPrior(shotId, g.x, g.y, g.z, shot.getMetadata().gpsDop);
     }
-
+#endif
     bundleAdjuster.SetLossFunction(LOSS_FUNCTION, LOSS_FUNCTION_TRESHOLD);
     bundleAdjuster.SetReprojectionErrorSD(REPROJECTION_ERROR_SD);
     bundleAdjuster.SetInternalParametersPriorSD(
@@ -641,7 +649,7 @@ void Reconstructor::singleViewBundleAdjustment(std::string shotId,
     bundleAdjuster.SetLinearSolverType(LINEAR_SOLVER_TYPE);
     bundleAdjuster.Run();
 
-    cerr << bundleAdjuster.BriefReport() << "\n";
+    cerr << bundleAdjuster.FullReport() << "\n";
 
     auto s = bundleAdjuster.GetShot(shotId);
     Mat rotation = (Mat_<double>(3, 1) << s.GetRX(), s.GetRY(), s.GetRZ());
@@ -652,36 +660,32 @@ void Reconstructor::singleViewBundleAdjustment(std::string shotId,
 }
 
 const vertex_descriptor Reconstructor::getImageNode(string imageName) const {
-    return imageNodes.at(imageName);
+    return imageNodes_.at(imageName);
 }
 
 const vertex_descriptor Reconstructor::getTrackNode(string trackId) const {
-    return trackNodes.at(trackId);
+    return trackNodes_.at(trackId);
 }
 
 void Reconstructor::plotTracks(CommonTrack track) const {
     Mat imageMatches;
-    Mat image1 = imread(
-        (this->flight.getImageDirectoryPath() / track.imagePair.first).string(),
-        IMREAD_GRAYSCALE);
-    Mat image2 = imread(
-        (this->flight.getImageDirectoryPath() / track.imagePair.second).string(),
-        IMREAD_GRAYSCALE);
+    Mat image1 = imread((flight_.getImageDirectoryPath() / track.imagePair.first).string(),IMREAD_GRAYSCALE);
+    Mat image2 = imread((flight_.getImageDirectoryPath() / track.imagePair.second).string(),IMREAD_GRAYSCALE);
 
-    const vertex_descriptor im1 = this->getImageNode(track.imagePair.first);
-    const vertex_descriptor im2 = this->getImageNode(track.imagePair.second);
-    const auto im1Feats = this->flight.loadFeatures(track.imagePair.first);
-    const auto im2Feats = this->flight.loadFeatures(track.imagePair.second);
+    const vertex_descriptor im1 = getImageNode(track.imagePair.first);
+    const vertex_descriptor im2 = getImageNode(track.imagePair.second);
+    const auto im1Feats = flight_.loadFeatures(track.imagePair.first);
+    const auto im2Feats = flight_.loadFeatures(track.imagePair.second);
 
     auto kp1 = im1Feats.getKeypoints();
     auto kp2 = im2Feats.getKeypoints();
 
     for (auto &kp : kp1) {
-        kp.pt = this->flight.getCamera().denormalizeImageCoordinates(kp.pt);
+        kp.pt = flight_.getCamera().denormalizeImageCoordinates(kp.pt);
     }
 
     for (auto &kp : kp2) {
-        kp.pt = this->flight.getCamera().denormalizeImageCoordinates(kp.pt);
+        kp.pt = flight_.getCamera().denormalizeImageCoordinates(kp.pt);
     }
 
     const auto dMatches = _getTrackDMatchesForImagePair(track);
@@ -690,8 +694,7 @@ void Reconstructor::plotTracks(CommonTrack track) const {
         Scalar::all(-1), vector<char>(),
         cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 
-    const auto frameName =
-        track.imagePair.first + " - " + track.imagePair.second + " tracks";
+    const auto frameName = track.imagePair.first + " - " + track.imagePair.second + " tracks";
     cv::namedWindow(frameName, cv::WINDOW_NORMAL);
     imshow(frameName, imageMatches);
 }
@@ -702,7 +705,7 @@ void Reconstructor::exportToMvs(const Reconstruction & rec, const std::string mv
     exporter.AddCamera("1", rec.getCamera().getNormalizedKMatrix());
 
     for (const auto [shotId, shot] : rec.getReconstructionShots()) {
-        auto imagePath = flight.getUndistortedImagesDirectoryPath() / shotId;
+        auto imagePath = flight_.getUndistortedImagesDirectoryPath() / shotId;
         imagePath.replace_extension("png");
         auto origin = Mat(shot.getPose().getOrigin()).data;
         exporter.AddShot(
@@ -716,13 +719,13 @@ void Reconstructor::exportToMvs(const Reconstruction & rec, const std::string mv
 
     for (const auto &[trackId, cloudPoint] : rec.getCloudPoints()) {
         vector<string> shots;
-        auto trackVertex = trackNodes.at(std::to_string(trackId));
+        auto trackVertex = trackNodes_.at(std::to_string(trackId));
        
         const auto[edgesBegin, edgesEnd] =
-            boost::out_edges(trackVertex, tg);
+            boost::out_edges(trackVertex, tg_);
 
         for (auto edgesIter = edgesBegin; edgesIter != edgesEnd; ++edgesIter) {
-            const auto shotName = tg[*edgesIter].imageName;
+            const auto shotName = tg_[*edgesIter].imageName;
             shots.push_back(shotName);
         }
         exporter.AddPoint(cloudPoint.getPosition(), shots);
@@ -755,15 +758,15 @@ void Reconstructor::bundle(Reconstruction& rec) {
 
     for (const auto[shotId, shot] : rec.getReconstructionShots()) {
         try {
-            const auto imageVertex = imageNodes.at(shotId);
+            const auto imageVertex = imageNodes_.at(shotId);
             const auto[edgesBegin, edgesEnd] =
-                boost::out_edges(imageVertex, this->tg);
+                boost::out_edges(imageVertex, this->tg_);
 
             for (auto edgesIter = edgesBegin; edgesIter != edgesEnd; ++edgesIter) {
-                const auto trackName = this->tg[*edgesIter].trackName;
+                const auto trackName = this->tg_[*edgesIter].trackName;
                 if (rec.getCloudPoints().find(stoi(trackName)) !=
                     rec.getCloudPoints().end()) {
-                    const auto featureCoords = this->tg[*edgesIter].fProp.coordinates;
+                    const auto featureCoords = this->tg_[*edgesIter].fProp.coordinates;
                     bundleAdjuster.AddObservation(shotId, trackName, featureCoords.x,
                         featureCoords.y);
                 }
@@ -774,7 +777,7 @@ void Reconstructor::bundle(Reconstruction& rec) {
         }
     }
 
-    if (flight.hasGps() && rec.usesGps()) {
+    if (flight_.hasGps() && rec.usesGps()) {
         cout << "Using gps prior \n";
         for (const auto[shotId, shot] : rec.getReconstructionShots()) {
             const auto g = shot.getMetadata().gpsPosition;
@@ -790,7 +793,7 @@ void Reconstructor::bundle(Reconstruction& rec) {
         RADIAL_DISTORTION_K3_SD);
     bundleAdjuster.SetNumThreads(NUM_PROCESESS);
     bundleAdjuster.SetMaxNumIterations(50);
-    bundleAdjuster.SetLinearSolverType("SPARCE_SCHUR");
+    bundleAdjuster.SetLinearSolverType("SPARSE_SCHUR");
     bundleAdjuster.Run();
 
     _getCameraFromBundle(bundleAdjuster, rec.getCamera());
@@ -820,9 +823,9 @@ vector<pair<string, int>> Reconstructor::reconstructedPointForImages(const Recon
     for (const auto imageName : images) {
         if (!rec.hasShot(imageName)) {
             auto commonTracks = 0;
-            const auto[edgesBegin, edgesEnd] = boost::out_edges(getImageNode(imageName), tg);
+            const auto[edgesBegin, edgesEnd] = boost::out_edges(getImageNode(imageName), tg_);
             for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
-                const auto trackName = this->tg[*tracksIter].trackName;
+                const auto trackName = this->tg_[*tracksIter].trackName;
                 if (rec.hasTrack(trackName)) {
                     commonTracks++;
                 }
@@ -840,9 +843,9 @@ void Reconstructor::colorReconstruction(Reconstruction & rec)
 {
     for (auto&[trackId, cp] : rec.getCloudPoints()) {
         const auto trackNode = this->getTrackNode(to_string(trackId));
-        auto[edgesBegin, _] = boost::out_edges(trackNode, this->tg);
+        auto[edgesBegin, _] = boost::out_edges(trackNode, this->tg_);
         edgesBegin++;
-        cp.setColor(tg[*edgesBegin].fProp.color);
+        cp.setColor(tg_[*edgesBegin].fProp.color);
     }
 }
 
@@ -851,9 +854,9 @@ void Reconstructor::removeOutliers(Reconstruction& rec) {
     erase_if(
         rec.getCloudPoints(),
         [](const auto& cp) {
-        const auto&[id, p] = cp;
-        return p.getError() > BUNDLE_OUTLIER_THRESHOLD;
-    }
+            const auto&[id, p] = cp;
+            return (p.getError() > BUNDLE_OUTLIER_THRESHOLD);
+        }
     );
     const auto removed = before - rec.getCloudPoints().size();
     cout << "Removed " << removed << " outliers from reconstruction \n";
@@ -862,100 +865,36 @@ void Reconstructor::removeOutliers(Reconstruction& rec) {
 tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, const vertex_descriptor imageVertex, double threshold,
     int iterations, double probability, int resectionInliers) {
     ReconstructionReport report;
-    opengv::points_t Xs;
-    opengv::bearingVectors_t Bs;
     vector<Point2d> fPoints;
     vector<Point3d> realWorldPoints;
-    const auto[edgesBegin, edgesEnd] = boost::out_edges(imageVertex, this->tg);
+    const auto[edgesBegin, edgesEnd] = boost::out_edges(imageVertex, this->tg_);
     for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
-        const auto trackName = this->tg[*tracksIter].trackName;
+        const auto trackName = tg_[*tracksIter].trackName;
         if (rec.hasTrack(trackName)) {
-            auto fPoint = this->tg[*tracksIter].fProp.coordinates;
-            auto fBearing =
-                this->flight.getCamera().normalizedPointToBearingVec(fPoint);
-            //cout << "F point to f bearing is " << fPoint << " to " << fBearing << "\n";
-
-            fPoints.push_back(flight.getCamera().denormalizeImageCoordinates(fPoint));
+            auto fPoint = tg_[*tracksIter].fProp.coordinates;
+            auto fBearing = flight_.getCamera().normalizedPointToBearingVec(fPoint);
+            fPoints.push_back(flight_.getCamera().denormalizeImageCoordinates(fPoint));
             auto position = rec.getCloudPoints().at(stoi(trackName)).getPosition();
             realWorldPoints.push_back(position);
-            Xs.push_back({ position.x, position.y, position.z });
-            Bs.push_back(fBearing);
         }
     }
 
-    if (Bs.size() < 5) {
-        report.numCommonPoints = Bs.size();
+    if (realWorldPoints.size() < 5) {
+        report.numCommonPoints = realWorldPoints.size();
         return make_tuple(false, report);
     }
 
     Mat pnpRot, pnpTrans, inliers;
-    if (cv::solvePnPRansac(realWorldPoints, fPoints, flight.getCamera().getKMatrix(), 
-        flight.getCamera().getDistortionMatrix(), pnpRot, pnpTrans, false,iterations, 8.0, probability, inliers)) {
-
-        const auto shotName = tg[imageVertex].name;
-        const auto shot = flight.getImageSet()[flight.getImageIndex(shotName)];
-        ShotMetadata shotMetadata(shot.getMetadata(), flight);
-        report.numCommonPoints = Bs.size();
+    if (cv::solvePnPRansac(realWorldPoints, fPoints, flight_.getCamera().getKMatrix(), 
+        flight_.getCamera().getDistortionMatrix(), pnpRot, pnpTrans, false,iterations, 8.0, probability, inliers)) {
+        const auto shotName = tg_[imageVertex].name;
+        const auto shot = flight_.getImageSet()[flight_.getImageIndex(shotName)];
+        ShotMetadata shotMetadata(shot.getMetadata(), flight_);
+        report.numCommonPoints = realWorldPoints.size();
         report.numInliers = cv::countNonZero(inliers);
-        Shot recShot(shotName, flight.getCamera(), Pose(pnpRot, pnpTrans), shotMetadata);
+        Shot recShot(shotName, flight_.getCamera(), Pose(pnpRot, pnpTrans), shotMetadata);
         rec.addShot(recShot.getId(), recShot);
         return { true, report };
     }
-
-#if 0
-    
-    const auto t = absolutePoseRansac(Bs, Xs, threshold, iterations, probability);
-    cout << "T obtained was " << t << "\n";
-    Matrix3d rotation;
-    RowVector3d translation;
-
-    rotation = t.leftCols(3);
-    translation = t.rightCols(1).transpose();
-    auto fd = Xs.data()->data();
-    auto bd = Bs.data()->data();
-    Matrix<double, Dynamic, 3> eigenXs = Eigen::Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(fd, Xs.size(), 3);
-    Matrix<double, Dynamic, 3> eigenBs = Eigen::Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(bd, Bs.size(), 3);
-
-    cout << "Eigen xs is " << eigenXs << "\n";
-    cout << "Eigen bs is " << eigenBs << "\n";
-
-    const auto rotationTranspose = rotation.transpose();
-    cout << "Rotation transpose is " << rotationTranspose << "\n";
-    const auto eigenXsMinusTranslationTranspose = (eigenXs.rowwise() - translation).transpose();
-    cout << "Eigen minus translation is " << eigenXsMinusTranslationTranspose << "\n";
-    const auto rtProduct = rotation.transpose() * eigenXsMinusTranslationTranspose;
-    cout << "rt product is " << rtProduct << "\n";
-    MatrixXd reprojectedBs(rtProduct.cols(), rtProduct.rows());
-    reprojectedBs = rtProduct.transpose();
-    cout << "Reprojected bs is " << reprojectedBs << "\n";
-    VectorXd reprojectedBsNorm(reprojectedBs.rows());
-    reprojectedBsNorm = reprojectedBs.rowwise().norm();
-    cout << "Reprojected bs norm is " << reprojectedBsNorm << "\n";
-    auto divReprojectedBs = reprojectedBs.array().colwise() / reprojectedBsNorm.array();
-
-    cout << "Div reprojected bs is " << divReprojectedBs << "\n";
-    MatrixXd reprojectedDifference(eigenBs.rows(), eigenBs.cols());
-    reprojectedDifference = reprojectedBs - eigenBs;
-    cout << "Reprojected difference is " << reprojectedDifference << "\n";
-    cout << "Reprojected difference norm is" << reprojectedDifference.rowwise().norm()<< "\n";
-
-    const auto inliersMatrix = divReprojectedBs.rowwise() - eigenBs.colwise().norm();
-        inliersMatrix < threshold).count();
-    report.numCommonPoints = Bs.size();
-    report.numInliers = inliers;
-
-    if (inliers > resectionInliers) {
-        const auto shotName = tg[imageVertex].name;
-        const auto shotImageIndex = flight.getImageIndex(shotName);
-        const auto shotImage = flight.getImageSet()[shotImageIndex];
-        ShotMetadata shotMetadata(shotImage.getMetadata(), flight);
-        //TODO add rotation and translation to this pose
-        Shot shot(shotName, flight.getCamera(), Pose(), shotMetadata);
-        rec.getReconstructionShots()[shot.getId()] = shot;
-        return make_tuple(true, report);
-    }
-    return make_tuple(false, report);
-      
-#endif
     return make_tuple(false, report);
 }
