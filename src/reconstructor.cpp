@@ -865,8 +865,6 @@ void Reconstructor::removeOutliers(Reconstruction& rec) {
 tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, const vertex_descriptor imageVertex, double threshold,
     int iterations, double probability, int resectionInliers) {
     ReconstructionReport report;
-    opengv::points_t Xs;
-    opengv::bearingVectors_t Bs;
     vector<Point2d> fPoints;
     vector<Point3d> realWorldPoints;
     const auto[edgesBegin, edgesEnd] = boost::out_edges(imageVertex, this->tg_);
@@ -878,84 +876,25 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
             fPoints.push_back(flight_.getCamera().denormalizeImageCoordinates(fPoint));
             auto position = rec.getCloudPoints().at(stoi(trackName)).getPosition();
             realWorldPoints.push_back(position);
-            Xs.push_back({ position.x, position.y, position.z });
-            Bs.push_back(fBearing);
         }
     }
 
-    if (Bs.size() < 5) {
-        report.numCommonPoints = Bs.size();
+    if (realWorldPoints.size() < 5) {
+        report.numCommonPoints = realWorldPoints.size();
         return make_tuple(false, report);
     }
 
     Mat pnpRot, pnpTrans, inliers;
-    cout << "K matrix of camera before resect is " << flight_.getCamera().getKMatrix() << "\n";
     if (cv::solvePnPRansac(realWorldPoints, fPoints, flight_.getCamera().getKMatrix(), 
         flight_.getCamera().getDistortionMatrix(), pnpRot, pnpTrans, false,iterations, 8.0, probability, inliers)) {
         const auto shotName = tg_[imageVertex].name;
         const auto shot = flight_.getImageSet()[flight_.getImageIndex(shotName)];
         ShotMetadata shotMetadata(shot.getMetadata(), flight_);
-        report.numCommonPoints = Bs.size();
+        report.numCommonPoints = realWorldPoints.size();
         report.numInliers = cv::countNonZero(inliers);
         Shot recShot(shotName, flight_.getCamera(), Pose(pnpRot, pnpTrans), shotMetadata);
         rec.addShot(recShot.getId(), recShot);
         return { true, report };
     }
-
-#if 0
-    
-    const auto t = absolutePoseRansac(Bs, Xs, threshold, iterations, probability);
-    cout << "T obtained was " << t << "\n";
-    Matrix3d rotation;
-    RowVector3d translation;
-
-    rotation = t.leftCols(3);
-    translation = t.rightCols(1).transpose();
-    auto fd = Xs.data()->data();
-    auto bd = Bs.data()->data();
-    Matrix<double, Dynamic, 3> eigenXs = Eigen::Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(fd, Xs.size(), 3);
-    Matrix<double, Dynamic, 3> eigenBs = Eigen::Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(bd, Bs.size(), 3);
-
-    cout << "Eigen xs is " << eigenXs << "\n";
-    cout << "Eigen bs is " << eigenBs << "\n";
-
-    const auto rotationTranspose = rotation.transpose();
-    cout << "Rotation transpose is " << rotationTranspose << "\n";
-    const auto eigenXsMinusTranslationTranspose = (eigenXs.rowwise() - translation).transpose();
-    cout << "Eigen minus translation is " << eigenXsMinusTranslationTranspose << "\n";
-    const auto rtProduct = rotation.transpose() * eigenXsMinusTranslationTranspose;
-    cout << "rt product is " << rtProduct << "\n";
-    MatrixXd reprojectedBs(rtProduct.cols(), rtProduct.rows());
-    reprojectedBs = rtProduct.transpose();
-    cout << "Reprojected bs is " << reprojectedBs << "\n";
-    VectorXd reprojectedBsNorm(reprojectedBs.rows());
-    reprojectedBsNorm = reprojectedBs.rowwise().norm();
-    cout << "Reprojected bs norm is " << reprojectedBsNorm << "\n";
-    auto divReprojectedBs = reprojectedBs.array().colwise() / reprojectedBsNorm.array();
-
-    cout << "Div reprojected bs is " << divReprojectedBs << "\n";
-    MatrixXd reprojectedDifference(eigenBs.rows(), eigenBs.cols());
-    reprojectedDifference = reprojectedBs - eigenBs;
-    cout << "Reprojected difference is " << reprojectedDifference << "\n";
-    cout << "Reprojected difference norm is" << reprojectedDifference.rowwise().norm()<< "\n";
-
-    const auto inliersMatrix = divReprojectedBs.rowwise() - eigenBs.colwise().norm();
-        inliersMatrix < threshold).count();
-    report.numCommonPoints = Bs.size();
-    report.numInliers = inliers;
-
-    if (inliers > resectionInliers) {
-        const auto shotName = tg[imageVertex].name;
-        const auto shotImageIndex = flight.getImageIndex(shotName);
-        const auto shotImage = flight.getImageSet()[shotImageIndex];
-        ShotMetadata shotMetadata(shotImage.getMetadata(), flight);
-        //TODO add rotation and translation to this pose
-        Shot shot(shotName, flight.getCamera(), Pose(), shotMetadata);
-        rec.getReconstructionShots()[shot.getId()] = shot;
-        return make_tuple(true, report);
-    }
-    return make_tuple(false, report);
-      
-#endif
     return make_tuple(false, report);
 }
