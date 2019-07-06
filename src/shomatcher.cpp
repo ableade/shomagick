@@ -182,7 +182,8 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
         else if (channels == 3)
             colors.push_back(modelImg.at<Vec3b>(keypoint.pt));
 
-        keypoint.pt = this->flight_.getCamera().normalizeImageCoordinate(keypoint.pt);
+        keypoint.pt = flight_.getCamera().normalizeImageCoordinate(keypoint.pt);
+        keypoint.size /= max(flight_.getCamera().getScaledHeight(), flight_.getCamera().getScaledWidth());
     }
     return flight_.saveImageFeaturesFile(fileName, keypoints, descriptors, colors);
 }

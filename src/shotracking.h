@@ -24,9 +24,10 @@ struct FeatureProperty
     ImageFeatureNode featureNode;
     cv::Point2d coordinates;
     cv::Scalar color;
+    double scale;
 
-    FeatureProperty() : featureNode(), coordinates(), color() {};
-    FeatureProperty(ImageFeatureNode fNode, cv::Point2d coordinates, cv::Scalar color) : featureNode(fNode), coordinates(coordinates), color(color) {}
+    FeatureProperty() : featureNode(), coordinates(), color(), scale() {};
+    FeatureProperty(ImageFeatureNode fNode, cv::Point2d coordinates, cv::Scalar color, double scale) : featureNode(fNode), coordinates(coordinates), color(color), scale(scale) {}
 };
 
 struct EdgeProperty {
@@ -100,6 +101,7 @@ public:
     typedef int GloballyUniqueImageFeatureId;
 private:
     std::map<ImageFeatureNode, GloballyUniqueImageFeatureId> imageFeatureNodes_;
+    std::map<GloballyUniqueImageFeatureId, ImageFeatureNode> reverseImageFeatureNodes_;
     std::map<int, std::vector<int>> tracks_;
     UnionFind uf;
     int minTrackLength = 2;

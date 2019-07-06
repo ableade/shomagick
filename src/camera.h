@@ -8,12 +8,12 @@
 
 class Pose {
   private:
-    ShoColumnVector3d translation;
-    ShoColumnVector3d rotation; //Rotation is stored in short format as a vec 3d (3 channel Mat)
+    ShoColumnVector3d translation_;
+    ShoColumnVector3d rotation_; //Rotation is stored in short format as a vec 3d (3 channel Mat)
 
   public:
-    Pose() : rotation({ 0,0,0 }), translation({ 0,0,0 }) {}
-    Pose(cv::Mat rotation, cv::Vec3d translation) : translation(translation) { setRotationVector(rotation); }
+    Pose() : rotation_({ 0,0,0 }), translation_({ 0,0,0 }) {}
+    Pose(cv::Mat rotation, cv::Vec3d translation) : translation_(translation) { setRotationVector(rotation); }
     cv::Matx33d getRotationMatrix() const;
     ShoColumnVector3d getRotationVector() const;
     cv::Mat getRotationMatrixInverse() const;

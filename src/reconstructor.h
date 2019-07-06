@@ -3,7 +3,7 @@
 #include "flightsession.h"
 #include "shotracking.h"
 #include "camera.h"
-#include "bundle.h"
+#include "bundle/bundle_adjuster.h"
 #include "reconstruction.h"
 #include <tuple>
 #include <optional>

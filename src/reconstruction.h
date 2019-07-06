@@ -11,15 +11,15 @@ class CloudPoint {
         int id;
         cv::Point3d position;
         cv::Scalar color;
-        double projError;
+        std::map<std::string, Eigen::VectorXd> projErrors_;
 
     public:
-        CloudPoint(): id(), position(), color(), projError() {}
-        CloudPoint(int id, cv::Point3d position, cv::Scalar color, double projError): id(id), position(position) , color(color) , 
-        projError(projError) {}
+        CloudPoint(): id(), position(), color(), projErrors_() {}
+        CloudPoint(int id, cv::Point3d position, cv::Scalar color, std::map<std::string, Eigen::VectorXd> projErrors): id(id), position(position) , color(color) ,
+        projErrors_(projErrors) {}
         int getId() const {return this->id;}
-        double getError() const {return this->projError;}
-        void setError(double projError) { this->projError = projError; }
+        std::map<std::string, Eigen::VectorXd> getError() const {return projErrors_;}
+        void setError(std::map<std::string, Eigen::VectorXd>  projError) { projErrors_ = projError; }
         const cv::Point3d& getPosition() const {return this->position;}
         void setPosition(cv::Point3d pos) {this->position  = pos;}
         void setId(int id) {this->id = id;}
