@@ -62,15 +62,22 @@ using opengv::rotation_t;
 using opengv::translation_t;
 
 Reconstructor::Reconstructor(
-    FlightSession flight, TrackGraph tg,
-    std::map<string, TrackGraph::vertex_descriptor> trackNodes,
-    std::map<string, TrackGraph::vertex_descriptor> imageNodes)
+    FlightSession flight, TrackGraph tg)
     : flight_(flight),
     tg_(tg),
-    trackNodes_(trackNodes),
-    imageNodes_(imageNodes),
     shotOrigins(),
-    rInverses() {}
+    rInverses() {
+    std::pair<vertex_iterator, vertex_iterator> allVertices =
+        boost::vertices(tg_);
+    for (; allVertices.first != allVertices.second; ++allVertices.first) {
+        if (tg_[*allVertices.first].is_image) {
+            imageNodes_[tg_[*allVertices.first].name] = *allVertices.first;
+        }
+        else {
+            trackNodes_[tg_[*allVertices.first].name] = *allVertices.first;
+        }
+    }
+}
 
 void Reconstructor::_alignMatchingPoints(const CommonTrack track,
     vector<Point2f>& points1,
@@ -490,6 +497,7 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
             }
             else {
                 //TODO implement local neighbourhood shot bundling
+                cout << "Local bundle adjustment should occur here \n";
             }
             auto after = rec.getCloudPoints().size();
             if (after - before > 0 && before > 0)
@@ -526,7 +534,7 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec) {
     Eigen::Vector3d x;
     vector<Eigen::Vector3d> originList, bearingList;
     for (; neighbors.first != neighbors.second; ++neighbors.first) {
-        auto shotId = this->tg_[*neighbors.first].name;
+        auto shotId = tg_[*neighbors.first].name;
         if (rec.hasShot(shotId)) {
             auto shot = rec.getShot(shotId);
             auto edgePair = boost::edge(track, this->imageNodes_[shotId], this->tg_);
@@ -874,7 +882,6 @@ void Reconstructor::removeOutliers(Reconstruction& rec) {
         rec.getCloudPoints().at(stoi(track)).getError().erase(shotId);
         auto iter = tg_.out_edge_list(trackNodes_.at(track)).begin();
         boost::remove_edge(trackNodes_.at(track), imageNodes_.at(shotId), tg_);
-        //tg_.remove_edge(boost::edge(trackNodes_[track], imageNodes_[shotId], tg_).first);
     }
 
     for (const auto &[track, _] : outliers) {

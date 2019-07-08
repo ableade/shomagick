@@ -17,3 +17,12 @@ ShoColumnVector3d convertVecToColumnVector(Vec3d p) {
 ShoRowVector4d convertColumnVecToRowVector(ShoColumnVector3d a) {
     return { a(0,0), a(1,0), a(2,0) };
 }
+
+
+bool checkIfCudaEnabled() {
+    // ORB is the default feature detector
+    if (cv::cuda::getCudaEnabledDeviceCount()) {
+        return true;
+    }
+    return false;
+}

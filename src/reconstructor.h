@@ -67,8 +67,7 @@ private:
       const opengv::rotation_t& rotation, cv::Mat& cvMask) const;
 
 public:
-  Reconstructor(FlightSession flight, TrackGraph tg, std::map<std::string, TrackGraph::vertex_descriptor> trackNodes, 
-  std::map<std::string, TrackGraph::vertex_descriptor> imageNodes);
+  Reconstructor(FlightSession flight, TrackGraph tg);
   TwoViewPose recoverTwoCameraViewPose(CommonTrack track, cv::Mat& mask);
   TwoViewPose twoViewReconstructionRotationOnly(CommonTrack track, cv::Mat &mask);
   template <typename T>

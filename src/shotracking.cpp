@@ -162,9 +162,6 @@ vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
 {
     vector<CommonTrack> commonTracks;
     map<pair<string, string>, std::set<string>> _commonTracks;
-#if 0
-    for (auto it = this->trackNodes.begin(); it != this->trackNodes.end(); ++it)
-#endif
         for (auto& trackNode : trackNodes_)
         {
             std::string vertexName;
