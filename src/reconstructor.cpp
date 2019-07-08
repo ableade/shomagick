@@ -733,8 +733,6 @@ void Reconstructor::exportToMvs(const Reconstruction & rec, const std::string mv
     exporter.Export(mvsFileName);
 }
 
-template <class> struct TD;
-
 void Reconstructor::bundle(Reconstruction& rec) {
     auto fixCameras = !OPTIMIZE_CAMERA_PARAEMETERS;
     BundleAdjuster bundleAdjuster;
@@ -872,7 +870,6 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
         const auto trackName = tg_[*tracksIter].trackName;
         if (rec.hasTrack(trackName)) {
             auto fPoint = tg_[*tracksIter].fProp.coordinates;
-            auto fBearing = flight_.getCamera().normalizedPointToBearingVec(fPoint);
             fPoints.push_back(flight_.getCamera().denormalizeImageCoordinates(fPoint));
             auto position = rec.getCloudPoints().at(stoi(trackName)).getPosition();
             realWorldPoints.push_back(position);

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <string>
 #include <Eigen/Core>
+#include "allclose.h"
 //#include <boost/filesystem.hpp>
 
 using std::ostream;
@@ -57,6 +58,8 @@ void Pose::setRotationVector(cv::Mat src) {
     ShoColumnVector3d rotationVector;
     if (src.rows == 3 && src.cols == 3) {
         //src is currently a rotation matrix
+        CV_Assert(allClose(cv::determinant(src), 1));
+        CV_Assert(allClose(src.inv(), src.t()));
         cv::Rodrigues(src, src);
     }
     rotation = src;
