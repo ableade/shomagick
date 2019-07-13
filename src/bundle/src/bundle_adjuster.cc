@@ -818,6 +818,7 @@ void BundleAdjuster::Run() {
   options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
   options.linear_solver_type = LinearSolverTypeFromNamae(linear_solver_type_);
   options.num_threads = num_threads_;
+  options.logging_type = ceres::PER_MINIMIZER_ITERATION;
   options.max_num_iterations = max_num_iterations_;
 
   ceres::Solve(options, &problem, &last_run_summary_);

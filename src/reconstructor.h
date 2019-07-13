@@ -76,7 +76,7 @@ public:
   TwoViewPose recoverTwoViewPoseWithHomography(CommonTrack track, cv::Mat& mask);
   float computeReconstructabilityScore(int tracks, cv::Mat inliers, int treshold = 0.3);
   void computeReconstructability(const ShoTracker& tracker, std::vector<CommonTrack>& commonTracks);
-  std::tuple<cv::Mat, std::vector<cv::Point2f>, std::vector<cv::Point2f>, cv::Mat> computePlaneHomography(CommonTrack commonTrack) const;
+  std::tuple<cv::Mat, std::vector<cv::Point2f>, std::vector<cv::Point2f>, cv::Mat> commonTrackHomography(CommonTrack commonTrack) const;
   void runIncrementalReconstruction (const ShoTracker& tracker);
 
   using OptionalReconstruction = std::optional<Reconstruction>;
