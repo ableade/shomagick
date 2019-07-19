@@ -12,7 +12,7 @@ struct ReconstructionReport {
     int numCommonPoints;
     int numInliers;
 };
-//Essential matrix, rotation and translation
+//Success, Essential matrix/Homography, rotation and translation
 typedef std::tuple <bool, cv::Mat, cv::Mat, cv::Mat> TwoViewPose;
 //Loss function for the ceres problem (see: http://ceres-solver.org/modeling.html#lossfunction)
 const std::string LOSS_FUNCTION = "SoftLOneLoss";
@@ -61,8 +61,8 @@ private:
   std::vector<cv::DMatch> _getTrackDMatchesForImagePair(const CommonTrack track) const;
   void _addCameraToBundle(BundleAdjuster& ba, const Camera camera, bool fixCameras);
   void _getCameraFromBundle(BundleAdjuster& ba, Camera& cam);
-  void _computeTwoViewReconstructionInliers(opengv::bearingVectors_t b1, opengv::bearingVectors_t b2, 
-      opengv::rotation_t r, opengv::translation_t t) const;
+  int _computeTwoViewReconstructionInliers(opengv::bearingVectors_t b1, opengv::bearingVectors_t b2, 
+      opengv::rotation_t r, opengv::translation_t t, cv::Mat& mask) const;
   TwoViewPose _computeRotationInliers(opengv::bearingVectors_t& b1, opengv::bearingVectors_t& b2,
       const opengv::rotation_t& rotation, cv::Mat& cvMask) const;
 
@@ -70,9 +70,7 @@ public:
   Reconstructor(FlightSession flight, TrackGraph tg);
   TwoViewPose recoverTwoCameraViewPose(CommonTrack track, cv::Mat& mask);
   TwoViewPose twoViewReconstructionRotationOnly(CommonTrack track, cv::Mat &mask);
-  template <typename T>
-  void twoViewReconstructionInliers(std::vector<cv::Mat>& Rs_decomp, std::vector<cv::Mat>& ts_decomp, std::vector<int> possibleSolutions,
-      std::vector<cv::Point_<T>> points1, std::vector<cv::Point_<T>> points2) const;
+  TwoViewPose twoViewReconstruction(CommonTrack, cv::Mat &mask);
   TwoViewPose recoverTwoViewPoseWithHomography(CommonTrack track, cv::Mat& mask);
   float computeReconstructabilityScore(int tracks, cv::Mat inliers, int treshold = 0.3);
   void computeReconstructability(const ShoTracker& tracker, std::vector<CommonTrack>& commonTracks);

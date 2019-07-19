@@ -88,3 +88,11 @@ void pose_from_homography_dlt(const std::vector< cv::Point2f > &xw,
     cv::Mat &otw, cv::Mat &oRw);
 
 void fitSimilarityTransform(int maxIterations = 1000, int treshold = 1);
+
+void motionFromHomography(
+    cv::Mat h,
+    std::vector<cv::Mat>& Rs_decomp,
+    std::vector<cv::Mat>& ts_decomp,
+    std::vector<cv::Mat>& normals_decomp,
+    std::vector<double>& distances_decomp
+);

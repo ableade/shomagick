@@ -49,6 +49,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
+using Eigen::MatrixXi;
 using Eigen::Matrix;
 using Eigen::RowMajor;
 using Eigen::RowVector3d;
@@ -92,16 +93,16 @@ void Reconstructor::_alignMatchingPoints(const CommonTrack track,
     const auto[edges2Begin, edges2End] = boost::out_edges(im2, tg_);
 
     for (auto edgeIt = edges1Begin; edgeIt != edges1End; ++edgeIt) {
-        if (tracks.find(this->tg_[*edgeIt].trackName) != tracks.end()) {
-            aPoints1[this->tg_[*edgeIt].trackName] =
-                this->tg_[*edgeIt].fProp.coordinates;
+        if (tracks.find(tg_[*edgeIt].trackName) != tracks.end()) {
+            aPoints1[tg_[*edgeIt].trackName] =
+                tg_[*edgeIt].fProp.coordinates;
         }
     }
 
     for (auto edgeIt = edges2Begin; edgeIt != edges2End; ++edgeIt) {
-        if (tracks.find(this->tg_[*edgeIt].trackName) != tracks.end()) {
-            aPoints2[this->tg_[*edgeIt].trackName] =
-                this->tg_[*edgeIt].fProp.coordinates;
+        if (tracks.find(tg_[*edgeIt].trackName) != tracks.end()) {
+            aPoints2[tg_[*edgeIt].trackName] =
+                tg_[*edgeIt].fProp.coordinates;
         }
     }
 
@@ -121,9 +122,9 @@ vector<DMatch> Reconstructor::_getTrackDMatchesForImagePair(
     const auto tracks = track.commonTracks;
     map<string, ImageFeatureNode> aPoints1, aPoints2;
     pair<out_edge_iterator, out_edge_iterator> im1Edges =
-        boost::out_edges(im1, this->tg_);
+        boost::out_edges(im1, tg_);
     pair<out_edge_iterator, out_edge_iterator> im2Edges =
-        boost::out_edges(im2, this->tg_);
+        boost::out_edges(im2, tg_);
     for (; im1Edges.first != im1Edges.second; ++im1Edges.first) {
         if (tracks.find(tg_[*im1Edges.first].trackName) != tracks.end()) {
             aPoints1[tg_[*im1Edges.first].trackName] =
@@ -131,9 +132,9 @@ vector<DMatch> Reconstructor::_getTrackDMatchesForImagePair(
         }
     }
     for (; im2Edges.first != im2Edges.second; ++im2Edges.first) {
-        if (tracks.find(this->tg_[*im2Edges.first].trackName) != tracks.end()) {
-            aPoints2[this->tg_[*im2Edges.first].trackName] =
-                this->tg_[*im2Edges.first].fProp.featureNode;
+        if (tracks.find(tg_[*im2Edges.first].trackName) != tracks.end()) {
+            aPoints2[tg_[*im2Edges.first].trackName] =
+                tg_[*im2Edges.first].fProp.featureNode;
         }
     }
 
@@ -200,25 +201,41 @@ TwoViewPose Reconstructor::twoViewReconstructionRotationOnly(CommonTrack track, 
     return  _computeRotationInliers(bearings1, bearings2, relativeRotation, mask);
 }
 
-template <typename T>
-void Reconstructor::twoViewReconstructionInliers(vector<Mat>& Rs_decomp, vector<Mat>& ts_decomp, vector<int> possibleSolutions,
-    vector<Point_<T>> points1, vector<Point_<T>> points2) const
+TwoViewPose Reconstructor::twoViewReconstruction(CommonTrack track, cv::Mat & mask)
 {
+    const auto&[hom, points1, points2, homMask] = commonTrackHomography(track);
+    homMask.copyTo(mask);
+    //cout << "Homography was " << hom << endl;
+    if (!hom.rows || !hom.cols)
+        return { false, Mat(), Mat(), Mat() };
 
     auto bearings1 = flight_.getCamera().normalizedPointsToBearingVec(points1);
     auto bearings2 = flight_.getCamera().normalizedPointsToBearingVec(points2);
+    vector<Mat> Rs_decomp, ts_decomp, normals_decomp;
+    vector<double> distances_decomp;
+    vector<int> possibleSolutions;
+    motionFromHomography(hom, Rs_decomp, ts_decomp, normals_decomp, distances_decomp);
 
-    for (auto solution : possibleSolutions) {
+    int maxInliers = 0;
+    auto solutionIndex = 0;
+    for (auto solution = 0; solution < Rs_decomp.size(); ++solution) {
         auto r = Rs_decomp[solution];
-        cout << " r is " << r << "\n";
+        cout << "Translation is " << ts_decomp[solution] << "\n";
         rotation_t rotation;
+        Mat inliersMask;
         translation_t translation;
-        cv2eigen(r.t(), rotation);
-        auto t = ts_decomp[solution];
-        cout << "t is " << t << "\n";
+        cv2eigen(r, rotation);
+        auto t = -Rs_decomp[solution].t() * ts_decomp[solution];
+        //cout << "t is " << t << "\n";
         cv2eigen(t, translation);
-        _computeTwoViewReconstructionInliers(bearings1, bearings2, rotation, translation.transpose());
+        auto inliers = _computeTwoViewReconstructionInliers(bearings1, bearings2, rotation.transpose(), translation, mask);
+        if (inliers > maxInliers) {
+            maxInliers = inliers;
+            solutionIndex = solution;
+            inliersMask.copyTo(mask);
+        }
     }
+    return TwoViewPose(true, hom, Rs_decomp[solutionIndex], ts_decomp[solutionIndex]);
 }
 
 TwoViewPose Reconstructor::recoverTwoViewPoseWithHomography(CommonTrack track, Mat& mask)
@@ -251,28 +268,72 @@ TwoViewPose Reconstructor::recoverTwoViewPoseWithHomography(CommonTrack track, M
     return { false, Mat(), Mat(), Mat() };
 }
 
-void Reconstructor::_computeTwoViewReconstructionInliers(opengv::bearingVectors_t b1, opengv::bearingVectors_t b2,
-    opengv::rotation_t r, opengv::translation_t t) const
+int Reconstructor::_computeTwoViewReconstructionInliers(opengv::bearingVectors_t b1, opengv::bearingVectors_t b2,
+    opengv::rotation_t r, opengv::translation_t t, Mat& mask) const
 {
+    const Eigen::Matrix<double, Dynamic, 3> bearings2 = Eigen::Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(b2.data()->data(),
+        b2.size(), 3);
+    const Eigen::Matrix<double, Dynamic, 3> bearings1 = Eigen::Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(b1.data()->data(),
+        b1.size(), 3);
+
+    auto threshold = 4 * REPROJECTION_ERROR_SD;
+
 #if 1
     CentralRelativeAdapter adapter(b1, b2, t, r);
     // run method 
-    cout << "Number of adapter correspondences is " << adapter.getNumberCorrespondences();
 
     size_t iterations = 100;
-    MatrixXd triangulate_results(3, adapter.getNumberCorrespondences());
+    MatrixXd triangulateResults(3, adapter.getNumberCorrespondences());
     for (size_t i = 0; i < adapter.getNumberCorrespondences(); ++i) {
         for (size_t j = 0; j < iterations; j++)
-            triangulate_results.block<3, 1>(0, i) = triangulate(adapter, i);
+            triangulateResults.block<3, 1>(0, i) = triangulate(adapter, i);
 
     }
+    auto p = triangulateResults.transpose();
+    auto br1 = triangulateResults.transpose();
+    //cout << "Shape of br1 " << br1.rows() << "," << br1.cols()  << "\n";
+
+
+    auto br1RowWiseNorm = br1.rowwise().norm().array();
+    //cout << "Shape of br1 row norm is " << br1RowWiseNorm.rows() << " - " << br1RowWiseNorm.cols()  << "\n";
+    br1.array().colwise() /= br1RowWiseNorm;
+    //cout << "Shape of br1 is now " << br1.rows() << "," << br1.cols()  << "\n";
+    Matrix3d rTranspose = r.transpose();
+    //cout << "br1 is " << br1_ << "\n";
+   // cout << "Shape of t array is " << t.array().rows() << "--" << t.array().cols() << "\n";
+    //cout << "Shape of t matrix is " << t.matrix().rows() << "--" << t.matrix().cols() << "\n";
+    MatrixXd br2(adapter.getNumberCorrespondences(), t.rows());
+    br2 = (p.array().rowwise() - t.array().transpose());
+    //cout << "Shape of br2_  is " << br2.rows() << "--" << br2.cols() << "\n";
+    //cout << "Shape of r transpose  is " << r.transpose().rows() << "--" << r.transpose().cols() << "\n";
+    br2 = (rTranspose * br2.transpose()).transpose();
+    //cout << "Shape of br2  is " << br2.rows() << "--" << br2.cols() << "\n";
+    auto br2RowWiseNorm = br1.rowwise().norm().array();
+    br2.array().colwise() /= br2RowWiseNorm;
+    
+    auto ok1 = ((br1 - bearings1 ).rowwise().norm().array() > threshold).array().cast<int>();
+    auto ok2 = ((br2 - bearings2 ).rowwise().norm().array() > threshold).array().cast<int>();
+
+    MatrixXi ok(ok1.rows(), ok1.cols());
+    ok = ok1 * ok2;
+    eigen2cv(ok, mask);
+    auto inliers = (ok.array() > 0).count();
+   // cout << "Inliers are " << inliers << "\n";
+    return inliers;
+
+#else
+    //auto br12 = r.transpose() * (triangulateResults - )
     MatrixXd error(1, adapter.getNumberCorrespondences());
     for (size_t i = 0; i < adapter.getNumberCorrespondences(); i++)
     {
-        Vector3d singleError = triangulate_results.col(i) - b1[i];
+        Vector3d singleError = triangulateResults.col(i) - b1[i];
         error(0, i) = singleError.norm();
     }
-    cout << "Triangulation error is " << error << "\n";
+    //cout << "Triangulation error is " << error << "\n";
+    Eigen::MatrixXi mask(error.rows(), error.cols());
+    mask = (error.array() < threshold).cast<int>();
+    auto inliers = (mask.array() > 0).count();
+    cout << "Number of inliers here is " << inliers << "\n";
 #endif
 }
 
@@ -405,13 +466,16 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
     //Disable gps alignment. Alignment is broken
     rec.setGPS(flight_.hasGps());
     Mat mask;
+
+
     //TwoViewPose poseParameters = recoverTwoCameraViewPose(track, mask);
-    TwoViewPose poseParameters = recoverTwoViewPoseWithHomography(track, mask);
+    //TwoViewPose poseParameters = recoverTwoViewPoseWithHomography(track, mask);
+    TwoViewPose poseParameters = twoViewReconstruction(track, mask);
 
     auto[success, poseMatrix, rotation, translation] = poseParameters;
     Mat essentialMat = std::get<1>(poseParameters);
     Mat r = std::get<2>(poseParameters);
-    Mat t = std::get<3>(poseParameters);
+    Mat t = -r * std::get<3>(poseParameters);
 
     if (poseMatrix.rows != 3 || !success)
     {

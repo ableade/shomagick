@@ -16,6 +16,7 @@ This code is taken from OpenSFM see License at
 #include "transformations.h"
 #include "allclose.h"
 #include "utilities.h"
+#include <utility>
 #include <opencv2/core/eigen.hpp>
 #include <opengv/absolute_pose/methods.hpp>
 #include <opengv/absolute_pose/CentralAbsoluteAdapter.hpp>
@@ -23,8 +24,10 @@ This code is taken from OpenSFM see License at
 #include <opengv/sac/Ransac.hpp>
 
 using cv::Mat;
+using cv::Mat_;
 using cv::Scalar;
 using std::vector;
+using std::pair;
 using cv::Point3d;
 using cv::Point2f;
 using Eigen::Vector3d;
@@ -36,115 +39,115 @@ using opengv::transformation_t;
 
 namespace csfm
 {
-  double AngleBetweenVectors(const Eigen::Vector3d &u,
-                            const Eigen::Vector3d &v)
-  {
-    double c = (u.dot(v)) / sqrt(u.dot(u) * v.dot(v));
-    if (c >= 1.0)
-      return 0.0;
-    else
-      return acos(c);
-  }
-
-  // Point minimizing the squared distance to all rays
-// Closed for solution from
-//   Srikumar Ramalingam, Suresh K. Lodha and Peter Sturm
-//   "A generic structure-from-motion framework"
-//   CVIU 2006
-Eigen::Vector3d TriangulateBearingsMidpointSolve(const Eigen::Matrix<double, 3, Eigen::Dynamic> &os,
-                                                 const Eigen::Matrix<double, 3, Eigen::Dynamic> &bs)
-{
-  int nviews = bs.cols();
-  assert(nviews == os.cols());
-  assert(nviews >= 2);
-
-  Eigen::Matrix3d BBt;
-  Eigen::Vector3d BBtA, A;
-  BBt.setZero();
-  BBtA.setZero();
-  A.setZero();
-  for (int i = 0; i < nviews; ++i)
-  {
-    BBt += bs.col(i) * bs.col(i).transpose();
-    BBtA += bs.col(i) * bs.col(i).transpose() * os.col(i);
-    A += os.col(i);
-  }
-  Eigen::Matrix3d Cinv = (nviews * Eigen::Matrix3d::Identity() - BBt).inverse();
-
-  return (Eigen::Matrix3d::Identity() + BBt * Cinv) * A / nviews - Cinv * BBtA;
-}
-
-bool TriangulateBearingsMidpoint(
-    const std::vector<Eigen::Vector3d> &os_list,
-    const std::vector<Eigen::Vector3d> &bs_list,
-    Eigen::Vector3d &result,
-    double threshold,
-    Radians min_angle
-)
-{
-  int n = os_list.size();
-
-  // Build Eigen matrices
-  Eigen::Matrix<double, 3, Eigen::Dynamic> os(3, n);
-  Eigen::Matrix<double, 3, Eigen::Dynamic> bs(3, n);
-  for (int i = 0; i < n; ++i)
-  {
-    auto o = os_list[i];
-    auto b = bs_list[i];
-    os.col(i) << o(0), o(1), o(2);
-    bs.col(i) << b(0), b(1), b(2);
-  }
-  //std::cout << "Triangulating bearings midpoint for os " << os << std::endl;
-  //std::cout << "Triangulating bearings midpoint for bs " << bs << std::endl;
-
-  // Check angle between rays
-  bool angle_ok = false;
-  for (int i = 0; i < n; ++i)
-  {
-    if (!angle_ok)
+    double AngleBetweenVectors(const Eigen::Vector3d &u,
+        const Eigen::Vector3d &v)
     {
-      for (int j = 0; j < i; ++j)
-      {
-        Eigen::Vector3d a, b;
-        a << bs(0, i), bs(1, i), bs(2, i);
-        b << bs(0, j), bs(1, j), bs(2, j);
-        double angle = AngleBetweenVectors(a, b);
-        if (angle >= min_angle)
+        double c = (u.dot(v)) / sqrt(u.dot(u) * v.dot(v));
+        if (c >= 1.0)
+            return 0.0;
+        else
+            return acos(c);
+    }
+
+    // Point minimizing the squared distance to all rays
+  // Closed for solution from
+  //   Srikumar Ramalingam, Suresh K. Lodha and Peter Sturm
+  //   "A generic structure-from-motion framework"
+  //   CVIU 2006
+    Eigen::Vector3d TriangulateBearingsMidpointSolve(const Eigen::Matrix<double, 3, Eigen::Dynamic> &os,
+        const Eigen::Matrix<double, 3, Eigen::Dynamic> &bs)
+    {
+        int nviews = bs.cols();
+        assert(nviews == os.cols());
+        assert(nviews >= 2);
+
+        Eigen::Matrix3d BBt;
+        Eigen::Vector3d BBtA, A;
+        BBt.setZero();
+        BBtA.setZero();
+        A.setZero();
+        for (int i = 0; i < nviews; ++i)
         {
-          angle_ok = true;
+            BBt += bs.col(i) * bs.col(i).transpose();
+            BBtA += bs.col(i) * bs.col(i).transpose() * os.col(i);
+            A += os.col(i);
         }
-      }
+        Eigen::Matrix3d Cinv = (nviews * Eigen::Matrix3d::Identity() - BBt).inverse();
+
+        return (Eigen::Matrix3d::Identity() + BBt * Cinv) * A / nviews - Cinv * BBtA;
     }
-  }
-  if (!angle_ok)
-  {
-    //std::cout << "Angle is not OK at all" << std::endl;
-    return false;
-  }
 
-  //std::cout << "Angle was Ok" << std::endl;
-
-  // Triangulate
-  result = TriangulateBearingsMidpointSolve(os, bs);
-  //std::cout << "X is " << result << std::endl;
-
-  // Check reprojection error
-  for (int i = 0; i < n; ++i)
-  {
-    Eigen::Vector3d x_reproj = result - os.col(i);
-    Eigen::Vector3d b = bs.col(i);
-
-    double error = AngleBetweenVectors(x_reproj, b);
-    //std::cout << "Error was " << error << std::endl;
-    if (error > threshold)
+    bool TriangulateBearingsMidpoint(
+        const std::vector<Eigen::Vector3d> &os_list,
+        const std::vector<Eigen::Vector3d> &bs_list,
+        Eigen::Vector3d &result,
+        double threshold,
+        Radians min_angle
+    )
     {
-    //  std::cout << "Error was greater than treshhold" << std::endl;
-      return false;
-    }
-  }
+        int n = os_list.size();
 
-  return true;
-}
+        // Build Eigen matrices
+        Eigen::Matrix<double, 3, Eigen::Dynamic> os(3, n);
+        Eigen::Matrix<double, 3, Eigen::Dynamic> bs(3, n);
+        for (int i = 0; i < n; ++i)
+        {
+            auto o = os_list[i];
+            auto b = bs_list[i];
+            os.col(i) << o(0), o(1), o(2);
+            bs.col(i) << b(0), b(1), b(2);
+        }
+        //std::cout << "Triangulating bearings midpoint for os " << os << std::endl;
+        //std::cout << "Triangulating bearings midpoint for bs " << bs << std::endl;
+
+        // Check angle between rays
+        bool angle_ok = false;
+        for (int i = 0; i < n; ++i)
+        {
+            if (!angle_ok)
+            {
+                for (int j = 0; j < i; ++j)
+                {
+                    Eigen::Vector3d a, b;
+                    a << bs(0, i), bs(1, i), bs(2, i);
+                    b << bs(0, j), bs(1, j), bs(2, j);
+                    double angle = AngleBetweenVectors(a, b);
+                    if (angle >= min_angle)
+                    {
+                        angle_ok = true;
+                    }
+                }
+            }
+        }
+        if (!angle_ok)
+        {
+            //std::cout << "Angle is not OK at all" << std::endl;
+            return false;
+        }
+
+        //std::cout << "Angle was Ok" << std::endl;
+
+        // Triangulate
+        result = TriangulateBearingsMidpointSolve(os, bs);
+        //std::cout << "X is " << result << std::endl;
+
+        // Check reprojection error
+        for (int i = 0; i < n; ++i)
+        {
+            Eigen::Vector3d x_reproj = result - os.col(i);
+            Eigen::Vector3d b = bs.col(i);
+
+            double error = AngleBetweenVectors(x_reproj, b);
+            //std::cout << "Error was " << error << std::endl;
+            if (error > threshold)
+            {
+                //  std::cout << "Error was greater than treshhold" << std::endl;
+                return false;
+            }
+        }
+
+        return true;
+    }
 
 } // namespace csfm
 
@@ -263,7 +266,7 @@ ShoRowVector4d fitPlane(Mat points, Mat vectors, Mat verticals)
 {
     Scalar mean, stddev; //0:1st channel, 1:2nd channel and 2:3rd channel
     Mat pointsMat(points);
-    meanStdDev(pointsMat.reshape(1,1), mean, stddev, cv::Mat());
+    meanStdDev(pointsMat.reshape(1, 1), mean, stddev, cv::Mat());
     const auto s = 1.0 / std::max(1e-8, stddev[0]);
     Mat x;
     cv::convertPointsToHomogeneous(s* pointsMat, x);
@@ -292,14 +295,14 @@ ShoRowVector4d fitPlane(Mat points, Mat vectors, Mat verticals)
             const double* verticalsCurrentRowPtr = verticals.ptr<double>(i);
             ShoRowVector3d columnVertical(verticalsCurrentRowPtr);
             auto pRangeProduct = pRange.dot(Mat(columnVertical));
-            d+= ( pRange.dot(Mat(columnVertical)));
+            d += (pRange.dot(Mat(columnVertical)));
         }
         p *= sgn(d);
     }
     return p;
 }
 
-void convertVectorToHomogeneous(cv::InputArray _src  , cv::OutputArray _dst) {
+void convertVectorToHomogeneous(cv::InputArray _src, cv::OutputArray _dst) {
     Mat src = _src.getMat();
     if (!src.isContinuous())
         src = src.clone();
@@ -548,6 +551,89 @@ void pose_from_homography_dlt(vector<Point2f > &xw, vector<Point2f > &xo, Mat &o
         oRw.at<double>(i, 0) = c1.at<double>(i, 0);
         oRw.at<double>(i, 1) = c2.at<double>(i, 0);
         oRw.at<double>(i, 2) = c3.at<double>(i, 0);
+    }
+}
+
+void motionFromHomography(cv::Mat h, std::vector<cv::Mat>& Rs_decomp, std::vector<cv::Mat>& ts_decomp, std::vector<cv::Mat>& normals_decomp, std::vector<double>& distances_decomp)
+{
+    auto svd = cv::SVD();
+    Mat w, u, vt;
+    svd.compute(h, w, u, vt, cv::SVD::FULL_UV);
+    //std::cout << "w was " << w << "\n";
+    //std::cout << "u was " << u << "\n";
+    //std::cout << "vt was " << vt << "\n";
+
+    //std::cout << "Size of w is " << w.size() << "\n";
+    auto d1 = w.at<double>(0, 0);
+    auto d2 = w.at<double>(1, 0);
+    auto d3 = w.at<double>(2, 0);
+
+    //l ==w u==u vh==vt numpy
+
+    auto s = cv::determinant(u) * cv::determinant(vt);
+
+    //std::cout << "S is " << s << "\n";
+
+    if (d1 / d2 < 1.0001 || d2 / d3 < 1.001)
+        return;
+
+    auto absX1 = sqrt((pow(d1, 2) - pow(d2, 2)) / ((pow(d1, 2) - pow(d3, 2))));
+    auto absX3 = sqrt((pow(d2, 2) - pow(d3, 2)) / ((pow(d1, 2) - pow(d3, 2))));
+
+    vector<pair<double, double>> possibleXs{
+        {absX1, absX3},
+        {absX1, -absX3},
+        {-absX1, absX3},
+        {-absX1, -absX3}
+    };
+
+    //Case d' > 0
+    for (const auto[x1, x3] : possibleXs) {
+        auto sinTheta = (d1 - d3) * x1 * x3 / d2;
+        auto cosTheta = (d1 * pow(x3, 2) + d3 * pow(x1, 2)) / d2;
+        //std::cout << "Cos theta is " << cosTheta << "\n";
+        Mat rp = (Mat_<double>(3, 3) << cosTheta, 0, -sinTheta,
+            0, 1, 0,
+            sinTheta, 0, cosTheta
+            );
+
+        Mat tp = (Mat_<double>(1, 3) << (d1 - d3) * x1, 0, (d1 - d3) *-x3);
+        Mat np = (Mat_<double>(1, 3) << x1, 0, -x3);
+        Mat R = s * (u * rp) * vt;
+       // std::cout << "Case 1 R is " << R << "\n";
+        Mat t = u * tp.t();
+       // std::cout << "t is " << t << "\n";
+        Mat n = -(vt.t() * np.t());
+        //std::cout << "n is " << n << "\n";
+        auto d = -s * d2;
+        Rs_decomp.push_back(R);
+        ts_decomp.push_back(t);
+        normals_decomp.push_back(n);
+        distances_decomp.push_back(d);
+    }
+
+    //Case d' < 0
+
+    for (const auto[x1, x3] : possibleXs) {
+        auto sinPhi = (d1 + d3) * x1 * x3 / d2;
+        auto cosPhi = (d3 * pow(x1, 2) - d1 * pow(x3, 2)) / d2;
+
+        Mat rp = (Mat_<double>(3, 3) << cosPhi, 0, sinPhi,
+            0, -1, 0,
+            sinPhi, 0, -cosPhi
+            );
+        Mat tp = (Mat_<double>(1, 3) << (d1 + d3) * x1, 0, (d1 + d3) * x3);
+        Mat np = (Mat_<double>(1, 3) << x1, 0, x3);
+        Mat R = s * (u * rp) * vt;
+       // std::cout << "Case 2 R is " << R << "\n";
+        Mat t = u * tp.t();
+        Mat n = -(vt.t() * np.t());
+        auto d = -s * d2;
+        Rs_decomp.push_back(R);
+        ts_decomp.push_back(t);
+        normals_decomp.push_back(n);
+        distances_decomp.push_back(d);
+
     }
 }
 
