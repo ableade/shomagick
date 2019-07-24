@@ -42,6 +42,11 @@ const int MIN_INLIERS = 20;
 const double BUNDLE_OUTLIER_THRESHOLD = 0.006;
 const bool OPTIMIZE_CAMERA_PARAEMETERS = true;
 
+const int LOCAL_BUNDLE_MAX_SHOTS = 30;
+const int LOCAL_BUNDLE_MIN_COMMON_POINTS = 20;
+const int LOCAL_BUNDLE_RADIUS = 3;
+
+
 class Reconstructor
 {
 public:
@@ -88,6 +93,7 @@ public:
   ShoColumnVector3d getShotOrigin(const Shot& shot);
   cv::Mat getRotationInverse(const Shot& shot);
   void singleViewBundleAdjustment(std::string shotId, Reconstruction& rec);
+  void localBundleAdjustment(std::string centralShotId, Reconstruction& rec);
   const vertex_descriptor getImageNode(const std::string imageName) const;
   const vertex_descriptor getTrackNode(std::string trackId) const;
   void plotTracks(CommonTrack track) const;
@@ -98,4 +104,6 @@ public:
       double threshold = 0.004, int iterations = 1000, double probability = 0.999, int resectionInliers = 10 );
   std::vector<std::pair<std::string, int>> reconstructedPointForImages(const Reconstruction & rec, std::set<std::string>& images);
   void colorReconstruction(Reconstruction &rec);
+  std::set<std::string> directShotNeighbors(std::set<std::string> shotIds, const Reconstruction& rec, 
+      int maxNeighbors, int minCommonPoints = LOCAL_BUNDLE_MIN_COMMON_POINTS);
 };
