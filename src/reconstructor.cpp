@@ -565,7 +565,7 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
             }
             else {
                 //TODO implement local neighbourhood shot bundling
-                cout << "Local bundle adjustment should occur here \n";
+                localBundleAdjustment(imageName, rec);
             }
             auto after = rec.getCloudPoints().size();
             if (after - before > 0 && before > 0)
@@ -701,7 +701,7 @@ void Reconstructor::singleViewBundleAdjustment(std::string shotId,
 
     auto im1 = imageNodes_[shotId];
 
-    const auto[edgesBegin, edgesEnd] = boost::out_edges(im1, this->tg_);
+    const auto[edgesBegin, edgesEnd] = boost::out_edges(im1, tg_);
 
     for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
         auto trackId = tg_[*tracksIter].trackName;
@@ -723,7 +723,7 @@ void Reconstructor::singleViewBundleAdjustment(std::string shotId,
         }
     }
 
-#if 0
+#if 1
     if (flight_.hasGps() && rec.usesGps()) {
         cout << "Using gps prior \n";
         const auto g = shot.getMetadata().gpsPosition;
@@ -750,6 +750,122 @@ void Reconstructor::singleViewBundleAdjustment(std::string shotId,
     shot.getPose().setTranslation({ translation.x(), translation.y(), translation.z() });
 
     rec.addShot(shotId, shot);
+}
+
+void Reconstructor::localBundleAdjustment(std::string centralShotId, Reconstruction & rec)
+{
+    auto maxBoundary = 1000000;
+    set<string> interior{ centralShotId };
+    for (auto distance = 1; distance < LOCAL_BUNDLE_RADIUS; ++distance) {
+        auto remaining = LOCAL_BUNDLE_MAX_SHOTS - interior.size();
+        if (remaining <= 0) {
+            break;
+        }
+        auto neighbors = directShotNeighbors(interior, rec, remaining);
+        interior.insert(neighbors.begin(), neighbors.end());
+    }
+
+    set<string> boundary = directShotNeighbors(interior, rec, maxBoundary, 1);
+    set<string> pointIds;
+    for (const auto shotId : interior) {
+        if (imageNodes_.find(shotId) != imageNodes_.end()) {
+            const auto imageVertex = imageNodes_[shotId];
+            const auto[edgesBegin, edgesEnd] = boost::out_edges(imageVertex, tg_);
+            for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
+                auto trackId = tg_[*tracksIter].trackName;
+                if (rec.hasTrack(trackId)) {
+                    pointIds.insert(trackId);
+                }
+            }
+        }
+    }
+    BundleAdjuster bundleAdjuster;
+    _addCameraToBundle(bundleAdjuster, rec.getCamera(), true);
+    set<string> interiorBoundary;
+    std::set_union(
+        interior.begin(),
+        interior.end(),
+        boundary.begin(),
+        boundary.end(),
+        std::inserter(interiorBoundary, interiorBoundary.end())
+    );
+
+    for (const auto shotId : interiorBoundary) {
+        const auto shot = rec.getShot(shotId);
+        const auto r = shot.getPose().getRotationVector();
+        const auto t = shot.getPose().getTranslation();
+        bundleAdjuster.AddShot(
+            shot.getId(), "1",
+            { r(0), r(1),r(2) },
+            { t(0), t(1),t(2) },
+            (boundary.find(shotId)!= boundary.end())
+        );
+    }
+
+    for (const auto pointId : pointIds) {
+        const auto cloudPoint = rec.getCloudPoints().at(stoi(pointId));
+        const auto p = cloudPoint.getPosition();
+        bundleAdjuster.AddPoint(pointId, { p.x, p.y, p.z }, false);
+    }
+
+    for (const auto shotId : interiorBoundary) {
+        if (imageNodes_.find(shotId) != imageNodes_.end()) {
+            if (imageNodes_.find(shotId) != imageNodes_.end()) {
+                const auto imageVertex = imageNodes_[shotId];
+                const auto[edgesBegin, edgesEnd] = boost::out_edges(imageVertex, tg_);
+                for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
+                    const auto trackId = tg_[*tracksIter].trackName;
+                    const auto point = tg_[*tracksIter].fProp.coordinates;
+                    const auto scale = tg_[*tracksIter].fProp.scale;
+                    bundleAdjuster.AddPointProjectionObservation(
+                        shotId,
+                        trackId,
+                        point.x,
+                        point.y,
+                        scale
+                    );
+                }
+            }
+        }
+    }
+#if 1
+    if (flight_.hasGps() && rec.usesGps()) {
+        cout << "Using gps prior \n";
+        for (const auto[shotId, shot] : rec.getReconstructionShots()) {
+            const auto g = shot.getMetadata().gpsPosition;
+            bundleAdjuster.AddPositionPrior(shotId, g.x, g.y, g.z, shot.getMetadata().gpsDop);
+        }
+    }
+#endif
+    bundleAdjuster.SetInternalParametersPriorSD(
+        EXIF_FOCAL_SD, PRINCIPAL_POINT_SD, RADIAL_DISTORTION_K1_SD,
+        RADIAL_DISTORTION_K2_SD, RADIAL_DISTORTION_P1_SD, RADIAL_DISTORTION_P2_SD,
+        RADIAL_DISTORTION_K3_SD);
+    bundleAdjuster.SetNumThreads(NUM_PROCESESS);
+    bundleAdjuster.SetMaxNumIterations(50);
+    bundleAdjuster.SetLinearSolverType("DENSE_SCHUR");
+    bundleAdjuster.Run();
+
+    _getCameraFromBundle(bundleAdjuster, rec.getCamera());
+
+    for (const auto shotId : boundary ) {
+        auto s = bundleAdjuster.GetShot(shotId);
+        Mat rotation = (Mat_<double>(3, 1) << s.GetRotation().x(), s.GetRotation().y(), s.GetRotation().z());
+        auto translation = s.GetTranslation();
+        auto& shot = rec.getShot(shotId);
+        shot.getPose().setRotationVector(rotation);
+        shot.getPose().setTranslation({ translation.x(), translation.y(), translation.z() });
+    }
+
+    for (const auto pointId : pointIds) {
+        auto point = bundleAdjuster.GetPoint((pointId));
+        auto & cloudPoint = rec.getCloudPoints().at(stoi(pointId));
+        auto triangulatedPosition = point.GetPoint();
+        cloudPoint.getPosition().x = triangulatedPosition.x();
+        cloudPoint.getPosition().y = triangulatedPosition.y();
+        cloudPoint.getPosition().z = triangulatedPosition.z();
+        cloudPoint.setError(point.reprojection_errors);
+    }
 }
 
 const vertex_descriptor Reconstructor::getImageNode(string imageName) const {
@@ -870,7 +986,7 @@ void Reconstructor::bundle(Reconstruction& rec) {
         }
     }
 
-#if 0
+#if 1
     if (flight_.hasGps() && rec.usesGps()) {
         cout << "Using gps prior \n";
         for (const auto[shotId, shot] : rec.getReconstructionShots()) {
@@ -941,6 +1057,71 @@ void Reconstructor::colorReconstruction(Reconstruction & rec)
     }
 }
 
+set<string> Reconstructor::directShotNeighbors(
+    std::set<std::string> shotIds, 
+    const Reconstruction & rec, 
+    int maxNeighbors, 
+    int minCommonPoints)
+{
+    set<string> neighbors;
+    set<string> reconstructionShots;
+    std::transform(
+        rec.getReconstructionShots().begin(), 
+        rec.getReconstructionShots().end(), 
+        std::inserter(reconstructionShots, reconstructionShots.end()),
+        [](pair<string, Shot> aShot) -> string { return aShot.first; }
+    );
+    set<string> points;
+    for (const auto shot : shotIds) {
+        auto shotVertex = imageNodes_.at(shot);
+        const auto[edgesBegin, edgesEnd] = boost::out_edges(shotVertex, tg_);
+        for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
+            const auto trackName = tg_[*tracksIter].trackName;
+            if (rec.hasTrack(trackName)) {
+                points.insert(trackName);
+            }
+        }
+    }
+
+    set<string> candidateShots;
+    std::set_difference(
+        reconstructionShots.begin(), 
+        reconstructionShots.end(), 
+        shotIds.begin(), 
+        shotIds.end(),
+        std::inserter(candidateShots, candidateShots.end())
+    );
+    map<string, int> commonPoints;
+
+    for (const auto trackId : points) {
+        const auto trackVertex = trackNodes_.at(trackId);
+        const auto[edgesBegin, edgesEnd] =
+            boost::out_edges(trackVertex, tg_);
+
+        for (auto edgesIter = edgesBegin; edgesIter != edgesEnd; ++edgesIter) {
+            const auto neighbor = tg_[*edgesIter].imageName;
+            if (candidateShots.find(neighbor) != candidateShots.end()) {
+                commonPoints[neighbor]++;
+            }
+        }
+    }
+    auto cmp = [](pair<string, int> a, pair<string, int> b) { return  a.second > b.second; };
+    std::set<pair<string, int>, decltype(cmp)> neighborPairs(commonPoints.begin(), commonPoints.end(), cmp);
+   
+    for (const auto neighbor : neighborPairs) {
+        if (neighbor.second >= minCommonPoints) {
+            neighbors.insert(neighbor.first);
+            if (neighbors.size() == maxNeighbors) {
+                break;
+            }
+        }
+        else {
+            break;
+        }
+    }
+    return neighbors;
+}
+
 void Reconstructor::removeOutliers(Reconstruction& rec) {
     const auto before = rec.getCloudPoints().size();
     vector<pair<string, string>>  outliers;
@@ -971,9 +1152,7 @@ void Reconstructor::removeOutliers(Reconstruction& rec) {
                 trackNodes_.erase(track);
             }
         }
-        
     }
-
 #if 0
     erase_if(
         rec.getCloudPoints(),
@@ -991,7 +1170,7 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
     ReconstructionReport report;
     vector<Point2d> fPoints;
     vector<Point3d> realWorldPoints;
-    const auto[edgesBegin, edgesEnd] = boost::out_edges(imageVertex, this->tg_);
+    const auto[edgesBegin, edgesEnd] = boost::out_edges(imageVertex, tg_);
     for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
         const auto trackName = tg_[*tracksIter].trackName;
         if (rec.hasTrack(trackName)) {
