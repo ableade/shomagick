@@ -820,6 +820,7 @@ void BundleAdjuster::Run() {
   options.num_threads = num_threads_;
   options.logging_type = ceres::PER_MINIMIZER_ITERATION;
   options.max_num_iterations = max_num_iterations_;
+  options.minimizer_progress_to_stdout = true;
 
   ceres::Solve(options, &problem, &last_run_summary_);
 

@@ -453,8 +453,12 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
         reconstructions[0].saveReconstruction(mergedRec);
     }
     auto totalPoints = 0;
-    for (auto & rec : reconstructions) {
+    for (const auto & rec : reconstructions) {
         totalPoints += rec.getCloudPoints().size();
+        for (const auto & shot : rec.getReconstructionShots()) {
+            cout << "Shot " << shot.first << " tranlation is " << shot.second.getPose().getTranslation() << "\n";
+            cout << "Shot " << shot.first << " rotation is " << shot.second.getPose().getRotationVector() << "\n";
+        }
     }
     cerr << "Total number of points in all reconstructions is " << totalPoints << "\n";
 }
@@ -538,6 +542,7 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
         for (auto[imageName, numTracks] : candidates) {
             auto before = rec.getCloudPoints().size();
             auto imageVertex = getImageNode(imageName);
+            cout << "Resecting " << imageName << "\n";
             auto[status, report] = resect(rec, imageVertex);
             if (!status)
                 continue;
@@ -746,6 +751,9 @@ void Reconstructor::singleViewBundleAdjustment(std::string shotId,
     Mat rotation = (Mat_<double>(3, 1) << s.GetRotation().x(), s.GetRotation().y(), s.GetRotation().z());
     auto translation = s.GetTranslation();
 
+    cout << "Single view adjustment for " << shotId << "\n";
+    cout << "Rotation single view  is " << rotation << "\n";
+    cout << "Translation single view is " << translation << "\n";
     shot.getPose().setRotationVector(rotation);
     shot.getPose().setTranslation({ translation.x(), translation.y(), translation.z() });
 
@@ -910,8 +918,15 @@ void Reconstructor::plotTracks(CommonTrack track) const {
 
 void Reconstructor::exportToMvs(const Reconstruction & rec, const std::string mvsFileName)
 {
+    auto w = rec.getCamera().getWidth();
+    auto h = rec.getCamera().getHeight();
+    auto p = rec.getCamera().getPhysicalFocalLength();
     csfm::OpenMVSExporter exporter;
-    exporter.AddCamera("1", rec.getCamera().getNormalizedKMatrix());
+    Mat K = (Mat_<double>( 3,3) << p,  0, (w - 1.0)/2/std::max(w,h),
+        0, p, (h-1.0)/2/std::max(w,h),
+        0,0,1
+        );
+    exporter.AddCamera("1", K);
 
     for (const auto[shotId, shot] : rec.getReconstructionShots()) {
         auto imagePath = flight_.getUndistortedImagesDirectoryPath() / shotId;
@@ -1009,7 +1024,7 @@ void Reconstructor::bundle(Reconstruction& rec) {
     for (auto&[shotId, shot] : rec.getReconstructionShots()) {
         auto s = bundleAdjuster.GetShot(shotId);
         Mat rotation = (Mat_<double>(3, 1) << s.GetRotation().x(), s.GetRotation().y(), s.GetRotation().z());
-        auto translation = s.GetTranslation();
+        Vector3d translation = s.GetTranslation();
 
         shot.getPose().setRotationVector(rotation);
         shot.getPose().setTranslation({ translation.x(), translation.y(), translation.z() });
@@ -1200,8 +1215,22 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
     }
     */
 
-    if (cv::solvePnPRansac(realWorldPoints, fPoints, flight_.getCamera().getNormalizedKMatrix(),
-        flight_.getCamera().getDistortionMatrix(), pnpRot, pnpTrans, false, iterations, 8.0, probability, inliers)) {
+    if (cv::solvePnPRansac(
+        realWorldPoints, 
+        fPoints, flight_.getCamera().getNormalizedKMatrix(),
+        flight_.getCamera().getDistortionMatrix(), 
+        pnpRot, 
+        pnpTrans, 
+        false, 
+        iterations,
+        8.0, 
+        probability, 
+        inliers, 
+        cv::SOLVEPNP_UPNP
+    )) {
+        cout << "Rotation was " << pnpRot << "\n";
+        cout << "Translation was " << pnpTrans << "\n";
+        cout << "Inliers was " << cv::countNonZero(inliers)<< "\n";
         const auto shotName = tg_[imageVertex].name;
         const auto shot = flight_.getImageSet()[flight_.getImageIndex(shotName)];
         ShotMetadata shotMetadata(shot.getMetadata(), flight_);
