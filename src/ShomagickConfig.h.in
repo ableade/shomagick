@@ -1,0 +1,3 @@
+#define Shomagick_VERSION_MAJOR @Shomagick_VERSION_MAJOR@
+#define Shomagick_VERSION_MINOR @Shomagick_VERSION_MINOR@
+

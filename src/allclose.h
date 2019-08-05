@@ -46,8 +46,6 @@ bool allCloseEigen(
         = Eigen::NumTraits<typename DerivedA::RealScalar>::epsilon()
 )
 {
-    std::cerr << "r tolerance " << rtol << "\n";
-    std::cerr << "a tolerance " << atol << "\n";
     return ((a.derived() - b.derived()).array().abs()
         <= (atol + rtol * b.derived().array().abs())).all();
 }

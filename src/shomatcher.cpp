@@ -55,7 +55,7 @@ void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
         {
             auto current = kd_res_item(static_cast<kdres *>(result_set), pos.data());
             if (current == nullptr)
-                continue;
+                continue;   
             auto img = static_cast<Img *>(current);
             if (currentImageName != img->getFileName())
             {

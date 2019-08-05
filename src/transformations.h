@@ -1,6 +1,6 @@
 #pragma once
 #include <opencv2/core.hpp>
-#include <Eigen/core>
+#include <Eigen/Core>
 
 #define EPSILON 8.8817841970012523e-016 /* 4.0 * DBL_EPSILON */
 
