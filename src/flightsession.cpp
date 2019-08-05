@@ -5,6 +5,7 @@
 #include "utilities.h"
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
+#include <boost/filesystem.hpp>
 
 using namespace boost::filesystem;
 using cv::DMatch;
@@ -18,6 +19,7 @@ using std::map;
 using std::vector;
 using std::cerr;
 using std::string;
+using std::ofstream;
 using std::endl;
 using std::ios;
 
@@ -44,6 +46,7 @@ imageTracksPath_(), camera_(), referenceLLA_()
     const vector <boost::filesystem::path> allPaths{ imageFeaturesPath_, imageMatchesPath_,
     imageTracksPath_, exifPath_, undistortedImagesPath_ };
 
+    
     for (const auto path : allPaths) {
         cout << "Creating directory " << path.string() << endl;
         boost::filesystem::create_directory(path);
@@ -164,7 +167,7 @@ bool FlightSession::saveImageFeaturesFile(string imageName, const std::vector<cv
 bool FlightSession::saveImageExifFile(std::string imageName, ImageMetadata imageExif)
 {
     auto imageExifPath = getImageExifPath() / (imageName + ".dat");
-    boost::filesystem::ofstream exifFile(imageExifPath, ios::binary);
+    std::ofstream exifFile(imageExifPath.string(), ios::binary);
     boost::archive::text_oarchive ar(exifFile);
     ar & imageExif;
     return exists(imageExifPath);
