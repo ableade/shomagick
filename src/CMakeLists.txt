@@ -1,21 +1,3 @@
-cmake_minimum_required (VERSION 2.6)
-project (Shomagick)
-
-set(CMAKE_CXX_FLAGS "-std=c++17")
-set(INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
-set(SOURCE_DIR "${PROJECT_SOURCE_DIR}/src")
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
-
-include_directories( ${INCLUDE_DIR} )
-
-set(Shomagick_VERSION_MAJOR 1)
-set(Shomagick_VERSION_MINOR 0)
-
-configure_file (
-  "${PROJECT_SOURCE_DIR}/ShomagickConfig.h.in"
-  "${PROJECT_BINARY_DIR}/ShomagickConfig.h"
-)
-
 #Open SFM vlfeat
 include_directories(vlfeat)
 file(GLOB VLFEAT_SRCS vlfeat/vl/*.c vlfeat/vl/*.h)
