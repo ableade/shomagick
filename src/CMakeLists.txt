@@ -66,14 +66,13 @@ find_package(
 
 find_package(Ceres REQUIRED)
 
+find_package(OpenGV REQUIRED)
+
 find_package(SuiteSparse)
 if (SUITESPARSE_FOUND)
   target_include_directories(Shomagick ${SUITESPARSE_INCLUDE_DIRS})
 endif()
 
-target_include_directories(Shomagick PRIVATE ${CERES_INCLUDE_DIR})
-
-target_include_directories(Shomagick PRIVATE ${OpenCV_INCLUDE_DIRS})
 
 target_include_directories(Shomagick
 	PRIVATE
@@ -81,6 +80,8 @@ target_include_directories(Shomagick
 		${OpenCV_INCLUDE_DIRS}
 		${Boost_INCLUDE_DIRS}
 		${EXIV2_INCLUDE_DIRS}
+		${OPENGV_INCLUDE_DIRS}
+		${CERES_INCLUDE_DIR}
 )
 
 target_link_libraries(
@@ -91,5 +92,6 @@ target_link_libraries(
 		${LAPACK_LIBRARIES}
     	${SUITESPARSE_LIBRARIES}
 		${EXIV2_LIBRARIES}
+		${OPENGV_LIBRARIES}
 		vl
 )
