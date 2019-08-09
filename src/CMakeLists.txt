@@ -75,12 +75,12 @@ target_include_directories(Shomagick
 	PUBLIC
 		${EIGEN_INCLUDE_DIRS}
 		${OpenCV_INCLUDE_DIRS}
+		${OPENGV_INCLUDE_DIRS}
 		${Boost_INCLUDE_DIRS}
 		${CMAKE_SOURCE_DIR}/include
 
 	PRIVATE
 		${EXIV2_INCLUDE_DIRS}
-		${OPENGV_INCLUDE_DIRS}
 		${CERES_INCLUDE_DIR}
 		${CMAKE_SOURCE_DIR}/src
 )
@@ -90,12 +90,15 @@ target_link_libraries(
 	PUBLIC
 		${Boost_LIBRARIES}
 		${OpenCV_LIBS}
+		${OPENGV_LIBRARIES}
 
 	PRIVATE
 		${CERES_LIBRARIES}
 		${LAPACK_LIBRARIES}
 		${SUITESPARSE_LIBRARIES}
 		${EXIV2_LIBRARIES}
-		${OPENGV_LIBRARIES}
 		vl
 )
+
+
+install(TARGETS Shomagick DESTINATION lib)
