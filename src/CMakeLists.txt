@@ -41,11 +41,7 @@ endif()
 find_package (CUDA)
 if (CUDA_FOUND)
   target_include_directories(Shomagick PRIVATE ${CUDA_INCLUDE_DIRS})
-  target_link_libraries (
-  	Shomagick
-  	PRIVATE
-  		${CUDA_LIBRARIES}
- )
+  target_link_libraries (Shomagick PRIVATE ${CUDA_LIBRARIES})
 endif (CUDA_FOUND)
 
 find_package(
@@ -74,20 +70,28 @@ if (SUITESPARSE_FOUND)
 endif()
 
 
+
 target_include_directories(Shomagick
-	PRIVATE
+	PUBLIC
 		${EIGEN_INCLUDE_DIRS}
 		${OpenCV_INCLUDE_DIRS}
 		${Boost_INCLUDE_DIRS}
+		${CMAKE_SOURCE_DIR}/include
+
+	PRIVATE
 		${EXIV2_INCLUDE_DIRS}
 		${OPENGV_INCLUDE_DIRS}
 		${CERES_INCLUDE_DIR}
+		${CMAKE_SOURCE_DIR}/src
 )
 
 target_link_libraries(
 	Shomagick
-	PRIVATE
+	PUBLIC
 		${Boost_LIBRARIES}
+		${OpenCV_LIBS}
+
+	PRIVATE
 		${CERES_LIBRARIES}
 		${LAPACK_LIBRARIES}
     	${SUITESPARSE_LIBRARIES}
