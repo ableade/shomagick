@@ -10,7 +10,7 @@ add_definitions(-DVL_DISABLE_AVX)
 add_library(vl ${VLFEAT_SRCS})
 
 add_library(
-	Shomagick 
+	shomagick 
 	RobustMatcher.cpp 
 	HahogFeatureDetector.cpp 
 	allclose.cpp camera.cpp 
@@ -40,8 +40,8 @@ endif()
 
 find_package (CUDA)
 if (CUDA_FOUND)
-  target_include_directories(Shomagick PRIVATE ${CUDA_INCLUDE_DIRS})
-  target_link_libraries (Shomagick PRIVATE ${CUDA_LIBRARIES})
+  target_include_directories(shomagick PRIVATE ${CUDA_INCLUDE_DIRS})
+  target_link_libraries (shomagick PRIVATE ${CUDA_LIBRARIES})
 endif (CUDA_FOUND)
 
 find_package(
@@ -66,18 +66,19 @@ find_package(OpenGV REQUIRED)
 
 find_package(SuiteSparse)
 if (SUITESPARSE_FOUND)
-  target_include_directories(Shomagick ${SUITESPARSE_INCLUDE_DIRS})
+  target_include_directories(shomagick ${SUITESPARSE_INCLUDE_DIRS})
 endif()
 
 
 
-target_include_directories(Shomagick
+target_include_directories(shomagick
 	PUBLIC
+	 	$<INSTALL_INTERFACE:include>  
 		${EIGEN_INCLUDE_DIRS}
 		${OpenCV_INCLUDE_DIRS}
 		${OPENGV_INCLUDE_DIRS}
 		${Boost_INCLUDE_DIRS}
-		${CMAKE_SOURCE_DIR}/include
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 
 	PRIVATE
 		${EXIV2_INCLUDE_DIRS}
@@ -86,7 +87,7 @@ target_include_directories(Shomagick
 )
 
 target_link_libraries(
-	Shomagick
+	shomagick
 	PUBLIC
 		${Boost_LIBRARIES}
 		${OpenCV_LIBS}
@@ -100,5 +101,49 @@ target_link_libraries(
 		vl
 )
 
+set(INSTALL_CONFIGDIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/cmake/Shomagick)
 
-install(TARGETS Shomagick DESTINATION lib)
+
+install(TARGETS shomagick vl EXPORT shomagick-targets DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+set_target_properties(shomagick PROPERTIES EXPORT_NAME Shomagick)
+
+install(EXPORT shomagick-targets
+  FILE
+    ShomagickTargets.cmake
+  NAMESPACE
+    Shomagick::
+  DESTINATION
+    ${INSTALL_CONFIGDIR}
+)
+
+#Create a ConfigVersion.cmake file
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/ShomagickConfigVersion.cmake
+    VERSION ${SHOMAGICK_MAJOR_VERSION}.${SHOMAGICK_MINOR_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
+
+configure_package_config_file(${CMAKE_CURRENT_LIST_DIR}/cmake/ShomagickConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/ShomagickConfig.cmake
+    INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
+)
+
+#Install the config, configversion and custom find modules
+install(FILES
+    #${CMAKE_CURRENT_LIST_DIR}/cmake/FindRapidJSON.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/ShomagickConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/ShomagickConfigVersion.cmake
+    DESTINATION ${INSTALL_CONFIGDIR}
+)
+
+##############################################
+## Exporting from the build tree
+#configure_file(${CMAKE_CURRENT_LIST_DIR}/cmake/FindRapidJSON.cmake
+    #${CMAKE_CURRENT_BINARY_DIR}/FindRapidJSON.cmake
+    #COPYONLY)
+
+export(EXPORT shomagick-targets FILE ${CMAKE_CURRENT_BINARY_DIR}/ShomagickTargets.cmake NAMESPACE Shomagick::)
+
+#Register package in user's package registry
+export(PACKAGE Shomagick)

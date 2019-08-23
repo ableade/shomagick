@@ -19,5 +19,8 @@ configure_file (
   "${PROJECT_BINARY_DIR}/ShomagickConfig.h"
 )
 
+include(GNUInstallDirs)
 include_directories("${PROJECT_BINARY_DIR}")
 add_subdirectory(src)
+
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Shomagick)
