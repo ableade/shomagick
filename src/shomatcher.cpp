@@ -3,6 +3,7 @@
 #include "camera.h"
 #include "RobustMatcher.h"
 #include <fstream>
+#include "bootstrap.h"
 #include <opencv2/imgproc/imgproc.hpp>
 #include "json.hpp"
 #include <set>
