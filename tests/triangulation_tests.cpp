@@ -1,9 +1,9 @@
 #include <catch.hpp>
 #include <Eigen/Core>
 #include <vector>
-#include "../src/allclose.h"
-#include "../src/bootstrap.h"
-#include "../src/multiview.h"
+#include "allclose.h"
+#include "bootstrap.h"
+#include "multiview.h"
 
 using Eigen::Vector3d;
 using std::vector;

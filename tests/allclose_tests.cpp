@@ -1,5 +1,5 @@
 #include <catch.hpp>
-#include "../src/allclose.h"
+#include "allclose.h"
 #include <Eigen/Core>
 
 #include <vector>

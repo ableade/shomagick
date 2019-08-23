@@ -1,6 +1,6 @@
 #include <catch.hpp>
-#include "../src/multiview.h"
-#include "../src/allclose.h"
+#include "multiview.h"
+#include "allclose.h"
 #include <opencv2/core.hpp>
 
 using std::vector;

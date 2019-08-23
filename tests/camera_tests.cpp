@@ -1,10 +1,10 @@
 #include <Eigen/Core>
 #include <catch.hpp>
 #include <vector>
-#include "../src/camera.h"
-#include "../src/shot.h"
-#include "../src/allclose.h"
-#include "../src/utilities.h"
+#include "camera.h"
+#include "shot.h"
+#include "allclose.h"
+#include "utilities.h"
 #include <opencv2/core/eigen.hpp>
 
 using std::vector;
