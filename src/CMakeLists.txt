@@ -86,6 +86,7 @@ target_include_directories(shomagick
 		${CMAKE_SOURCE_DIR}/src
 )
 
+
 target_link_libraries(
 	shomagick
 	PUBLIC
@@ -101,6 +102,7 @@ target_link_libraries(
 		vl
 )
 
+get_target_property(CONF_INCLUDE_DIRS shomagick INTERFACE_INCLUDE_DIRECTORIES)
 set(INSTALL_CONFIGDIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/cmake/Shomagick)
 
 
