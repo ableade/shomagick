@@ -39,3 +39,4 @@ if(NOT TARGET Shomagick::Shomagick)
 endif()
 
 set(SHOMAGICK_LIBRARIES Shomagick::Shomagick)
+set(SHOMAGICK_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
