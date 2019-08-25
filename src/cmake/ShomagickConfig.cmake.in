@@ -11,10 +11,27 @@ list(APPEND CMAKE_MODULE_PATH ${Shomagick_CMAKE_DIR})
 find_package(Boost 1.5 COMPONENTS filesystem serialization REQUIRED)
 find_package(Eigen REQUIRED)
 find_package(exiv2 REQUIRED)
-
-
 find_package(OpenMP)
 find_package (CUDA)
+find_package(
+	OpenCV 
+	REQUIRED 
+	COMPONENTS
+	core 
+	imgproc 
+	calib3d 
+	sfm 
+	viz 
+	features2d 
+	xfeatures2d 
+	OPTIONAL_COMPONENTS
+	cudafeatures2d 
+	cudaimgproc 
+)
+find_package(Ceres REQUIRED)
+find_package(OpenGV REQUIRED)
+find_package(SuiteSparse)
+
 list(REMOVE_AT CMAKE_MODULE_PATH -1)
 
 if(NOT TARGET Shomagick::Shomagick)
