@@ -131,11 +131,11 @@ configure_package_config_file(${CMAKE_CURRENT_LIST_DIR}/cmake/ShomagickConfig.cm
 
 #Install the config, configversion and custom find modules
 install(FILES
-	${CMAKE_CURRENT_LIST_DIR}/cmake/FindCeres.cmake
-	${CMAKE_CURRENT_LIST_DIR}/cmake/FindEigen.cmake
-	${CMAKE_CURRENT_LIST_DIR}/cmake/FindGflags.cmake
-	${CMAKE_CURRENT_LIST_DIR}/cmake/FindGlog.cmake
-	${CMAKE_CURRENT_LIST_DIR}/cmake/FindSuiteSparse.cmake
+	${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/FindCeres.cmake
+	${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/FindEigen.cmake
+	${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/FindGflags.cmake
+	${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/FindGlog.cmake
+	${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/FindSuiteSparse.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/ShomagickConfig.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/ShomagickConfigVersion.cmake
     DESTINATION ${INSTALL_CONFIGDIR}
