@@ -4,6 +4,7 @@
 #include <opencv2/features2d.hpp>
 #include <opencv2/cudalegacy.hpp>
 #include <vector>
+#include <future>
 #include <algorithm>
 #include "multiview.h"
 #include "transformations.h"
@@ -348,7 +349,11 @@ Reconstructor::commonTrackHomography(CommonTrack commonTrack) const {
 
 void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
     //undistort all images 
-    //flight.undistort();
+    auto fut = std::async(
+        std::launch::async,
+        [this] { flight_.undistort(); }
+    );
+    
     vector<Reconstruction> reconstructions;
     set<string> reconstructionImages;
     for (const auto it : this->imageNodes_) {
