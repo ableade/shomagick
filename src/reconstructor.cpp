@@ -371,11 +371,16 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
                 reconstructionImages.erase(track.imagePair.first);
                 reconstructionImages.erase(track.imagePair.second);
                 continueReconstruction(rec, reconstructionImages);
-                string recFileName = flight_.getImageDirectoryPath().parent_path().leaf().string() + "-" +
-                    to_string(reconstructions.size() + 1) + ".ply";
+                string recFileName = (
+                    flight_.getReconstructionsPath() /
+                    ("rec-" + to_string(reconstructions.size() + 1) + ".ply")
+                    ).string();
 
-                string mvsFileName = flight_.getImageDirectoryPath().parent_path().leaf().string() + "-" +
-                    to_string(reconstructions.size() + 1) + ".mvs";
+                string mvsFileName = (
+                    flight_.getReconstructionsPath() /
+                    ("rec-" + to_string(reconstructions.size() + 1) + ".mvs")
+                    ).string();
+
                 colorReconstruction(rec);
                 rec.saveReconstruction(recFileName);
                 exportToMvs(rec, mvsFileName);
@@ -387,7 +392,7 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
     if (reconstructions.size() > 1) {
         //We have multiple partial reconstructions. Try to merge all of them
         reconstructions[0].mergeReconstruction(reconstructions[1]);
-        string mergedRec = flight_.getImageDirectoryPath().parent_path().leaf().string() + "merged.ply";
+        string mergedRec = (flight_.getReconstructionsPath()/"merged.ply").string();
         reconstructions[0].alignToGps();
         reconstructions[0].saveReconstruction(mergedRec);
     }
@@ -449,8 +454,6 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
         return std::nullopt;
     }
     colorReconstruction(rec);
-    rec.saveReconstruction("green.ply");
-    exportToMvs(rec, "green.mvs");
     cerr << "Generated " << rec.getCloudPoints().size() << "points from initial motion " << endl;
     singleViewBundleAdjustment(track.imagePair.second, rec);
     retriangulate(rec);
@@ -463,8 +466,10 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
     removeOutliers(rec);
     rec.alignToGps();
     colorReconstruction(rec);
-    rec.saveReconstruction("partialgreen.ply");
-    exportToMvs(rec, "partialgreen.mvs");
+    auto partialRecFileName = (flight_.getReconstructionsPath() / "green.ply").string();
+    auto partialMVSFileName = (flight_.getReconstructionsPath() / "green.mvs").string();
+    rec.saveReconstruction(partialRecFileName);
+    exportToMvs(rec, partialMVSFileName);
     rec.updateLastCounts();
     while (1) {
         auto candidates = reconstructedPointForImages(rec, images);
@@ -563,7 +568,7 @@ void Reconstructor::triangulateTrack(string trackId, Reconstruction& rec) {
     catch (std::out_of_range &e) {
         //Pass
     }
-   
+
     if (bearingList.size() >= 2) {
         if (TriangulateBearingsMidpoint(originList, bearingList, x)) {
             CloudPoint cp;
@@ -734,7 +739,7 @@ void Reconstructor::localBundleAdjustment(std::string centralShotId, Reconstruct
             shot.getId(), "1",
             { r(0), r(1),r(2) },
             { t(0), t(1),t(2) },
-            (boundary.find(shotId)!= boundary.end())
+            (boundary.find(shotId) != boundary.end())
         );
     }
 
@@ -784,7 +789,7 @@ void Reconstructor::localBundleAdjustment(std::string centralShotId, Reconstruct
 
     _getCameraFromBundle(bundleAdjuster, rec.getCamera());
 
-    for (const auto shotId : boundary ) {
+    for (const auto shotId : boundary) {
         auto s = bundleAdjuster.GetShot(shotId);
         Mat rotation = (Mat_<double>(3, 1) << s.GetRotation().x(), s.GetRotation().y(), s.GetRotation().z());
         auto translation = s.GetTranslation();
@@ -992,16 +997,16 @@ void Reconstructor::colorReconstruction(Reconstruction & rec)
 }
 
 set<string> Reconstructor::directShotNeighbors(
-    std::set<std::string> shotIds, 
-    const Reconstruction & rec, 
-    int maxNeighbors, 
+    std::set<std::string> shotIds,
+    const Reconstruction & rec,
+    int maxNeighbors,
     int minCommonPoints)
 {
     set<string> neighbors;
     set<string> reconstructionShots;
     std::transform(
-        rec.getReconstructionShots().begin(), 
-        rec.getReconstructionShots().end(), 
+        rec.getReconstructionShots().begin(),
+        rec.getReconstructionShots().end(),
         std::inserter(reconstructionShots, reconstructionShots.end()),
         [](pair<string, Shot> aShot) -> string { return aShot.first; }
     );
@@ -1019,9 +1024,9 @@ set<string> Reconstructor::directShotNeighbors(
 
     set<string> candidateShots;
     std::set_difference(
-        reconstructionShots.begin(), 
-        reconstructionShots.end(), 
-        shotIds.begin(), 
+        reconstructionShots.begin(),
+        reconstructionShots.end(),
+        shotIds.begin(),
         shotIds.end(),
         std::inserter(candidateShots, candidateShots.end())
     );
@@ -1041,7 +1046,7 @@ set<string> Reconstructor::directShotNeighbors(
     }
     auto cmp = [](pair<string, int> a, pair<string, int> b) { return  a.second > b.second; };
     std::set<pair<string, int>, decltype(cmp)> neighborPairs(commonPoints.begin(), commonPoints.end(), cmp);
-   
+
     for (const auto neighbor : neighborPairs) {
         if (neighbor.second >= minCommonPoints) {
             neighbors.insert(neighbor.first);
@@ -1076,7 +1081,7 @@ void Reconstructor::removeOutliers(Reconstruction& rec) {
         boost::remove_edge(trackNodes_.at(track), imageNodes_.at(shotId), tg_);
     }
 
-  
+
     for (const auto &[track, _] : outliers) {
         if (trackNodes_.find(track) != trackNodes_.end()) {
             int numEdges = boost::out_degree(trackNodes_[track], tg_);
@@ -1097,7 +1102,7 @@ void Reconstructor::removeOutliers(Reconstruction& rec) {
     );
 #endif
     cerr << "Removed " << outliers.size() << " outliers from reconstruction \n";
-}
+            }
 
 tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, const vertex_descriptor imageVertex, double threshold,
     int iterations, double probability, int resectionInliers) {

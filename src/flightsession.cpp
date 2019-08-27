@@ -24,28 +24,35 @@ using std::ofstream;
 using std::endl;
 using std::ios;
 
-FlightSession::FlightSession() : imageSet(), imageDirectory(), imageDirectoryPath_(), imageFeaturesPath_(),
+FlightSession::FlightSession() : imageSet(), flightSessionDirectory_(), imageDirectoryPath_(), imageFeaturesPath_(),
 imageTracksPath_(), camera_(), referenceLLA_()
 {
 
 }
 
-FlightSession::FlightSession(string imageDirectory, string calibrationFile) : imageSet(), imageDirectory(imageDirectory), imageDirectoryPath_(), imageFeaturesPath_(),
+FlightSession::FlightSession(string flightSessionDirectory, string calibrationFile) : imageSet(), flightSessionDirectory_(flightSessionDirectory), imageDirectoryPath_(), imageFeaturesPath_(),
 imageTracksPath_(), camera_(), referenceLLA_()
 {
-    cerr << "Image directory is " << imageDirectory << endl;
-    vector<directory_entry> v;
-    assert(is_directory(imageDirectory));
-    imageDirectoryPath_ = path(imageDirectory);
+    //Remove trailing slash if present at the end to avoid unexpected bugs with boost file system paths
+    auto lastChar = flightSessionDirectory.at(flightSessionDirectory.size() - 1);
+    if (lastChar == '/' || lastChar == '\\') {
+        flightSessionDirectory.erase(flightSessionDirectory.size() - 1);
+    }
 
-    imageFeaturesPath_ = imageDirectoryPath_ / "features";
-    imageMatchesPath_ = imageDirectoryPath_ / "matches";
-    imageTracksPath_ = imageDirectoryPath_ / "tracks";
-    exifPath_ = imageDirectoryPath_ / "exif";
-    undistortedImagesPath_ = imageDirectoryPath_ / "undisorted";
+    cerr << "Flight session directory is " << flightSessionDirectory << endl;
+    vector<directory_entry> v;
+    assert(is_directory(flightSessionDirectory));
+    imageDirectoryPath_ = path(flightSessionDirectory) / "images";
+    assert(is_directory(imageDirectoryPath_));
+    imageFeaturesPath_ = flightSessionDirectory / "sho-features";
+    imageMatchesPath_ = flightSessionDirectory_ / "sho-matches";
+    imageTracksPath_ = flightSessionDirectory_ / "sho-tracks";
+    exifPath_ = flightSessionDirectory_ / "sho-exif";
+    undistortedImagesPath_ = flightSessionDirectory_ / "sho-undisorted";
+    reconstructionPaths_ = flightSessionDirectory_ / "sho-reconstructions";
 
     const vector <boost::filesystem::path> allPaths{ imageFeaturesPath_, imageMatchesPath_,
-    imageTracksPath_, exifPath_, undistortedImagesPath_ };
+    imageTracksPath_, exifPath_, undistortedImagesPath_ , reconstructionPaths_};
 
     
     for (const auto path : allPaths) {
@@ -54,7 +61,7 @@ imageTracksPath_(), camera_(), referenceLLA_()
     }
     
     copy_if(
-        directory_iterator(imageDirectory),
+        directory_iterator(imageDirectoryPath_),
         directory_iterator(),
         back_inserter(v),
         [](const directory_entry &e) {
@@ -137,6 +144,11 @@ const path FlightSession::getImageTracksPath() const
 const boost::filesystem::path FlightSession::getUndistortedImagesDirectoryPath() const
 {
     return undistortedImagesPath_;
+}
+
+const boost::filesystem::path FlightSession::getReconstructionsPath() const
+{
+    return reconstructionPaths_;
 }
 
 int FlightSession::getImageIndex(string imageName) const
