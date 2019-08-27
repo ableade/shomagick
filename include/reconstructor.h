@@ -3,7 +3,7 @@
 #include "flightsession.h"
 #include "shotracking.h"
 #include "camera.h"
-#include "bundle.h"
+#include "bundle/bundle_adjuster.h"
 #include "reconstruction.h"
 #include <tuple>
 #include <optional>
@@ -42,6 +42,11 @@ const int MIN_INLIERS = 20;
 const double BUNDLE_OUTLIER_THRESHOLD = 0.006;
 const bool OPTIMIZE_CAMERA_PARAEMETERS = true;
 
+const int LOCAL_BUNDLE_MAX_SHOTS = 30;
+const int LOCAL_BUNDLE_MIN_COMMON_POINTS = 20;
+const int LOCAL_BUNDLE_RADIUS = 3;
+
+
 class Reconstructor
 {
 public:
@@ -67,8 +72,7 @@ private:
       const opengv::rotation_t& rotation, cv::Mat& cvMask) const;
 
 public:
-  Reconstructor(FlightSession flight, TrackGraph tg, std::map<std::string, TrackGraph::vertex_descriptor> trackNodes, 
-  std::map<std::string, TrackGraph::vertex_descriptor> imageNodes);
+  Reconstructor(FlightSession flight, TrackGraph tg);
   TwoViewPose recoverTwoCameraViewPose(CommonTrack track, cv::Mat& mask);
   TwoViewPose twoViewReconstructionRotationOnly(CommonTrack track, cv::Mat &mask);
   template <typename T>
@@ -77,7 +81,7 @@ public:
   TwoViewPose recoverTwoViewPoseWithHomography(CommonTrack track, cv::Mat& mask);
   float computeReconstructabilityScore(int tracks, cv::Mat inliers, int treshold = 0.3);
   void computeReconstructability(const ShoTracker& tracker, std::vector<CommonTrack>& commonTracks);
-  std::tuple<cv::Mat, std::vector<cv::Point2f>, std::vector<cv::Point2f>, cv::Mat> computePlaneHomography(CommonTrack commonTrack) const;
+  std::tuple<cv::Mat, std::vector<cv::Point2f>, std::vector<cv::Point2f>, cv::Mat> commonTrackHomography(CommonTrack commonTrack) const;
   void runIncrementalReconstruction (const ShoTracker& tracker);
 
   using OptionalReconstruction = std::optional<Reconstruction>;
@@ -89,6 +93,7 @@ public:
   ShoColumnVector3d getShotOrigin(const Shot& shot);
   cv::Mat getRotationInverse(const Shot& shot);
   void singleViewBundleAdjustment(std::string shotId, Reconstruction& rec);
+  void localBundleAdjustment(std::string centralShotId, Reconstruction& rec);
   const vertex_descriptor getImageNode(const std::string imageName) const;
   const vertex_descriptor getTrackNode(std::string trackId) const;
   void plotTracks(CommonTrack track) const;
@@ -99,4 +104,6 @@ public:
       double threshold = 0.004, int iterations = 1000, double probability = 0.999, int resectionInliers = 10 );
   std::vector<std::pair<std::string, int>> reconstructedPointForImages(const Reconstruction & rec, std::set<std::string>& images);
   void colorReconstruction(Reconstruction &rec);
+  std::set<std::string> directShotNeighbors(std::set<std::string> shotIds, const Reconstruction& rec, 
+      int maxNeighbors, int minCommonPoints = LOCAL_BUNDLE_MIN_COMMON_POINTS);
 };

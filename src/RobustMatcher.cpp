@@ -13,30 +13,16 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/xfeatures2d.hpp>
 #include <opencv2/xfeatures2d/cuda.hpp>
+#include "utilities.h"
+
 using std::cout;
 using std::cerr;
 using std::endl;
 using cv::cuda::GpuMat;
 using cv::xfeatures2d::SIFT;
 using cv::xfeatures2d::SURF;
-
-namespace
-{
-    bool checkIfCudaEnabled()
-    {
-        // ORB is the default feature detector
-        auto cudaEnabled = cv::cuda::getCudaEnabledDeviceCount();
-        if (cudaEnabled != -1 && cudaEnabled !=0) {
-            cerr << "CUDA device detected. Running CUDA \n";
-            cv::cuda::printCudaDeviceInfo(cv::cuda::getDevice());
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-} //namespace
+using cv::Ptr;
+using cv::FeatureDetector;
 
 RobustMatcher::RobustMatcher(
     const bool cudaEnabled,
@@ -69,24 +55,29 @@ namespace
         const double ratio
     )
     {
-        cv::Ptr<cv::DescriptorMatcher> matcher;
-        cv::Ptr<cv::cuda::DescriptorMatcher> cMatcher;
-
+        Ptr<cv::DescriptorMatcher> matcher;
+        Ptr<cv::cuda::DescriptorMatcher> cMatcher;
+        Ptr<FeatureDetector> detector;
+        Ptr<FeatureDetector> extractor;
         if ( cudaEnabled )
         {
+            detector = cv::cuda::ORB::create(numFeatures);
+            extractor = cv::cuda::ORB::create(numFeatures);
             cMatcher = cv::cuda::DescriptorMatcher::createBFMatcher(cv::NORM_HAMMING);
         }
         else
         {
             constexpr auto crossCheck = false;
             matcher = cv::makePtr<cv::BFMatcher>(cv::NORM_HAMMING, crossCheck);
+            detector = cv::ORB::create(numFeatures);
+            extractor = cv::ORB::create(numFeatures);
         }
 
         return cv::makePtr<RobustMatcher>(
             cudaEnabled,
             ratio,
-            cv::ORB::create(numFeatures),
-            cv::ORB::create(numFeatures),
+            detector,
+            extractor,
             matcher,
             cMatcher
         );
@@ -169,6 +160,10 @@ cv::Ptr<RobustMatcher> RobustMatcher::createSurfMatcher(const bool cudaEnabled, 
 cv::Ptr<RobustMatcher> RobustMatcher::create(Feature alg, const int numFeatures, const double ratio )
 {
     const auto cudaEnabled = checkIfCudaEnabled();
+    if (cudaEnabled) {
+        cerr << "CUDA device detected. Running CUDA \n";
+        cv::cuda::printCudaDeviceInfo(cv::cuda::getDevice());
+    }
 
     switch ( alg )
     {
@@ -189,8 +184,7 @@ cv::Ptr<RobustMatcher> RobustMatcher::create(Feature alg, const int numFeatures,
 
 void RobustMatcher::computeKeyPoints(const cv::Mat &image, std::vector<cv::KeyPoint> &keypoints)
 {
-    cv::Ptr<cv::cuda::ORB> cudaMatcher;
-    if (cudaEnabled_ && (cudaMatcher = matcher_.dynamicCast<cv::cuda::ORB>())) {
+    if (cudaEnabled_) {
         GpuMat cudaFeatureImg;
         cudaFeatureImg.upload(image);
         detector_->detect(cudaFeatureImg, keypoints);
@@ -201,8 +195,7 @@ void RobustMatcher::computeKeyPoints(const cv::Mat &image, std::vector<cv::KeyPo
 
 void RobustMatcher::computeDescriptors(const cv::Mat &image, std::vector<cv::KeyPoint> &keypoints, cv::Mat &descriptors)
 {
-    cv::Ptr<cv::cuda::ORB> cudaMatcher;
-    if (cudaEnabled_ && (cudaMatcher = matcher_.dynamicCast<cv::cuda::ORB>())) {
+    if (cudaEnabled_) {
         GpuMat cudaFeatureImg, cudaDescriptors;
         cudaFeatureImg.upload(image);
         extractor_->compute(cudaFeatureImg, keypoints, cudaDescriptors);
@@ -214,8 +207,7 @@ void RobustMatcher::computeDescriptors(const cv::Mat &image, std::vector<cv::Key
 
 void RobustMatcher::detectAndCompute(const cv::Mat & image, std::vector<cv::KeyPoint>& keypoints, cv::Mat & descriptors)
 {
-    cv::Ptr<cv::cuda::ORB> cudaMatcher;
-    if (cudaEnabled_ && (cudaMatcher = matcher_.dynamicCast<cv::cuda::ORB>())) {
+    if (cudaEnabled_) {
         GpuMat cudaFeatureImg, cudaDescriptors;
         cudaFeatureImg.upload(image);
         detector_->detectAndCompute(cudaFeatureImg, cv::noArray(), keypoints, cudaDescriptors);

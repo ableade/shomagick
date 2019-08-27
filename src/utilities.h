@@ -124,4 +124,7 @@ namespace boost {
     } // namespace serialization
 } // namespace boost
 
+bool checkIfCudaEnabled();
+
+
 

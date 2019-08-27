@@ -22,13 +22,13 @@ using opengv::bearingVectors_t;
 Matx33d Pose::getRotationMatrix() const
 {
     Mat rods;
-    Rodrigues(rotation, rods);
+    Rodrigues(rotation_, rods);
     return rods;
 }
 
 ShoColumnVector3d Pose::getRotationVector() const
 {
-    return rotation;
+    return rotation_;
 }
 
 cv::Mat Pose::getRotationMatrixInverse() const {
@@ -41,17 +41,17 @@ cv::Mat Pose::getRotationMatrixInverse() const {
 ShoColumnVector3d Pose::getOrigin() const
 {
     auto origin = -(getRotationMatrix());
-    auto t = Mat(origin.t() * Mat(translation));
+    auto t = Mat(origin.t() * Mat(translation_));
     return t;
 }
 
 ShoColumnVector3d Pose::getTranslation() const{
-    return translation;
+    return translation_;
 }
 
 void Pose::setTranslation(ShoColumnVector3d t)
 {
-    translation = t;
+    translation_ = t;
 }
 
 void Pose::setRotationVector(cv::Mat src) {
@@ -62,7 +62,7 @@ void Pose::setRotationVector(cv::Mat src) {
         CV_Assert(allClose(src.inv(), src.t()));
         cv::Rodrigues(src, src);
     }
-    rotation = src;
+    rotation_ = src;
 }
 
 Pose Pose::poseInverse() const {
@@ -74,7 +74,7 @@ Pose Pose::poseInverse() const {
     //cv::Rodrigues()
     inv.setRotationVector(Mat(transposedRotation));
     cv::transpose(-r, transposedRotation);
-    auto inverseTranslation = transposedRotation * Mat(translation);
+    auto inverseTranslation = transposedRotation * Mat(translation_);
     inv.setTranslation(inverseTranslation);
     return inv;
 }
@@ -92,8 +92,8 @@ Pose Pose::compose(const Pose& other) const {
 
 ostream & operator << (ostream &out, const Pose &p)
 {
-    out << "Rotation vector: " << p.rotation << std::endl;
-    out << "Translation vector: " << p.translation << std::endl;
+    out << "Rotation vector: " << p.rotation_ << std::endl;
+    out << "Translation vector: " << p.translation_ << std::endl;
     return out;
 }
 

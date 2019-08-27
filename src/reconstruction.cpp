@@ -200,7 +200,12 @@ void Reconstruction::setGPS(bool useGps)
     usesGPS = useGps;
 }
 
-Shot Reconstruction::getShot(std::string shotId)
+const Shot& Reconstruction::getShot(std::string shotId) const
+{
+    return shots.at(shotId);
+}
+
+Shot& Reconstruction::getShot(std::string shotId)
 {
     return shots.at(shotId);
 }
@@ -247,7 +252,7 @@ tuple<double, cv::Matx33d, ShoColumnVector3d> Reconstruction::getGPSTransform()
     auto p = fitPlane(shotOriginsRowMean, plane, verticals);
     auto rPlane = calculateHorizontalPlanePosition(Mat(p));
 
-    Mat3d cvRPlane;
+    Mat cvRPlane (3, 3, CV_64FC1);
     eigen2cv(rPlane, cvRPlane);
 #if 0
     cout << "Size of CV r plane was " << cvRPlane.size() << "\n";
