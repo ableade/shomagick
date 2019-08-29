@@ -36,17 +36,19 @@ add_library(
 	shomagick 
 	${SOURCE_DIR}/RobustMatcher.cpp 
 	${SOURCE_DIR}/HahogFeatureDetector.cpp 
-  ${SOURCE_DIR}/allclose.cpp 
-  ${SOURCE_DIR}/camera.cpp 
+	${SOURCE_DIR}/allclose.cpp 
+	${SOURCE_DIR}/camera.cpp 
 	${SOURCE_DIR}/flightsession.cpp  
-  ${SOURCE_DIR}/image.cpp 
-  ${SOURCE_DIR}/kdtree.cpp 
-  ${SOURCE_DIR}/multiview.cpp 
-  ${SOURCE_DIR}/reconstruction.cpp 
-  ${SOURCE_DIR}/reconstructor.cpp  	
-  ${SOURCE_DIR}/shomatcher.cpp 
-  ${SOURCE_DIR}/transformations.cpp  
-  ${SOURCE_DIR}/utilities.cpp
+	${SOURCE_DIR}/image.cpp 
+	${SOURCE_DIR}/kdtree.cpp 
+	${SOURCE_DIR}/multiview.cpp 
+	${SOURCE_DIR}/reconstruction.cpp 
+	${SOURCE_DIR}/reconstructor.cpp  	
+	${SOURCE_DIR}/shomatcher.cpp
+	${SOURCE_DIR}/shot.cpp  
+	${SOURCE_DIR}/transformations.cpp  
+	${SOURCE_DIR}/shotracking.cpp  
+	${SOURCE_DIR}/utilities.cpp
 )
 
 find_package(Boost 1.5 COMPONENTS filesystem serialization REQUIRED)
@@ -55,6 +57,9 @@ find_package(Eigen REQUIRED)
 
 find_package(exiv2 REQUIRED)
 
+find_library(exiv_lib exiv2)
+
+message("Exiv found was ${exiv_lib}")
 find_package(OpenMP)
 if (OPENMP_FOUND)
   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -72,28 +77,35 @@ find_package(
 	OpenCV 
 	REQUIRED 
 	COMPONENTS
-	core 
-	imgproc 
-	calib3d 
-	sfm 
-	viz 
-	features2d 
-	xfeatures2d 
+		core 
+		imgproc
+		highgui 
+		calib3d 
+		sfm 
+		viz 
+		imgcodecs
+		features2d 
+		xfeatures2d 
 	OPTIONAL_COMPONENTS
-	cudafeatures2d 
-	cudaimgproc 
+		cudafeatures2d 
+		cudaimgproc 
 )
 
 find_package(Ceres REQUIRED)
 
 find_package(OpenGV REQUIRED)
 
+find_package(Glog REQUIRED)
+
+find_package(OpenMP REQUIRED)
+
+find_package(Gflags REQUIRED)
+
 find_package(SuiteSparse)
 if (SUITESPARSE_FOUND)
-  target_include_directories(shomagick ${SUITESPARSE_INCLUDE_DIRS})
+  target_include_directories(shomagick PRIVATE ${SUITESPARSE_INCLUDE_DIRS})
+  target_link_libraries(shomagick PRIVATE ${SUITESPARSE_LIBRARIES})
 endif()
-
-
 
 target_include_directories(shomagick
 	PUBLIC
@@ -102,12 +114,13 @@ target_include_directories(shomagick
 		${OpenCV_INCLUDE_DIRS}
 		${OPENGV_INCLUDE_DIRS}
 		${Boost_INCLUDE_DIRS}
+		${GFLAGS_INCLUDE_DIR}
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 
-	PRIVATE
+	
 		${EXIV2_INCLUDE_DIRS}
 		${CERES_INCLUDE_DIR}
-		${CMAKE_SOURCE_DIR}/src
+		${GLOG_INCLUDE_DIRS}
 )
 
 
@@ -116,13 +129,16 @@ target_link_libraries(
 	PUBLIC
 		${Boost_LIBRARIES}
 		${OpenCV_LIBS}
-		${OPENGV_LIBRARIES}
+		opengv
+		${GFLAGS_LIBRARY}
 
-	PRIVATE
+	
 		${CERES_LIBRARIES}
 		${LAPACK_LIBRARIES}
 		${SUITESPARSE_LIBRARIES}
-		${EXIV2_LIBRARIES}
+		exiv2
+		${GLOG_LIBRARIES}
+		${OpenMP_CXX_LIBRARIES}
 		vl
 )
 

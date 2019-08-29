@@ -25,7 +25,8 @@ namespace
     bool checkIfCudaEnabled()
     {
         // ORB is the default feature detector
-        if (cv::cuda::getCudaEnabledDeviceCount()) {
+        auto cudaEnabled = cv::cuda::getCudaEnabledDeviceCount();
+        if (cudaEnabled != -1 && cudaEnabled !=0) {
             cerr << "CUDA device detected. Running CUDA \n";
             cv::cuda::printCudaDeviceInfo(cv::cuda::getDevice());
             return true;

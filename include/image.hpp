@@ -6,7 +6,7 @@
 #include <fstream>
 #include <opencv2/core.hpp>
 #include <exiv2/exiv2.hpp>
-#include "bootstrap.h"
+//#include "bootstrap.h"
 #include <boost/filesystem.hpp>
 
 const int DEG = 180;
@@ -14,16 +14,9 @@ const double WGS84_A = 6378137.0;
 const double WGS84_B = 6356752.314245;
 const double EARTH_RADIUS = 6371e3;
 
-inline double toRadian(double deg)
-{
-	return deg * M_PI / DEG;
-}
+double toRadian(double deg);
 
-inline std::string parseFileNameFromPath(std::string path)
-{
-	return boost::filesystem::path{path}.filename().string();
-}
-
+std::string parseFileNameFromPath(std::string path);
 
 /*
 double distanceEarth(double lat1d, double lon1d, double lat2d, double lon2d) {

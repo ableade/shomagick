@@ -2,7 +2,19 @@
 #include <string>
 #include <fstream>
 #include "utilities.h"
+#include "bootstrap.h"
 using std::string;
+
+double toRadian(double deg)
+{
+	return deg * M_PI / DEG;
+}
+
+string parseFileNameFromPath(std::string path)
+{
+	return boost::filesystem::path{path}.filename().string();
+}
+
 
 const ImageMetadata & Img::getMetadata() const
 {
