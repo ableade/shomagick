@@ -183,7 +183,8 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
         else if (channels == 3)
             colors.push_back(modelImg.at<Vec3b>(keypoint.pt));
 
-        keypoint.pt = this->flight_.getCamera().normalizeImageCoordinate(keypoint.pt);
+        keypoint.pt = flight_.getCamera().normalizeImageCoordinate(keypoint.pt);
+        keypoint.size /= max(flight_.getCamera().getScaledHeight(), flight_.getCamera().getScaledWidth());
     }
     return flight_.saveImageFeaturesFile(fileName, keypoints, descriptors, colors);
 }
@@ -229,7 +230,7 @@ void ShoMatcher::runRobustFeatureMatching()
             matchSet[trainImg] = matches;
             cout << queryImg << " - " << trainImg << " has " << matches.size() << "candidate matches" << endl;
         }
-        this->flight_.saveMatches(queryImg, matchSet);
+        flight_.saveMatches(queryImg, matchSet);
     }
 }
 
@@ -257,14 +258,14 @@ void ShoMatcher::plotMatches(string img1, string img2) const {
     Mat image2 = imread((this->flight_.getImageDirectoryPath() / img2).string(),
         cv::IMREAD_GRAYSCALE);
     auto img1Matches = this->flight_.loadMatches(img1);
-    auto kp1 = this->flight_.loadFeatures(img1).getKeypoints();
-    auto kp2 = this->flight_.loadFeatures(img2).getKeypoints();
+    auto kp1 = flight_.loadFeatures(img1).getKeypoints();
+    auto kp2 = flight_.loadFeatures(img2).getKeypoints();
     for (auto& kp : kp1) {
-        kp.pt = this->flight_.getCamera().denormalizeImageCoordinates(kp.pt);
+        kp.pt = flight_.getCamera().denormalizeImageCoordinates(kp.pt);
     }
 
     for (auto& kp : kp2) {
-        kp.pt = this->flight_.getCamera().denormalizeImageCoordinates(kp.pt);
+        kp.pt = flight_.getCamera().denormalizeImageCoordinates(kp.pt);
     }
     if (img1Matches.find(img2) != img1Matches.end()) {
         auto matches = img1Matches[img2];

@@ -1,6 +1,10 @@
 cmake_minimum_required (VERSION 2.6)
 project (Shomagick)
 
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -fvisibility=hidden -ggdb")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC  -fvisibility=hidden -fvisibility-inlines-hidden -std=c++17 -ggdb")
+	
 set(CMAKE_CXX_FLAGS "-std=c++17")
 set(INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
 set(SOURCE_DIR "${PROJECT_SOURCE_DIR}/src")
@@ -8,8 +12,31 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${SOURCE_DIR}/cmake/Modules")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
+set(BUNDLE_SOURCE_DIR "${SOURCE_DIR}/bundle")
 include_directories( ${INCLUDE_DIR} )
+
+IF(MSVC)
+  add_compile_options(/wd4514 /wd4267 /bigobj)
+  add_definitions(-D_USE_MATH_DEFINES)
+ELSE()
+  IF (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
+    add_definitions (-march=armv8-a)
+  ELSEIF (CMAKE_SYSTEM_PROCESSOR MATCHES 
+          "(arm)|(ARM)|(armhf)|(ARMHF)|(armel)|(ARMEL)")
+    add_definitions (-march=armv7-a)
+  ELSE ()
+    add_definitions (-march=native) #TODO use correct c++11 def once everybody has moved to gcc 4.7 # for now I even removed std=gnu++0x
+  ENDIF()
+  add_definitions (
+    -O3
+    -Wall
+    -Wextra
+    #-Werror
+    -Wwrite-strings
+    -Wno-unused-parameter
+    -fno-strict-aliasing
+  )
+ENDIF()
 
 set(Shomagick_VERSION_MAJOR 1)
 set(Shomagick_VERSION_MINOR 0)
@@ -107,20 +134,41 @@ if (SUITESPARSE_FOUND)
   target_link_libraries(shomagick PRIVATE ${SUITESPARSE_LIBRARIES})
 endif()
 
+# Bundle
+set(BUNDLE_FILES
+    ${BUNDLE_SOURCE_DIR}/src/error_utils.h
+    ${BUNDLE_SOURCE_DIR}/src/motion_prior_terms.h
+    ${BUNDLE_SOURCE_DIR}/src/absolute_motion_terms.h
+    ${BUNDLE_SOURCE_DIR}/src/relative_motion_terms.h
+    ${BUNDLE_SOURCE_DIR}/src/bundle_adjuster.cc)
+
+	add_library(bundle ${BUNDLE_FILES})
+
+target_link_libraries(bundle PRIVATE
+    ${GFLAGS_LIBRARY}
+    ${GLOG_LIBRARY}
+	${CERES_LIBRARIES}
+    ${LAPACK_LIBRARIES}
+    ${SUITESPARSE_LIBRARIES}
+)
+
+target_include_directories(bundle PRIVATE ${EIGEN_INCLUDE_DIRS})
+
 target_include_directories(shomagick
 	PUBLIC
-	 	$<INSTALL_INTERFACE:include>  
+	 	$<INSTALL_INTERFACE:include/>  
 		${EIGEN_INCLUDE_DIRS}
 		${OpenCV_INCLUDE_DIRS}
 		${OPENGV_INCLUDE_DIRS}
 		${Boost_INCLUDE_DIRS}
 		${GFLAGS_INCLUDE_DIR}
-		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-
-	
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>	
 		${EXIV2_INCLUDE_DIRS}
 		${CERES_INCLUDE_DIR}
 		${GLOG_INCLUDE_DIRS}
+
+	PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 
@@ -139,6 +187,7 @@ target_link_libraries(
 		exiv2
 		${GLOG_LIBRARIES}
 		${OpenMP_CXX_LIBRARIES}
+		bundle
 		vl
 )
 
@@ -146,7 +195,7 @@ get_target_property(CONF_INCLUDE_DIRS shomagick INTERFACE_INCLUDE_DIRECTORIES)
 set(INSTALL_CONFIGDIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/cmake/Shomagick)
 
 
-install(TARGETS shomagick vl EXPORT shomagick-targets DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+install(TARGETS shomagick vl bundle EXPORT shomagick-targets DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 set_target_properties(shomagick PROPERTIES EXPORT_NAME Shomagick)
 
 install(EXPORT shomagick-targets
@@ -194,4 +243,4 @@ export(EXPORT shomagick-targets FILE ${CMAKE_CURRENT_BINARY_DIR}/ShomagickTarget
 #Register package in user's package registry
 export(PACKAGE Shomagick)
 
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Shomagick)
+install(DIRECTORY include/  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Shomagick)
