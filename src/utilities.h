@@ -111,17 +111,19 @@ namespace boost {
             ar & m.captureTime;
         }
 
-        
+
         template <class Archive>
         void serialize(Archive & ar, Location & loc, const unsigned int version) {
-                ar & loc.longitude;
-                ar & loc.latitude;
-                ar & loc.altitude;
-                ar & loc.dop;
-                ar & loc.isEmpty;
+            ar & loc.longitude;
+            ar & loc.latitude;
+            ar & loc.altitude;
+            ar & loc.dop;
+            ar & loc.isEmpty;
         }
 
     } // namespace serialization
 } // namespace boost
+
+bool checkIfCudaEnabled();
 
 

@@ -57,7 +57,6 @@ class Reconstruction {
         bool needsRetriangulation();
         void mergeReconstruction(const Reconstruction& rec);
         void alignToGps();
-        void exportToMvs(const std::string mvsFileName, const FlightSession& flightSession);
         void applySimilarity(double s, cv::Matx33d a, ShoColumnVector3d b);
         void setGPS(bool useGps);
         Shot getShot(std::string shotId);

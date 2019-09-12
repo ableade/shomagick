@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <string>
 #include <Eigen/Core>
+#include "allclose.h"
 //#include <boost/filesystem.hpp>
 
 using std::ostream;
@@ -44,7 +45,7 @@ ShoColumnVector3d Pose::getOrigin() const
     return t;
 }
 
-ShoColumnVector3d Pose::getTranslation() const{
+ShoColumnVector3d Pose::getTranslation() const {
     return translation;
 }
 
@@ -57,6 +58,8 @@ void Pose::setRotationVector(cv::Mat src) {
     ShoColumnVector3d rotationVector;
     if (src.rows == 3 && src.cols == 3) {
         //src is currently a rotation matrix
+        CV_Assert(allClose(cv::determinant(src), 1));
+        CV_Assert(allClose(src.inv(), src.t()));
         cv::Rodrigues(src, src);
     }
     rotation = src;
@@ -123,8 +126,8 @@ void Camera::_cvPointsToBearingVec(cv::Mat pRect, opengv::bearingVectors_t &bear
         bearings.push_back(bearing);
     }
 }
-Camera::Camera() : cameraMatrix(), distortionCoefficients(), height_(), width_(),  cameraMake_(),
-    cameraModel_(), initialK1_(), initialK2_(), initialPhysicalFocal()
+Camera::Camera() : cameraMatrix(), distortionCoefficients(), height_(), width_(), cameraMake_(),
+cameraModel_(), initialK1_(), initialK2_(), initialPhysicalFocal()
 {
     int dimension = 3;
     this->cameraMatrix = cv::Mat::eye(dimension, dimension, CV_32F);
@@ -135,13 +138,13 @@ Camera::Camera() : cameraMatrix(), distortionCoefficients(), height_(), width_()
     this->initialK2_ = 0.0;
 }
 
-Camera::Camera(Mat cameraMatrix, Mat distortion, int height, int width, int scaledHeight, int scaledWidth) : 
+Camera::Camera(Mat cameraMatrix, Mat distortion, int height, int width, int scaledHeight, int scaledWidth) :
     scaledHeight_(scaledHeight), scaledWidth_(scaledWidth), cameraMatrix(cameraMatrix), distortionCoefficients(distortion), height_(height),
-width_(width),cameraMake_(),
-cameraModel_(),  initialK1_(),  initialK2_(), initialPhysicalFocal() {
-    assert (!cameraMatrix.empty());
+    width_(width), cameraMake_(),
+    cameraModel_(), initialK1_(), initialK2_(), initialPhysicalFocal() {
+    assert(!cameraMatrix.empty());
     assert(!distortionCoefficients.empty());
-    assert(height !=0 && width != 0);
+    assert(height != 0 && width != 0);
     this->initialK1_ = this->getK1();
     this->initialK2_ = this->getK2();
     this->initialPhysicalFocal = this->getPhysicalFocalLength();
@@ -153,16 +156,16 @@ Mat Camera::getNormalizedKMatrix() const {
     auto lensSize = getPhysicalFocalLength();
 
     Mat normK = (cv::Mat_<double>(3, 3) <<
-        lensSize,   0.,          0.,
-        0.,         lensSize,    0,
-        0.,          0.,         1);
+        lensSize, 0., 0.,
+        0., lensSize, 0,
+        0., 0., 1);
 
     return normK;
 }
 
 Mat Camera::getDistortionMatrix() const
 {
-    if( distortionCoefficients.rows ==1)
+    if (distortionCoefficients.rows == 1)
         return distortionCoefficients.t();
 
     return distortionCoefficients;
@@ -185,7 +188,7 @@ void Camera::cvPointsToBearingVec(const vector<Point2d> &points, bearingVectors_
     _cvPointsToBearingVec(points1_rect, bearings);
 }
 
-double Camera::getPixelFocal() const{
+double Camera::getPixelFocal() const {
     return this->cameraMatrix.at<double>(0, 0);
 }
 
@@ -211,10 +214,10 @@ double Camera::getPhysicalFocalLength() const {
 }
 
 double Camera::getK1() const {
-    return this->getDistortionMatrix().at<double>(0,0);
+    return this->getDistortionMatrix().at<double>(0, 0);
 }
 
-double Camera::getK2() const{
+double Camera::getK2() const {
     return this->getDistortionMatrix().at<double>(1, 0);
 }
 
@@ -262,8 +265,8 @@ Camera Camera::getCameraFromExifMetaData(std::string image)
 
 void Camera::setFocalWithPhysical(double physicalFocal)
 {
-   auto pixelFocal = physicalFocal * (double)max(height_, width_);
-   setPixelFocal(pixelFocal);
+    auto pixelFocal = physicalFocal * (double)max(height_, width_);
+    setPixelFocal(pixelFocal);
 }
 
 void Camera::setK1(double k1)

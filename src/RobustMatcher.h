@@ -15,7 +15,7 @@
 
 class RobustMatcher
 {
-    
+
 public:
     enum class Feature { orb, hahog, sift, surf };
 
@@ -34,7 +34,7 @@ public:
         cv::Ptr<cv::cuda::DescriptorMatcher> cMatcher
     );
 #endif
-      
+
 
     virtual ~RobustMatcher();
 
@@ -88,8 +88,8 @@ public:
         const cv::Mat &trainImg, std::vector<cv::KeyPoint> & trainKeypoints);
 
     void fastRobustMatch(
-        const cv::Mat descriptors1, 
-        const cv::Mat descriptors2, 
+        const cv::Mat descriptors1,
+        const cv::Mat descriptors2,
         std::vector<cv::DMatch> &matches
     );
 
