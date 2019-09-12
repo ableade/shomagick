@@ -21,13 +21,14 @@ class FlightSession
 
 private:
     std::vector<Img> imageSet;
-    std::string imageDirectory;
+    std::string flightSessionDirectory_;
     boost::filesystem::path imageDirectoryPath_;
     boost::filesystem::path imageFeaturesPath_;
     boost::filesystem::path imageMatchesPath_;
     boost::filesystem::path imageTracksPath_;
     boost::filesystem::path exifPath_;
     boost::filesystem::path undistortedImagesPath_;
+    boost::filesystem::path reconstructionPaths_;
     Camera camera_;
     std::map<std::string, double> referenceLLA_;
     std::string _extractProjectionTypeFromExif(Exiv2::ExifData exifData) const;
@@ -43,12 +44,13 @@ public:
     const boost::filesystem::path getImageExifPath() const;
     const boost::filesystem::path getImageTracksPath() const;
     const boost::filesystem::path getUndistortedImagesDirectoryPath()const;
+    const boost::filesystem::path getReconstructionsPath()const;
     bool saveTracksFile(std::map<int, std::vector<int>> tracks);
     int getImageIndex(std::string imageName) const;
     std::map<std::string, std::vector<cv::DMatch>> loadMatches(std::string fileName) const;
     bool saveImageFeaturesFile(
-        std::string imageName, 
-        const std::vector<cv::KeyPoint> &keypoints, 
+        std::string imageName,
+        const std::vector<cv::KeyPoint> &keypoints,
         const cv::Mat& descriptors,
         const std::vector<cv::Scalar>& colors
     );

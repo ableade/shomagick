@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include "bootstrap.h"
 #include <string>
 
 extern "C" {

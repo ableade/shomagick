@@ -5,6 +5,7 @@
 #include <fstream>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "json.hpp"
+#include "bootstrap.h"
 #include <set>
 
 using cv::DMatch;

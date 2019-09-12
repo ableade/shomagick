@@ -70,7 +70,8 @@ void ShoTracker::createFeatureNodes(vector<pair<ImageFeatureNode, ImageFeatureNo
         }
     }
     assert(props.size() == featureIndex);
-    uf = UnionFind(this->imageFeatureNodes_.size());
+    assert(imageFeatureNodes_.size() == reverseImageFeatureNodes_.size());
+    uf = UnionFind(imageFeatureNodes_.size());
     cout << "Created a total of " << imageFeatureNodes_.size() << " feature nodes " << endl;
 }
 
@@ -93,7 +94,7 @@ void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNo
     cerr << "Created a total of " << uf.numDisjointSets() << " tracks" << endl;
 
     //Filter out bad tracks
-    for (const auto& [imageFeatureNode, index] : imageFeatureNodes_)
+    for (const auto&[imageFeatureNode, index] : imageFeatureNodes_)
     {
         int dSet = uf.findSet(index);
         if (uf.sizeOfSet(dSet) >= this->minTrackLength)
@@ -101,7 +102,7 @@ void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNo
             tracks_[dSet].push_back(index);
         }
     }
-   
+
     set<int> badTracks;
     for (const auto &[trackId, trackSet] : tracks_) {
         std::set<string> images;
@@ -161,28 +162,25 @@ vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
 {
     vector<CommonTrack> commonTracks;
     map<pair<string, string>, std::set<string>> _commonTracks;
-#if 0
-    for (auto it = this->trackNodes.begin(); it != this->trackNodes.end(); ++it)
-#endif
-        for (auto& trackNode : trackNodes_)
+    for (auto& trackNode : trackNodes_)
+    {
+        std::string vertexName;
+        TrackGraph::vertex_descriptor trackDescriptor;
+        std::tie(vertexName, trackDescriptor) = trackNode;
+        vector<string> imageNeighbours;
+
+        auto neighbours = boost::adjacent_vertices(trackDescriptor, tg);
+        for (auto vd : make_iterator_range(neighbours))
         {
-            std::string vertexName;
-            TrackGraph::vertex_descriptor trackDescriptor;
-            std::tie(vertexName, trackDescriptor) = trackNode;
-            vector<string> imageNeighbours;
-
-            auto neighbours = boost::adjacent_vertices(trackDescriptor, tg);
-            for (auto vd : make_iterator_range(neighbours))
-            {
-                imageNeighbours.push_back(tg[vd].name);
-            }
-            auto combinations = _getCombinations(imageNeighbours);
-
-            for (const auto &combination : combinations)
-            {
-                _commonTracks[combination].insert(vertexName);
-            }
+            imageNeighbours.push_back(tg[vd].name);
         }
+        auto combinations = _getCombinations(imageNeighbours);
+
+        for (const auto &combination : combinations)
+        {
+            _commonTracks[combination].insert(vertexName);
+        }
+    }
     for (auto pair : _commonTracks) {
         CommonTrack cTrack(pair.first, 0, pair.second);
         commonTracks.push_back(cTrack);
@@ -193,13 +191,18 @@ vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
 FeatureProperty ShoTracker::getFeatureProperty_(const ImageFeatures &imageFeatures, ImageFeatureNode fNode) const
 {
     assert(fNode.second < imageFeatures.keypoints.size());
-    return { fNode, imageFeatures.keypoints[fNode.second].pt, imageFeatures.colors[fNode.second] };
+    return {
+        fNode,
+        imageFeatures.keypoints[fNode.second].pt,
+        imageFeatures.colors[fNode.second],
+        imageFeatures.keypoints[fNode.second].size
+    };
 }
 
 set<pair<string, string>> ShoTracker::_getCombinations(const vector<string> &images) const
 {
     set<pair<string, string>> combinations;
-    for (size_t i = 0; i < images.size() -1; ++i) {
+    for (size_t i = 0; i < images.size() - 1; ++i) {
         for (size_t j = i + 1; j < images.size(); ++j) {
             auto pair = make_pair(images[i], images[j]);
             combinations.insert(pair);
@@ -215,8 +218,11 @@ void ShoTracker::mergeFeatureTracks(pair<string, int> feature1, pair<string, int
 
 bool ShoTracker::addFeatureToIndex(pair<string, int> feature, int featureIndex)
 {
-    auto insert = this->imageFeatureNodes_.insert(make_pair(feature, featureIndex));
+    auto insert = imageFeatureNodes_.insert(make_pair(feature, featureIndex));
     const auto wasAdded = insert.second;
+    if (wasAdded) {
+        reverseImageFeatureNodes_.insert(make_pair(featureIndex, feature));
+    }
     return wasAdded;
 }
 
@@ -227,18 +233,8 @@ map <int, vector <int>> ShoTracker::getTracks()
 
 std::pair<string, int> ShoTracker::retrieveFeatureByIndexValue(int index)
 {
-    static map<int, ImageFeatureNode> cachedFeatures;
     CV_Assert(index < imageFeatureNodes_.size());
-    if (cachedFeatures.find(index) == cachedFeatures.end()) {
-        for (auto it = imageFeatureNodes_.begin(); it != imageFeatureNodes_.end(); ++it)
-        {
-            if (it->second == index)
-            {
-                cachedFeatures[index] = it->first;
-            }
-        }
-    }
-    return cachedFeatures[index];
+    return reverseImageFeatureNodes_[index];
 }
 
 const std::map<string, TrackGraph::vertex_descriptor> ShoTracker::getImageNodes() const {

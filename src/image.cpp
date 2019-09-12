@@ -2,7 +2,19 @@
 #include <string>
 #include <fstream>
 #include "utilities.h"
+#include "bootstrap.h"
 using std::string;
+
+double toRadian(double deg)
+{
+    return deg * M_PI / DEG;
+}
+
+string parseFileNameFromPath(std::string path)
+{
+    return boost::filesystem::path{ path }.filename().string();
+}
+
 
 const ImageMetadata & Img::getMetadata() const
 {
@@ -99,7 +111,7 @@ Location Img::_extractCoordinatesFromExif(Exiv2::ExifData exifData)
     auto dop = _extractDopFromExif(exifData);
 
     // TODO  check the alttude value that is being parsed.
-    return {longitudeRef * longitude, latitudeRef * latitude, altitude, dop, false };
+    return { longitudeRef * longitude, latitudeRef * latitude, altitude, dop, false };
 }
 
 Img::CameraMakeAndModel Img::_extractMakeAndModelFromExif(Exiv2::ExifData exifData)

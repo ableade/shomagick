@@ -2,6 +2,7 @@
 #include <boost/graph/adjacency_iterator.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d.hpp>
+#include <future>
 #include <vector>
 #include <algorithm>
 #include "multiview.h"
@@ -61,16 +62,25 @@ using opengv::triangulation::triangulate;
 using opengv::rotation_t;
 using opengv::translation_t;
 
+
 Reconstructor::Reconstructor(
-    FlightSession flight, TrackGraph tg,
-    std::map<string, TrackGraph::vertex_descriptor> trackNodes,
-    std::map<string, TrackGraph::vertex_descriptor> imageNodes)
+    FlightSession flight, TrackGraph tg)
     : flight_(flight),
     tg_(tg),
-    trackNodes_(trackNodes),
-    imageNodes_(imageNodes),
     shotOrigins(),
-    rInverses() {}
+    rInverses() {
+    std::pair<vertex_iterator, vertex_iterator> allVertices =
+        boost::vertices(tg_);
+    for (; allVertices.first != allVertices.second; ++allVertices.first) {
+        if (tg_[*allVertices.first].is_image) {
+            imageNodes_[tg_[*allVertices.first].name] = *allVertices.first;
+        }
+        else {
+            trackNodes_[tg_[*allVertices.first].name] = *allVertices.first;
+        }
+    }
+}
+
 
 void Reconstructor::_alignMatchingPoints(const CommonTrack track,
     vector<Point2f>& points1,
@@ -215,7 +225,7 @@ void Reconstructor::twoViewReconstructionInliers(vector<Mat>& Rs_decomp, vector<
 
 TwoViewPose Reconstructor::recoverTwoViewPoseWithHomography(CommonTrack track, Mat& mask)
 {
-    const auto&[hom, points1, points2, homMask] = computePlaneHomography(track);
+    const auto&[hom, points1, points2, homMask] = commonTrackHomography(track);
     homMask.copyTo(mask);
     //cout << "Homography was " << hom << endl;
     if (!hom.rows || !hom.cols)
@@ -326,7 +336,7 @@ void Reconstructor::computeReconstructability(
 //“Motion and Structure from Motion in a Piecewise Planar Environment. See paper
 //by brown ”
 std::tuple<Mat, vector<Point2f>, vector<Point2f>, Mat>
-Reconstructor::computePlaneHomography(CommonTrack commonTrack) const {
+Reconstructor::commonTrackHomography(CommonTrack commonTrack) const {
     vector<Point2f> points1;
     vector<Point2f> points2;
     _alignMatchingPoints(commonTrack, points1, points2);
@@ -339,7 +349,11 @@ Reconstructor::computePlaneHomography(CommonTrack commonTrack) const {
 
 void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
     //undistort all images 
-    //flight.undistort();
+    auto fut = std::async(
+        std::launch::async,
+        [this] { flight_.undistort(); }
+    );
+
     vector<Reconstruction> reconstructions;
     set<string> reconstructionImages;
     for (const auto it : this->imageNodes_) {
@@ -362,11 +376,16 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
                 reconstructionImages.erase(track.imagePair.first);
                 reconstructionImages.erase(track.imagePair.second);
                 continueReconstruction(rec, reconstructionImages);
-                string recFileName = flight_.getImageDirectoryPath().parent_path().leaf().string() + "-" +
-                    to_string(reconstructions.size() + 1) + ".ply";
+                string recFileName = (
+                    flight_.getReconstructionsPath() /
+                    ("rec-" + to_string(reconstructions.size() + 1) + ".ply")
+                    ).string();
 
-                string mvsFileName = flight_.getImageDirectoryPath().parent_path().leaf().string() + "-" +
-                    to_string(reconstructions.size() + 1) + ".mvs";
+                string mvsFileName = (
+                    flight_.getReconstructionsPath() /
+                    ("rec-" + to_string(reconstructions.size() + 1) + ".mvs")
+                    ).string();
+
                 colorReconstruction(rec);
                 rec.saveReconstruction(recFileName);
                 exportToMvs(rec, mvsFileName);
@@ -375,13 +394,16 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
         }
     }
     cerr << "Generated a total of " << reconstructions.size() << " partial reconstruction \n";
+#if 0
+    //Merging reconstructions is broken
     if (reconstructions.size() > 1) {
         //We have multiple partial reconstructions. Try to merge all of them
         reconstructions[0].mergeReconstruction(reconstructions[1]);
-        string mergedRec = flight_.getImageDirectoryPath().parent_path().leaf().string() + "merged.ply";
+        string mergedRec = (flight_.getReconstructionsPath() / "merged.ply").string();
         reconstructions[0].alignToGps();
         reconstructions[0].saveReconstruction(mergedRec);
     }
+#endif
     auto totalPoints = 0;
     for (auto & rec : reconstructions) {
         totalPoints += rec.getCloudPoints().size();
@@ -395,6 +417,7 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
 
     //Disable gps alignment. Alignment is broken
     rec.setGPS(flight_.hasGps());
+    //rec.setGPS(false);
     Mat mask;
     //TwoViewPose poseParameters = recoverTwoCameraViewPose(track, mask);
     TwoViewPose poseParameters = recoverTwoViewPoseWithHomography(track, mask);
@@ -440,7 +463,6 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
         return std::nullopt;
     }
     colorReconstruction(rec);
-    rec.saveReconstruction("green.ply");
     cerr << "Generated " << rec.getCloudPoints().size() << "points from initial motion " << endl;
     singleViewBundleAdjustment(track.imagePair.second, rec);
     retriangulate(rec);
@@ -448,12 +470,16 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
     return rec;
 }
 
+
 void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& images) {
     bundle(rec);
     removeOutliers(rec);
     rec.alignToGps();
     colorReconstruction(rec);
-    rec.saveReconstruction("partialgreen.ply");
+    auto partialRecFileName = (flight_.getReconstructionsPath() / "green.ply").string();
+    auto partialMVSFileName = (flight_.getReconstructionsPath() / "green.mvs").string();
+    rec.saveReconstruction(partialRecFileName);
+    exportToMvs(rec, partialMVSFileName);
     rec.updateLastCounts();
     while (1) {
         auto candidates = reconstructedPointForImages(rec, images);
@@ -490,6 +516,7 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
             }
             else {
                 //TODO implement local neighbourhood shot bundling
+                //localBundleAdjustment(imageName, rec);
             }
             auto after = rec.getCloudPoints().size();
             if (after - before > 0 && before > 0)
