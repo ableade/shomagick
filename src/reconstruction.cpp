@@ -173,6 +173,9 @@ void Reconstruction::alignToGps()
         return;
 
     const auto[s, a, b] = getGPSTransform();
+    //std::cout << " s is " << s << "\n";
+    //std::cout << " a is " << a << "\n";
+    //std::cout << " b is " << b << "\n";
     applySimilarity(s, a, b);
 }
 
@@ -247,7 +250,7 @@ tuple<double, cv::Matx33d, ShoColumnVector3d> Reconstruction::getGPSTransform()
     auto p = fitPlane(shotOriginsRowMean, plane, verticals);
     auto rPlane = calculateHorizontalPlanePosition(Mat(p));
 
-    Mat3d cvRPlane;
+    Mat cvRPlane(3, 3, CV_64FC1);
     eigen2cv(rPlane, cvRPlane);
 #if 0
     cout << "Size of CV r plane was " << cvRPlane.size() << "\n";

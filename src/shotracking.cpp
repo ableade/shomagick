@@ -160,6 +160,7 @@ TrackGraph ShoTracker::buildTracksGraph(const std::vector<FeatureProperty> &prop
 
 vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
 {
+    auto minCommonTracks = 50;
     vector<CommonTrack> commonTracks;
     map<pair<string, string>, std::set<string>> _commonTracks;
     for (auto& trackNode : trackNodes_)
@@ -182,6 +183,10 @@ vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
         }
     }
     for (auto pair : _commonTracks) {
+        //Skip pairs that have common tracks less than a length of 50
+        if (pair.second.size() < minCommonTracks)
+            continue;
+
         CommonTrack cTrack(pair.first, 0, pair.second);
         commonTracks.push_back(cTrack);
     }
