@@ -165,7 +165,7 @@ cv::Ptr<RobustMatcher> RobustMatcher::create(Feature alg, const int numFeatures,
         cv::cuda::printCudaDeviceInfo(cv::cuda::getDevice());
     }
     else {
-        cerr << "Unable to detect a CUDA device on this system. Will run in normal mode";
+        cerr << "Unable to detect a CUDA device on this system. Will run in normal mode\n";
     }
 
     switch (alg)

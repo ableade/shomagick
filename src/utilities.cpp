@@ -31,8 +31,11 @@ bool checkIfCudaEnabled()
         cv::cuda::printCudaDeviceInfo(cv::cuda::getDevice());
         return true;
     }
-    else
-    {
-        return false;
+    else if (cudaEnabled == 0) {
+        cerr << "Please recompile Open CV with CUDA support \n";
     }
+    else if (cudaEnabled == -1) {
+        cerr << "The CUDA driver is not installed, or is incompatible \n";
+    }
+    return false;
 }
