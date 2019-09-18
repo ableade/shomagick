@@ -14,6 +14,7 @@
 #include <opencv2/xfeatures2d.hpp>
 #include <opencv2/xfeatures2d/cuda.hpp>
 #include "utilities.h"
+#include "cudasurf.hpp"
 
 using std::cout;
 using std::cerr;
@@ -137,21 +138,26 @@ cv::Ptr<RobustMatcher> RobustMatcher::createSurfMatcher(const bool cudaEnabled, 
 {
     cv::Ptr<cv::DescriptorMatcher> matcher;
     cv::Ptr<cv::cuda::DescriptorMatcher> cMatcher;
-
+    Ptr<FeatureDetector> detector;
+    Ptr<FeatureDetector> extractor;
     if (cudaEnabled)
     {
+        detector = CudaSurfFeatureDetector::create();
+        extractor = CudaSurfFeatureDetector::create();
         cMatcher = cv::cuda::DescriptorMatcher::createBFMatcher();
     }
     else
     {
+        detector = SURF::create(minHessian);
+        extractor = SURF::create(minHessian);
         matcher = cv::makePtr<cv::BFMatcher>();
     }
 
     return cv::makePtr<RobustMatcher>(
         cudaEnabled,
         ratio,
-        SURF::create(minHessian),
-        SURF::create(minHessian),
+        detector,
+        extractor,
         matcher,
         cMatcher
         );

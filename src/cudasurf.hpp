@@ -20,7 +20,7 @@ public:
     CudaSurfFeatureDetector();
 
     static cv::Ptr<CudaSurfFeatureDetector> create( 
-        double hessianThreshold, 
+        double hessianThreshold = 300, 
         int nOctaves =4, 
         int nOctaveLayers =2, 
         bool extended= false, 

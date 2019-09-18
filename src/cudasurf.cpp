@@ -36,6 +36,12 @@ CudaSurfFeatureDetector::CudaSurfFeatureDetector(
  void CudaSurfFeatureDetector::detect(InputArray image, vector<KeyPoint>& keypoints, InputArray mask) {
      cudaSurf_(image.getGpuMat(), mask.getGpuMat(), keypoints);
  }
+
+ void CudaSurfFeatureDetector::compute(InputArray image, vector<KeyPoint>& keypoints, OutputArray descriptors) {
+     cv::cuda::GpuMat mask;
+     auto & gDesc = descriptors.getGpuMatRef();
+     cudaSurf_(image.getGpuMat(), mask, keypoints, gDesc, true);
+ }
  
  void CudaSurfFeatureDetector::detectAndCompute(
      InputArray image, 
@@ -47,4 +53,5 @@ CudaSurfFeatureDetector::CudaSurfFeatureDetector(
     auto & gDesc = descriptors.getGpuMatRef();
     cudaSurf_(image.getGpuMat(), mask.getGpuMat(), keypoints, gDesc, useProvidedKeypoints);
 }
+
 
