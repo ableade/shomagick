@@ -10,6 +10,7 @@ const int HAHOG_EDGE_TRESHOLD = 10;
 const bool HAHOG_NORMALIZE_TO_UCHAR = false;
 
 class HahogFeatureDetector : public cv::Feature2D {
+    
 private:
     float peakTreshhold_;
     int edgeThreshold_;
