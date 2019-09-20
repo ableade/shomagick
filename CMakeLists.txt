@@ -86,7 +86,6 @@ find_package(exiv2 REQUIRED)
 
 find_library(exiv_lib exiv2)
 
-message("Exiv found was ${exiv_lib}")
 find_package(OpenMP)
 if (OPENMP_FOUND)
   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -120,7 +119,7 @@ find_package(
 
 find_package(Ceres REQUIRED)
 
-find_package(OpenGV REQUIRED)
+find_package(opengv REQUIRED)
 
 find_package(Glog REQUIRED)
 
@@ -134,25 +133,6 @@ if (SUITESPARSE_FOUND)
   target_link_libraries(shomagick PRIVATE ${SUITESPARSE_LIBRARIES})
 endif()
 
-# Bundle
-set(BUNDLE_FILES
-    ${BUNDLE_SOURCE_DIR}/src/error_utils.h
-    ${BUNDLE_SOURCE_DIR}/src/motion_prior_terms.h
-    ${BUNDLE_SOURCE_DIR}/src/absolute_motion_terms.h
-    ${BUNDLE_SOURCE_DIR}/src/relative_motion_terms.h
-    ${BUNDLE_SOURCE_DIR}/src/bundle_adjuster.cc)
-
-	add_library(bundle ${BUNDLE_FILES})
-
-target_link_libraries(bundle PRIVATE
-    ${GFLAGS_LIBRARY}
-    ${GLOG_LIBRARY}
-	${CERES_LIBRARIES}
-    ${LAPACK_LIBRARIES}
-    ${SUITESPARSE_LIBRARIES}
-)
-
-target_include_directories(bundle PRIVATE ${EIGEN_INCLUDE_DIRS})
 
 target_include_directories(shomagick
 	PUBLIC
@@ -187,7 +167,6 @@ target_link_libraries(
 		exiv2
 		${GLOG_LIBRARIES}
 		${OpenMP_CXX_LIBRARIES}
-		bundle
 		vl
 )
 
@@ -195,7 +174,7 @@ get_target_property(CONF_INCLUDE_DIRS shomagick INTERFACE_INCLUDE_DIRECTORIES)
 set(INSTALL_CONFIGDIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/cmake/Shomagick)
 
 
-install(TARGETS shomagick vl bundle EXPORT shomagick-targets DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+install(TARGETS shomagick vl EXPORT shomagick-targets DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 set_target_properties(shomagick PROPERTIES EXPORT_NAME Shomagick)
 
 install(EXPORT shomagick-targets

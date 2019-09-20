@@ -1,5 +1,6 @@
 #pragma once
 #include <Eigen/Core>
+#include <iostream>
 #include <opencv2/core.hpp>
 
 static constexpr auto defaultTolerance = 1e-08;
