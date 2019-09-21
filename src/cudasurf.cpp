@@ -44,6 +44,7 @@ CudaSurfFeatureDetector::CudaSurfFeatureDetector(
      OutputArray &descriptors,
      bool useProvidedKeypoints
 ){
-    cudaSurf_(image.getGpuMat(), mask.getGpuMat(), keypoints, descriptors.getGpuMat(), useProvidedKeypoints);
+    auto & gDesc = descriptors.getGpuMatRef();
+    cudaSurf_(image.getGpuMat(), mask.getGpuMat(), keypoints, gDesc, useProvidedKeypoints);
 }
 

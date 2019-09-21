@@ -76,6 +76,7 @@ add_library(
 	${SOURCE_DIR}/transformations.cpp  
 	${SOURCE_DIR}/shotracking.cpp  
 	${SOURCE_DIR}/utilities.cpp
+	${SOURCE_DIR}/cudasurf.cpp
 )
 
 find_package(Boost 1.5 COMPONENTS filesystem serialization REQUIRED)
