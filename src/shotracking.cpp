@@ -122,8 +122,12 @@ void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNo
     cerr << "Found a total of " << tracks_.size() << " good tracks " << endl;
 }
 
-TrackGraph ShoTracker::buildTracksGraph(const std::vector<FeatureProperty> &props)
+TrackGraph ShoTracker::buildTracksGraph()
 {
+    vector<pair<ImageFeatureNode, ImageFeatureNode>> featureNodes;
+    vector<FeatureProperty> props;
+    createFeatureNodes(featureNodes, props);
+    createTracks(featureNodes);
     TrackGraph tg;
     for (auto it = tracks_.begin(); it != tracks_.end(); ++it)
     {

@@ -26,13 +26,17 @@ Mat_<double> vectorNorm(InputArray src, int axis)
     return dataSquared;
 }
 
-double calculateAngleBetweenVectors(const cv::Point3d& v1, const cv::Point3d& v2, bool directed)
+double calculateAngleBetweenVectors(const cv::Point3d& v0, const cv::Point3d& v1, bool directed)
 {
-    double cosAngle = v1.dot(v2) / (cv::norm(v1) * cv::norm(v2));
+    double cosAngle = v0.dot(v1) / (cv::norm(v0) * cv::norm(v1));
+    std::clamp(cosAngle, -1.0, 1.0);
+
+#if 0
     if (cosAngle > 1.0)
         return 0.0;
     else if (cosAngle < -1.0)
         return CV_PI;
+#endif
     if (!directed)
         cosAngle = std::abs(cosAngle);
     return std::acos(cosAngle);

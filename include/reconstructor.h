@@ -41,6 +41,9 @@ const auto LINEAR_SOLVER_TYPE = "DENSE_QR";
 const int MIN_INLIERS = 20;
 const double BUNDLE_OUTLIER_THRESHOLD = 0.006;
 const bool OPTIMIZE_CAMERA_PARAEMETERS = true;
+const int LOCAL_BUNDLE_MAX_SHOTS = 30;
+const int LOCAL_BUNDLE_MIN_COMMON_POINTS = 20;
+const int LOCAL_BUNDLE_RADIUS = 3;
 
 class Reconstructor
 {
@@ -51,51 +54,54 @@ public:
     using ImageNodes = std::map<ImageName, TrackGraph::vertex_descriptor>;
 
 private:
-  FlightSession flight_;
-  TrackGraph tg_;
-  TrackNodes trackNodes_;
-  ImageNodes imageNodes_;
-  std::map<std::string, ShoColumnVector3d> shotOrigins;
-  std::map<std::string, cv::Mat> rInverses;
-  void _alignMatchingPoints(const CommonTrack track, std::vector<cv::Point2f>& points1, std::vector<cv::Point2f>& points2) const;
-  std::vector<cv::DMatch> _getTrackDMatchesForImagePair(const CommonTrack track) const;
-  void _addCameraToBundle(BundleAdjuster& ba, const Camera camera, bool fixCameras);
-  void _getCameraFromBundle(BundleAdjuster& ba, Camera& cam);
-  void _computeTwoViewReconstructionInliers(opengv::bearingVectors_t b1, opengv::bearingVectors_t b2, 
-      opengv::rotation_t r, opengv::translation_t t) const;
-  TwoViewPose _computeRotationInliers(opengv::bearingVectors_t& b1, opengv::bearingVectors_t& b2,
-      const opengv::rotation_t& rotation, cv::Mat& cvMask) const;
+    FlightSession flight_;
+    TrackGraph tg_;
+    TrackNodes trackNodes_;
+    ImageNodes imageNodes_;
+    std::map<std::string, ShoColumnVector3d> shotOrigins;
+    std::map<std::string, cv::Mat> rInverses;
+    void _alignMatchingPoints(const CommonTrack track, std::vector<cv::Point2f>& points1, std::vector<cv::Point2f>& points2) const;
+    std::vector<cv::DMatch> _getTrackDMatchesForImagePair(const CommonTrack track) const;
+    void _addCameraToBundle(BundleAdjuster& ba, const Camera camera, bool fixCameras);
+    void _getCameraFromBundle(BundleAdjuster& ba, Camera& cam);
+    void _computeTwoViewReconstructionInliers(opengv::bearingVectors_t b1, opengv::bearingVectors_t b2,
+        opengv::rotation_t r, opengv::translation_t t) const;
+    TwoViewPose _computeRotationInliers(opengv::bearingVectors_t& b1, opengv::bearingVectors_t& b2,
+        const opengv::rotation_t& rotation, cv::Mat& cvMask) const;
 
 public:
     Reconstructor(FlightSession flight, TrackGraph tg);
-  TwoViewPose recoverTwoCameraViewPose(CommonTrack track, cv::Mat& mask);
-  TwoViewPose twoViewReconstructionRotationOnly(CommonTrack track, cv::Mat &mask);
-  template <typename T>
-  void twoViewReconstructionInliers(std::vector<cv::Mat>& Rs_decomp, std::vector<cv::Mat>& ts_decomp, std::vector<int> possibleSolutions,
-      std::vector<cv::Point_<T>> points1, std::vector<cv::Point_<T>> points2) const;
-  TwoViewPose recoverTwoViewPoseWithHomography(CommonTrack track, cv::Mat& mask);
-  float computeReconstructabilityScore(int tracks, cv::Mat inliers, int treshold = 0.3);
-  void computeReconstructability(const ShoTracker& tracker, std::vector<CommonTrack>& commonTracks);
-  std::tuple<cv::Mat, std::vector<cv::Point2f>, std::vector<cv::Point2f>, cv::Mat> commonTrackHomography(CommonTrack commonTrack) const;
-  void runIncrementalReconstruction (const ShoTracker& tracker);
+    TwoViewPose recoverTwoCameraViewPose(CommonTrack track, cv::Mat& mask);
+    TwoViewPose twoViewReconstructionRotationOnly(CommonTrack track, cv::Mat &mask);
+    template <typename T>
+    void twoViewReconstructionInliers(std::vector<cv::Mat>& Rs_decomp, std::vector<cv::Mat>& ts_decomp, std::vector<int> possibleSolutions,
+        std::vector<cv::Point_<T>> points1, std::vector<cv::Point_<T>> points2) const;
+    TwoViewPose recoverTwoViewPoseWithHomography(CommonTrack track, cv::Mat& mask);
+    float computeReconstructabilityScore(int tracks, cv::Mat inliers, int treshold = 0.3);
+    void computeReconstructability(const ShoTracker& tracker, std::vector<CommonTrack>& commonTracks);
+    std::tuple<cv::Mat, std::vector<cv::Point2f>, std::vector<cv::Point2f>, cv::Mat> commonTrackHomography(CommonTrack commonTrack) const;
+    void runIncrementalReconstruction(const ShoTracker& tracker);
 
-  using OptionalReconstruction = std::optional<Reconstruction>;
-  OptionalReconstruction beginReconstruction (CommonTrack track, const ShoTracker& tracker);
-  void continueReconstruction(Reconstruction& rec, std::set<std::string>& images);
-  void triangulateShotTracks(std::string image1, Reconstruction& rec);
-  void triangulateTrack(std::string trackId, Reconstruction& rec);
-  void retriangulate(Reconstruction& rec);
-  ShoColumnVector3d getShotOrigin(const Shot& shot);
-  cv::Mat getRotationInverse(const Shot& shot);
-  void singleViewBundleAdjustment(std::string shotId, Reconstruction& rec);
-  const vertex_descriptor getImageNode(const std::string imageName) const;
-  const vertex_descriptor getTrackNode(std::string trackId) const;
-  void plotTracks(CommonTrack track) const;
-  void exportToMvs(const Reconstruction& rec, const std::string mvsFileName);
-  void bundle(Reconstruction& rec);
-  void removeOutliers(Reconstruction & rec);
-  std::tuple<bool, ReconstructionReport> resect(Reconstruction & rec, const vertex_descriptor imageVetex,
-      double threshold = 0.004, int iterations = 1000, double probability = 0.999, int resectionInliers = 10 );
-  std::vector<std::pair<std::string, int>> reconstructedPointForImages(const Reconstruction & rec, std::set<std::string>& images);
-  void colorReconstruction(Reconstruction &rec);
+    using OptionalReconstruction = std::optional<Reconstruction>;
+    OptionalReconstruction beginReconstruction(CommonTrack track, const ShoTracker& tracker);
+    void continueReconstruction(Reconstruction& rec, std::set<std::string>& images);
+    void triangulateShotTracks(std::string image1, Reconstruction& rec);
+    void triangulateTrack(std::string trackId, Reconstruction& rec);
+    void retriangulate(Reconstruction& rec);
+    ShoColumnVector3d getShotOrigin(const Shot& shot);
+    cv::Mat getRotationInverse(const Shot& shot);
+    void singleViewBundleAdjustment(std::string shotId, Reconstruction& rec);
+    void localBundleAdjustment(std::string centralShotId, Reconstruction& rec);
+    const vertex_descriptor getImageNode(const std::string imageName) const;
+    const vertex_descriptor getTrackNode(std::string trackId) const;
+    void plotTracks(CommonTrack track) const;
+    void exportToMvs(const Reconstruction& rec, const std::string mvsFileName);
+    void bundle(Reconstruction& rec);
+    void removeOutliers(Reconstruction & rec);
+    std::tuple<bool, ReconstructionReport> resect(Reconstruction & rec, const vertex_descriptor imageVetex,
+        double threshold = 0.004, int iterations = 1000, double probability = 0.999, int resectionInliers = 10);
+    std::vector<std::pair<std::string, int>> reconstructedPointForImages(const Reconstruction & rec, std::set<std::string>& images);
+    void colorReconstruction(Reconstruction &rec);
+    std::set<std::string> directShotNeighbors(std::set<std::string> shotIds, const Reconstruction& rec,
+        int maxNeighbors, int minCommonPoints = LOCAL_BUNDLE_MIN_COMMON_POINTS);
 };

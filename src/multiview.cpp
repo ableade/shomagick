@@ -391,8 +391,7 @@ Matrix3d calculateHorizontalPlanePosition(cv::Mat p)
 {
     const auto v0ColRange = p.colRange(0, 3);
     const auto v0 = Point3d(v0ColRange);
-    const Point3d v1{ 0.0, 0.1, 1.0 };
-
+    const Point3d v1{ 0.0, 0.0, 1.0 };
     const auto angle = calculateAngleBetweenVectors(v0, v1);
     const auto axis = v0.cross(v1);
     Vector3d eigenAxis;

@@ -85,16 +85,27 @@ void HahogFeatureDetector::compute(cv::InputArray image, std::vector<cv::KeyPoin
 {
 }
 
-void HahogFeatureDetector::detectAndCompute(cv::InputArray image, cv::InputArray mask, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors, bool useProvidedKeypoints)
+void HahogFeatureDetector::detectAndCompute(cv::InputArray image, cv::InputArray mask, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray& descriptors, bool useProvidedKeypoints)
 {
+    //TODO Currently exploring if we need to do this every time
+    {
+        sift_ = vl_sift_new(16, 16, 1, 3, 0);
+        covdet_ = vl_covdet_new(VL_COVDET_METHOD_HESSIAN);
+    }
+
     cv::Mat mat = image.getMat();
+    //Scale pixels to floating point values between 0 and 1. Vl feat expects this
+    mat.convertTo(mat, CV_32FC1, 1.0 / 255.0);
+    std::cout << "Rows *m flat " << image.rows() << "\n";
+    std::cout << "Cols *m flat " << image.cols() << "\n";
     cv::Mat imFlat = mat.reshape(1, 1).clone();
     if (imFlat.isContinuous()) {
         std::cout << "We have continious \n";
     }
     std::cout << "Rows * cols m flat " << imFlat.rows * imFlat.cols << "\n";
-    std::cout << "Rows *m flat " << imFlat.rows << "\n";
-    std::cout << "Cols *m flat " << imFlat.cols << "\n";
+    std::cout << "Rows m flat " << imFlat.rows << "\n";
+    std::cout << "Cols m flat " << imFlat.cols << "\n";
+    std::cout << "Type of mat is " << mat.type() << "\n";
     // set various parameters (optional)
     vl_covdet_set_first_octave(covdet_, 0);
     //vl_covdet_set_octave_resolution(covdet, octaveResolution);
@@ -103,9 +114,10 @@ void HahogFeatureDetector::detectAndCompute(cv::InputArray image, cv::InputArray
 
     vl_covdet_set_target_num_features(covdet_, featuresSize_);
     vl_covdet_set_use_adaptive_suppression(covdet_, useAdaptiveSupression_);
-
-    std::vector<float> buffer;
-    buffer.assign((float*)imFlat.data, (float*)imFlat.data + imFlat.total());
+    
+    std::vector<float> buffer{ (float*)imFlat.data, (float*)imFlat.data + imFlat.total() };
+    //buffer.assign((float*)
+    std::cout << "Buffer size is " << buffer.size() << "\n";
     //const float* buffer = imFlat.ptr<float>(0);
     //vl_covdet_put_image(covdet_, buffer, image.cols(), image.rows());
 
@@ -172,6 +184,39 @@ void HahogFeatureDetector::detectAndCompute(cv::InputArray image, cv::InputArray
             (double)patchRelativeExtent / (3.0 * (4 + 1) / 2) / patchStep,
             VL_PI / 2);
     }
+    for (auto i = 0; i < 5; ++i) {
+        std::cout << "Descriptor at " << i << " is " << desc.at(i) << "\n";
+    }
+    descriptors.create(static_cast<int>(numFeatures), static_cast<int>(dimension), CV_32FC1);
+    cv::Mat& dst = descriptors.getMatRef();
     cv::Mat descriptorsMat(static_cast<int>(numFeatures), static_cast<int>(dimension), CV_32FC1, desc.data());
-    descriptors.assign(descriptorsMat);
+    dst = descriptorsMat.clone();
+  
+    /*
+    int rows = dst.rows;
+    int cols = dst.cols;
+
+    if (dst.isContinuous()) {
+        cols = rows * cols;
+        rows = 1;
+    }
+
+    for (int r = 0; r < rows; ++r)
+    {
+        uchar *pOutput = dst.ptr<uchar>(r);
+
+        for (int c = 0; c < cols; ++c)
+        {
+            *pOutput = (uchar)desc.at(c);
+            ++pOutput;
+        }
+    }
+    */
+    //Apply square root mapping to features.
+    //cv::sqrt(dst, dst);
+
+    //std::cout << descriptorsMat.row(0) << "\n";
+    //std::cout << descriptorsMat.row(1) << "\n";
+    //std::cout << descriptorsMat.row(2) << "\n";
+    //descriptors.assign(descriptorsMat);
 }

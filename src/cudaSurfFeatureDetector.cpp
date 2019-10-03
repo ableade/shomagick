@@ -1,4 +1,4 @@
-#include "cudasurf.hpp"
+#include "cudaSurfFeatureDetector.hpp"
 
 using std::vector;
 using cv::InputArray;

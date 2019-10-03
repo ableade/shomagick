@@ -173,17 +173,17 @@ void Reconstruction::alignToGps()
         return;
 
     const auto[s, a, b] = getGPSTransform();
-    //std::cout << " s is " << s << "\n";
-    //std::cout << " a is " << a << "\n";
-    //std::cout << " b is " << b << "\n";
     applySimilarity(s, a, b);
 }
 
 void Reconstruction::applySimilarity(double s, Matx33d a, ShoColumnVector3d b)
 {
     for (auto &[trackId, cp] : cloudPoints) {
+        //std::cout << "Track id is " << trackId << "\n";
         const auto pointCoordinates = Mat(convertVecToRowVector(cp.getPosition()));
+        //std::cout << "Point coordinates are " << pointCoordinates << "\n";
         ShoColumnVector3d alignedCoordinate = (s *a) * (pointCoordinates);
+        //std::cout << "Aligned coordinate before adding b is " << alignedCoordinate << "\n";
         alignedCoordinate += b;
         cp.setPosition(Point3d{ alignedCoordinate(0,0), alignedCoordinate(1,0), alignedCoordinate(2,0) });
     }
@@ -236,7 +236,7 @@ tuple<double, cv::Matx33d, ShoColumnVector3d> Reconstruction::getGPSTransform()
         gpsPositions2D.push_back(Vec2d{ gpsPosition.x, gpsPosition.y });
         const auto[x, y, z] = shot.getOrientationVectors();
 
-        // We always assume that the orientation type is always horizontal
+        // We always assume that the orientation type is horizontal
 
         //cout << "Size of x is " << Mat(x).size() << "\n\n";
         //cout << "Type of x is " << Mat(x).type() << "\n\n";
@@ -245,11 +245,15 @@ tuple<double, cv::Matx33d, ShoColumnVector3d> Reconstruction::getGPSTransform()
         plane.push_back(Mat(z));
         verticals.push_back(-Mat(y));
     }
+
     Mat shotOriginsRowMean;
     reduce(shotOrigins, shotOriginsRowMean, 0, cv::REDUCE_AVG);
-    auto p = fitPlane(shotOriginsRowMean, plane, verticals);
+    Mat shotOriginsSub = shotOrigins.clone();
+    for (auto i = 0; i < shotOrigins.rows; ++i) {
+        shotOriginsSub.row(i) -= shotOriginsRowMean;
+    }
+    auto p = fitPlane(shotOriginsSub, plane, verticals);
     auto rPlane = calculateHorizontalPlanePosition(Mat(p));
-
     Mat cvRPlane(3, 3, CV_64FC1);
     eigen2cv(rPlane, cvRPlane);
 #if 0
@@ -282,17 +286,20 @@ tuple<double, cv::Matx33d, ShoColumnVector3d> Reconstruction::getGPSTransform()
         //Using input array a vector of Mat type elements with 3 channels stacks them horizontally 
         //auto tAffine = getAffine2dMatrixNoShearing(shotOrigins, Mat(gpsPositions));
        // auto tAffine = getAffine2dMatrixNoShearing(shotOrigins, shotOrigins);
+        cv::Mat dotPlane2d = dotPlaneProduct.colRange(0, 2).reshape(2).clone();
+        auto checkVector = dotPlane2d.checkVector(2);
+        tAffine = estimateAffinePartial2D(dotPlane2d, gpsPositions2D);
 
-        tAffine = estimateAffinePartial2D(shotOrigins2D, gpsPositions2D);
         tAffine.push_back(Mat(ShoRowVector3d{ 0,0,1 }));
         //TODO apply scalar operation to s
         const auto s = pow(determinant(tAffine), 0.5);
         auto a = Mat(Matx33d::eye());
-        tAffine = tAffine / s;
+        Mat tAffineS = tAffine / s;
         cv::Mat aBlock = a(cv::Rect(0, 0, 2, 2));
-        tAffine.copyTo(aBlock);
+        tAffineS(cv::Rect(0, 0, 2, 2)).copyTo(aBlock);
         a *= cvRPlane;
-        auto b3 = mean(shotOrigins.colRange(0, 2))[0] - mean(s * Mat(gpsPositions).reshape(1).colRange(0, 2))[0];
+        a *= cvRPlane;
+        auto b3 = (mean(Mat(gpsPositions).reshape(1).col(2))[0] - mean(s * dotPlaneProduct.col(2))[0]);
         ShoColumnVector3d b{ tAffine.at<double>(0, 2), tAffine.at<double>(1, 2), b3 };
         return make_tuple(s, a, b);
     }

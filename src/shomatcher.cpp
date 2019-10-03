@@ -1,6 +1,7 @@
 #include "shomatcher.hpp"
 #include "kdtree.h"
 #include "camera.h"
+#include "utilities.h"
 #include "RobustMatcher.h"
 #include <fstream>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -29,19 +30,17 @@ using std::vector;
 using std::string;
 using json = nlohmann::json;
 
-ShoMatcher::ShoMatcher(FlightSession flight, bool runCuda)
+ShoMatcher::ShoMatcher(FlightSession flight, int featureSize, RobustMatcher::Feature featureType)
     : flight_(flight)
-    , runCuda_(runCuda)
+    , featureSize_(featureSize)
     , kd_(nullptr)
     , candidateImages()
-    , rMatcher_(RobustMatcher::create(RobustMatcher::Feature::orb))
-{
+    , rMatcher_(RobustMatcher::create(featureType)){}
 
-}
 void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
 {
     set<pair<string, string>> alreadyPaired;
-    this->buildKdTree();
+    buildKdTree();
     auto imageSet = flight_.getImageSet();
     for (const auto img : imageSet) {
         vector<string> matchSet;
@@ -90,24 +89,24 @@ void ShoMatcher::getCandidateMatchesFromFile(string candidatesFile) {
     }
 }
 
-int ShoMatcher::extractFeatures(bool resize)
+int ShoMatcher::extractFeatures()
 {
     //set feature process size to -1 to avoid resizing
-    if (FEATURE_PROCESS_SIZE != -1 && resize) {
+    if (featureSize_ != -1) {
         auto maxSize = max(flight_.getCamera().getHeight(), flight_.getCamera().getWidth());
-        int fx = flight_.getCamera().getWidth() * FEATURE_PROCESS_SIZE / maxSize;
-        int fy = flight_.getCamera().getHeight() * FEATURE_PROCESS_SIZE / maxSize;
+        int fx = flight_.getCamera().getWidth() * featureSize_ / maxSize;
+        int fy = flight_.getCamera().getHeight() * featureSize_ / maxSize;
         flight_.getCamera().setScaledHeight(fy);
         flight_.getCamera().setScaledWidth(fx);
     }
 
     set<string> detected;
-    if (!this->candidateImages.size())
+    if (!candidateImages.size())
         return 0;
-
-#pragma omp parallel shared(detected)
-    {
-#pragma omp for
+    const auto cudaEnabled = checkIfCudaEnabled();
+    //Only use parallelism if not on a cuda device. Working with one cuda device from  multiple threads is undefined behaviour
+//#pragma omp parallel for if(!cudaEnabled) shared(detected)
+#pragma omp parallel for shared(detected)
         for (auto i = 0; i < candidateImages.size(); ++i)
             //for (auto it = candidateImages.begin(); it != candidateImages.end(); it++)
         {
@@ -115,7 +114,7 @@ int ShoMatcher::extractFeatures(bool resize)
             advance(it, i);
 #pragma omp critical 
             {
-                if (detected.find(it->first) == detected.end() && _extractFeature(it->first, resize))
+                if (detected.find(it->first) == detected.end() && _extractFeature(it->first))
                 {
                     detected.insert(it->first);
                 }
@@ -131,7 +130,7 @@ int ShoMatcher::extractFeatures(bool resize)
                 {
                     if (detected.find(*_it) == detected.end())
                     {
-                        if (_extractFeature(*_it, resize))
+                        if (_extractFeature(*_it))
                         {
                             detected.insert(*_it);
                         }
@@ -139,12 +138,11 @@ int ShoMatcher::extractFeatures(bool resize)
                 }
 
             }
-        }
     }
     return detected.size();
 }
 
-bool ShoMatcher::_extractFeature(string fileName, bool resize)
+bool ShoMatcher::_extractFeature(string fileName)
 {
     auto imageFeaturePath = flight_.getImageFeaturesPath() / (fileName + ".yaml");
     auto modelimageNamePath = flight_.getImageDirectoryPath() / (fileName);
@@ -163,7 +161,7 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
     if (modelImg.empty())
         return false;
 
-    if (resize && featureImage.size().width > FEATURE_PROCESS_SIZE) {
+    if (featureSize_ != -1) {
         cv::resize(modelImg, modelImg, { flight_.getCamera().getScaledWidth(), flight_.getCamera().getScaledHeight() }, 0, 0, cv::INTER_AREA);
         cv::resize(featureImage, featureImage, { flight_.getCamera().getScaledWidth(), flight_.getCamera().getScaledHeight() }, 0, 0, cv::INTER_AREA);
         cout << "Size of feature image is " << featureImage.size() << "\n";
@@ -176,7 +174,6 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
     rMatcher_->detectAndCompute(featureImage, keypoints, descriptors);
 
     cout << "Extracted " << descriptors.rows << " points for  " << fileName << endl;
-
     for (auto &keypoint : keypoints) {
         if (channels == 1)
             colors.push_back(modelImg.at<uchar>(keypoint.pt));
@@ -191,7 +188,7 @@ bool ShoMatcher::_extractFeature(string fileName, bool resize)
 
 void ShoMatcher::runRobustFeatureMatching()
 {
-    if (!this->candidateImages.size())
+    if (!candidateImages.size())
         return;
 
     map<string, ImageFeatures> loadedFeatures;
@@ -235,8 +232,8 @@ void ShoMatcher::runRobustFeatureMatching()
 
 void ShoMatcher::buildKdTree()
 {
-    kd_ = kd_create(this->dimensions_);
-    for (auto &img : this->flight_.getImageSet())
+    kd_ = kd_create(dimensions_);
+    for (auto &img : flight_.getImageSet())
     {
         auto pos = vector<double>{ img.getMetadata().location.longitude, img.getMetadata().location.latitude };
         void *dt = &img;
@@ -252,19 +249,19 @@ map<string, std::vector<string>> ShoMatcher::getCandidateImages() const
 
 void ShoMatcher::plotMatches(string img1, string img2) const {
     Mat imageMatches;
-    Mat image1 = imread((this->flight_.getImageDirectoryPath() / img1).string(),
+    Mat image1 = imread((flight_.getImageDirectoryPath() / img1).string(),
         cv::IMREAD_GRAYSCALE);
-    Mat image2 = imread((this->flight_.getImageDirectoryPath() / img2).string(),
+    Mat image2 = imread((flight_.getImageDirectoryPath() / img2).string(),
         cv::IMREAD_GRAYSCALE);
-    auto img1Matches = this->flight_.loadMatches(img1);
-    auto kp1 = this->flight_.loadFeatures(img1).getKeypoints();
-    auto kp2 = this->flight_.loadFeatures(img2).getKeypoints();
+    auto img1Matches = flight_.loadMatches(img1);
+    auto kp1 = flight_.loadFeatures(img1).getKeypoints();
+    auto kp2 = flight_.loadFeatures(img2).getKeypoints();
     for (auto& kp : kp1) {
-        kp.pt = this->flight_.getCamera().denormalizeImageCoordinates(kp.pt);
+        kp.pt = flight_.getCamera().denormalizeImageCoordinates(kp.pt);
     }
 
     for (auto& kp : kp2) {
-        kp.pt = this->flight_.getCamera().denormalizeImageCoordinates(kp.pt);
+        kp.pt = flight_.getCamera().denormalizeImageCoordinates(kp.pt);
     }
     if (img1Matches.find(img2) != img1Matches.end()) {
         auto matches = img1Matches[img2];

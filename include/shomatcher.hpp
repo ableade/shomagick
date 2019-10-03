@@ -24,19 +24,22 @@ class ShoMatcher
 {
 private:
     FlightSession flight_;
-    bool runCuda_ = true;
     void *kd_;
     int dimensions_ = 2;
-    int featureSize_ = 5000;
+    int featureSize_;
     std::map<std::string, std::vector<std::string>> candidateImages;
-    bool _extractFeature(std::string fileName, bool resize = false);
+    bool _extractFeature(std::string fileName);
     cv::Ptr<RobustMatcher> rMatcher_;
 
 public:
-    ShoMatcher(FlightSession flight, bool runCuda = true);
+    ShoMatcher(
+        FlightSession flight, 
+        int featureSize = FEATURE_PROCESS_SIZE, 
+        RobustMatcher::Feature featureType = RobustMatcher::Feature::orb
+    );
     void getCandidateMatchesUsingSpatialSearch(double range = 0.000125);
     void getCandidateMatchesFromFile(std::string candidateFile);
-    int extractFeatures(bool resize = false);
+    int extractFeatures();
     void runRobustFeatureMatching();
     void buildKdTree();
     std::map<std::string, std::vector<std::string>> getCandidateImages() const;

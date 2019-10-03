@@ -46,7 +46,7 @@ public:
         cv::InputArray image,
         cv::InputArray mask,
         std::vector<cv::KeyPoint>& keypoints,
-        cv::OutputArray descriptors,
+        cv::OutputArray& descriptors,
         bool useProvidedKeypoints = false
     ) override;
 

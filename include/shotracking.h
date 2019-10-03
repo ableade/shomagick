@@ -116,7 +116,7 @@ private:
 public:
     ShoTracker(FlightSession flight, std::map<std::string, std::vector<std::string>> candidateImages);
     void createTracks(const std::vector<std::pair<ImageFeatureNode, ImageFeatureNode>>& features);
-    TrackGraph buildTracksGraph(const std::vector<FeatureProperty>& props);
+    TrackGraph buildTracksGraph();
     void mergeFeatureTracks(ImageFeatureNode feature1, ImageFeatureNode feature2);
     void createFeatureNodes(std::vector<std::pair<ImageFeatureNode, ImageFeatureNode>>& allFeatures,
         std::vector<FeatureProperty> & props);
