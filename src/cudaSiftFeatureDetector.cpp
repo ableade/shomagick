@@ -64,6 +64,38 @@ void CudaSiftFeatureDetector::detect(Mat image, vector<KeyPoint>& keypoints, Mat
     _downloadKeypoints(siftData, keypoints);
 }
 
+void CudaSiftFeatureDetector::detect(cv::InputArray image, std::vector<cv::KeyPoint>& keypoints, cv::InputArray mask)
+{
+    auto im = image.getMat().clone();
+    auto maskMat = mask.getMat();
+    
+    SiftData siftData;
+    InitSiftData(siftData, SIFT_DATA_RESERVE_SIZE, true, true);
+
+    CudaImage img;
+    img.Allocate(image.size().width, image.size().height, image.size().width, false, NULL, (float*)im.data);
+    img.Download();
+
+
+    int numOctaves = 5;    /* Number of octaves in Gaussian pyramid */
+    float initBlur = 1.0f; /* Amount of initial Gaussian blurring in standard deviations */
+    float thresh = 3.5f;   /* Threshold on difference of Gaussians for feature pruning */
+    float minScale = 0.0f; /* Minimum acceptable scale to remove fine-scale features */
+    bool upScale = false;  /* Whether to upscale image before extraction */
+    /* Extract SIFT features */
+    ExtractSift(siftData, img, numOctaves, initBlur, SIFT_EDGE_THRESHOLD, minScale, upScale);
+    _downloadKeypoints(siftData, keypoints);
+}
+
+void CudaSiftFeatureDetector::detectAndCompute(cv::InputArray image, cv::InputArray mask, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray & descriptors, bool useProvidedKeypoints)
+{
+    if (!useProvidedKeypoints) {
+        detectAndCompute(image.getMat(), mask.getMat(), keypoints, descriptors);
+        return;
+    }
+    //TODO use provided keypoints
+}
+
 void CudaSiftFeatureDetector::detectAndCompute(Mat image, cv::Mat & mask, vector<cv::KeyPoint>& keypoints, Mat & descriptors)
 {
     SiftData siftData;
