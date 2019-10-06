@@ -114,7 +114,7 @@ if (OPENMP_FOUND)
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-
+set(CUDA_SEPARABLE_COMPILATION ON)
 find_package (CUDA)
 if (CUDA_FOUND)
 	message("CUDA FOUND")
@@ -123,13 +123,16 @@ if (CUDA_FOUND)
 		#Only compile the sift cuda library if on a non-windows platform
 		enable_language(CUDA)
 		add_library(cudasift ${CUDA_SOURCES})
+		target_link_libraries(cudasift PRIVATE ${CUDA_LIBRARIES})
+		target_include_directories(cudasift PUBLIC ${CUDA_INCLUDE_DIRS})
 		set_target_properties( cudasift
-                       PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-		target_link_libraries(shomagick PRIVATE cudasift)
+					   PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+		target_compile_definitions(cudasift PUBLIC USE_GPU)
+		target_link_libraries(shomagick PUBLIC cudasift)
 		target_sources(shomagick PRIVATE ${SOURCE_DIR}/cudaSiftFeatureDetector.cpp)
 	endif()
-	target_include_directories(shomagick PRIVATE ${CUDA_INCLUDE_DIRS})
-  	target_link_libraries (shomagick PRIVATE ${CUDA_LIBRARIES})
+	target_include_directories(shomagick PUBLIC ${CUDA_INCLUDE_DIRS})
+  	target_link_libraries (shomagick PUBLIC ${CUDA_LIBRARIES})
 endif (CUDA_FOUND)
 
 find_package(
