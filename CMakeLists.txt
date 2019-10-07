@@ -13,30 +13,20 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(BUNDLE_SOURCE_DIR "${SOURCE_DIR}/bundle")
+
+set(CUDA_SOURCES
+  ${SOURCE_DIR}/cudasift/cudaImage.cu  
+  ${SOURCE_DIR}/cudasift/cudaImage.h  
+  ${SOURCE_DIR}/cudasift/cudaSiftH.cu 
+  ${SOURCE_DIR}/cudasift/cudaSiftH.h  
+  ${SOURCE_DIR}/cudasift/matching.cu  
+  ${SOURCE_DIR}/cudasift/cudaSiftD.h  
+  ${SOURCE_DIR}/cudasift/cudaSift.h  
+  ${SOURCE_DIR}/cudasift/cudautils.h
+)  
+
 include_directories( ${INCLUDE_DIR} )
 
-IF(MSVC)
-  add_compile_options(/wd4514 /wd4267 /bigobj)
-  add_definitions(-D_USE_MATH_DEFINES)
-ELSE()
-  IF (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
-    add_definitions (-march=armv8-a)
-  ELSEIF (CMAKE_SYSTEM_PROCESSOR MATCHES 
-          "(arm)|(ARM)|(armhf)|(ARMHF)|(armel)|(ARMEL)")
-    add_definitions (-march=armv7-a)
-  ELSE ()
-    add_definitions (-march=native) #TODO use correct c++11 def once everybody has moved to gcc 4.7 # for now I even removed std=gnu++0x
-  ENDIF()
-  add_definitions (
-    -O3
-    -Wall
-    -Wextra
-    #-Werror
-    -Wwrite-strings
-    -Wno-unused-parameter
-    -fno-strict-aliasing
-  )
-ENDIF()
 
 set(Shomagick_VERSION_MAJOR 1)
 set(Shomagick_VERSION_MINOR 0)
@@ -48,14 +38,10 @@ configure_file (
 
 include(GNUInstallDirs)
 include_directories("${PROJECT_BINARY_DIR}")
+
 #Open SFM vlfeat
 include_directories(${SOURCE_DIR}/vlfeat)
 file(GLOB VLFEAT_SRCS ${SOURCE_DIR}/vlfeat/vl/*.c ${SOURCE_DIR}/vlfeat/vl/*.h)
-if (NOT CMAKE_SYSTEM_PROCESSOR MATCHES
-    "(x86)|(X86)|(x86_64)|(X86_64)|(amd64)|(AMD64)")
-    add_definitions(-DVL_DISABLE_SSE2)
-endif ()
-add_definitions(-DVL_DISABLE_AVX)
 
 add_library(vl ${VLFEAT_SRCS})
 
@@ -76,8 +62,43 @@ add_library(
 	${SOURCE_DIR}/transformations.cpp  
 	${SOURCE_DIR}/shotracking.cpp  
 	${SOURCE_DIR}/utilities.cpp
-	${SOURCE_DIR}/cudasurf.cpp
+	${SOURCE_DIR}/cudaSurfFeatureDetector.cpp
 )
+
+
+if (NOT CMAKE_SYSTEM_PROCESSOR MATCHES
+    "(x86)|(X86)|(x86_64)|(X86_64)|(amd64)|(AMD64)")
+    target_compile_definitions(vl PRIVATE VL_DISABLE_SSE2)
+endif ()
+target_compile_definitions(vl PRIVATE VL_DISABLE_AVX)
+
+IF(NOT MSVC)
+	message("Not on MSVC")
+ENDIF()
+
+IF(MSVC)
+  target_compile_options(vl PRIVATE /wd4514 /wd4267 /bigobj)
+  target_compile_definitions(vl PRIVATE _USE_MATH_DEFINES)
+ELSE()
+  IF (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
+    target_compile_options (vl PRIVATE -march=armv8-a)
+  ELSEIF (CMAKE_SYSTEM_PROCESSOR MATCHES 
+          "(arm)|(ARM)|(armhf)|(ARMHF)|(armel)|(ARMEL)")
+	target_compile_options(vl PRIVATE -march=armv7-a)
+  ELSE ()
+    target_compile_options (vl PRIVATE -march=native) #TODO use correct c++11 def once everybody has moved to gcc 4.7 # for now I even removed std=gnu++0x
+  ENDIF()
+  target_compile_options (vl
+  	PRIVATE
+		-O3
+		-Wall
+		-Wextra
+		#-Werror
+		-Wwrite-strings
+		-Wno-unused-parameter
+		-fno-strict-aliasing
+  )
+ENDIF()
 
 find_package(Boost 1.5 COMPONENTS filesystem serialization REQUIRED)
 
@@ -96,8 +117,19 @@ endif()
 
 find_package (CUDA)
 if (CUDA_FOUND)
-  target_include_directories(shomagick PRIVATE ${CUDA_INCLUDE_DIRS})
-  target_link_libraries (shomagick PRIVATE ${CUDA_LIBRARIES})
+	message("CUDA FOUND")
+	if(UNIX)
+		message("Compiling sift cuda")
+		#Only compile the sift cuda library if on a non-windows platform
+		enable_language(CUDA)
+		add_library(cudasift ${CUDA_SOURCES})
+		set_target_properties( cudasift
+                       PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+		target_link_libraries(shomagick PRIVATE cudasift)
+		target_sources(shomagick PRIVATE ${SOURCE_DIR}/cudaSiftFeatureDetector.cpp)
+	endif()
+	target_include_directories(shomagick PRIVATE ${CUDA_INCLUDE_DIRS})
+  	target_link_libraries (shomagick PRIVATE ${CUDA_LIBRARIES})
 endif (CUDA_FOUND)
 
 find_package(
@@ -174,8 +206,13 @@ target_link_libraries(
 get_target_property(CONF_INCLUDE_DIRS shomagick INTERFACE_INCLUDE_DIRECTORIES)
 set(INSTALL_CONFIGDIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/cmake/Shomagick)
 
-
-install(TARGETS shomagick vl EXPORT shomagick-targets DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+if (CUDA_FOUND AND UNIX)
+	set(LIBS_TARGET_SET shomagick vl cudasift)
+else()
+	set(LIBS_TARGET_SET shomagick vl)
+endif()
+	
+install(TARGETS ${LIBS_TARGET_SET} EXPORT shomagick-targets DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 set_target_properties(shomagick PROPERTIES EXPORT_NAME Shomagick)
 
 install(EXPORT shomagick-targets

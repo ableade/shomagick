@@ -1,6 +1,6 @@
 #include "cudaSiftFeatureDetector.h"
-#include "cudaImage.h"
-#include "cudaSift.h"
+#include "cudasift/cudaImage.h"
+#include "cudasift/cudaSift.h"
 
 using std::vector;
 using cv::Mat;

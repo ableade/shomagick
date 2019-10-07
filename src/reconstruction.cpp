@@ -203,8 +203,12 @@ void Reconstruction::setGPS(bool useGps)
     usesGPS = useGps;
 }
 
-Shot Reconstruction::getShot(std::string shotId)
+const Shot& Reconstruction::getShot(std::string shotId) const
 {
+    return shots.at(shotId);
+}
+
+Shot& Reconstruction::getShot(string shotId) {
     return shots.at(shotId);
 }
 

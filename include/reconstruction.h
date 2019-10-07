@@ -59,7 +59,8 @@ class Reconstruction {
         void alignToGps();
         void applySimilarity(double s, cv::Matx33d a, ShoColumnVector3d b);
         void setGPS(bool useGps);
-        Shot getShot(std::string shotId);
+        const Shot& getShot(std::string shotId) const;
+        Shot& getShot(std::string shotId);
         bool usesGps() const;
         std::tuple<double, cv::Matx33d, ShoColumnVector3d> getGPSTransform();
 };

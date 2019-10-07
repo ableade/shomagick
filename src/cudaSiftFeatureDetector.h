@@ -1,7 +1,7 @@
 #pragma once
 #include <opencv2/features2d.hpp>
 #include <opencv2/xfeatures2d/cuda.hpp>
-#include "cudaSift.h"
+#include "cudasift/cudaSift.h"
 
 const int SIFT_DATA_RESERVE_SIZE = 25000;
 const float SIFT_PEAK_THRESHOLD = 0.1;
