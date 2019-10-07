@@ -64,6 +64,10 @@ void CudaSiftFeatureDetector::detect(Mat image, vector<KeyPoint>& keypoints, Mat
     _downloadKeypoints(siftData, keypoints);
 }
 
+void CudaSiftFeatureDetector::compute(cv::InputArray image, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors)
+{
+}
+
 void CudaSiftFeatureDetector::detect(cv::InputArray image, std::vector<cv::KeyPoint>& keypoints, cv::InputArray mask)
 {
     auto im = image.getMat().clone();
