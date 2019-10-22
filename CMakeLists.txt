@@ -2,10 +2,9 @@ cmake_minimum_required (VERSION 2.6)
 project (Shomagick)
 
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -fvisibility=hidden -ggdb")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC  -fvisibility=hidden -fvisibility-inlines-hidden -std=c++17 -ggdb")
-	
-set(CMAKE_CXX_FLAGS "-std=c++17")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -fvisibility=hidden")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC  -fvisibility=hidden -fvisibility-inlines-hidden")
+
 set(INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
 set(SOURCE_DIR "${PROJECT_SOURCE_DIR}/src")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${SOURCE_DIR}/cmake/Modules")
@@ -63,8 +62,10 @@ add_library(
 	${SOURCE_DIR}/shotracking.cpp  
 	${SOURCE_DIR}/utilities.cpp
 	${SOURCE_DIR}/cudaSurfFeatureDetector.cpp
+	${SOURCE_DIR}/cudaSiftFeatureDetector.cpp
 )
 
+target_compile_features(shomagick PRIVATE cxx_std_17)
 
 if (NOT CMAKE_SYSTEM_PROCESSOR MATCHES
     "(x86)|(X86)|(x86_64)|(X86_64)|(amd64)|(AMD64)")
@@ -114,22 +115,28 @@ if (OPENMP_FOUND)
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-set(CUDA_SEPARABLE_COMPILATION ON)
+#set(CUDA_SEPARABLE_COMPILATION ON)
 find_package (CUDA)
 if (CUDA_FOUND)
-	message("CUDA FOUND")
+	enable_language(CUDA)
+	message("CUDA FOUND.")
 	if(UNIX)
+		if (APPLE)
+			set(EXTRA_CXX_FLAGS "-DVERBOSE -msse2")
+			list(APPEND CUDA_NVCC_FLAGS "-arch=sm_35;--compiler-options;-O2;-DVERBOSE") 
+  		else()
+    		#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -msse2 ")
+    		list(APPEND CUDA_NVCC_FLAGS "-lineinfo;-ccbin;/usr/bin/gcc;--compiler-options;-O2;-D_FORCE_INLINES;-DVERBOSE_NOT") 
+  		endif()
 		message("Compiling sift cuda")
 		#Only compile the sift cuda library if on a non-windows platform
-		enable_language(CUDA)
-		add_library(cudasift ${CUDA_SOURCES})
-		target_link_libraries(cudasift PRIVATE ${CUDA_LIBRARIES})
+		cuda_add_library(cudasift ${CUDA_SOURCES})
+		target_link_libraries(cudasift ${CUDA_cudadevrt_LIBRARY} ${OpenCV_LIBS})
+		#target_link_libraries(cudasift PUBLIC ${CUDA_LIBRARIES})
+		#target_link_libraries(cudasift PUBLIC ${CUDA_cudadevrt_LIBRARY})
 		target_include_directories(cudasift PUBLIC ${CUDA_INCLUDE_DIRS})
-		set_target_properties( cudasift
-					   PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 		target_compile_definitions(cudasift PUBLIC USE_GPU)
 		target_link_libraries(shomagick PUBLIC cudasift)
-		target_sources(shomagick PRIVATE ${SOURCE_DIR}/cudaSiftFeatureDetector.cpp)
 	endif()
 	target_include_directories(shomagick PUBLIC ${CUDA_INCLUDE_DIRS})
   	target_link_libraries (shomagick PUBLIC ${CUDA_LIBRARIES})
@@ -210,6 +217,7 @@ get_target_property(CONF_INCLUDE_DIRS shomagick INTERFACE_INCLUDE_DIRECTORIES)
 set(INSTALL_CONFIGDIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/cmake/Shomagick)
 
 if (CUDA_FOUND AND UNIX)
+	target_link_libraries(shomagick PUBLIC cudasift)
 	set(LIBS_TARGET_SET shomagick vl cudasift)
 else()
 	set(LIBS_TARGET_SET shomagick vl)
