@@ -104,7 +104,7 @@ private:
     std::map<GloballyUniqueImageFeatureId, ImageFeatureNode> reverseImageFeatureNodes_;
     std::map<int, std::vector<int>> tracks_;
     UnionFind uf;
-    int minTrackLength = 2;
+    int minTrackLength_ = 2;
     bool addFeatureToIndex(std::pair<std::string, int> feature, int featureIndex);
     std::map<std::string, TrackGraph::vertex_descriptor> imageNodes_;
     std::map<std::string, TrackGraph::vertex_descriptor> trackNodes_;

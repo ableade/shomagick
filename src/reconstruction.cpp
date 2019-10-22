@@ -192,7 +192,7 @@ void Reconstruction::applySimilarity(double s, Matx33d a, ShoColumnVector3d b)
         const auto r = shot.getPose().getRotationMatrix();
         const auto t = shot.getPose().getTranslation();
         const auto rp = r * a.t();
-        const auto tp = -rp * b + s * t;
+        const auto tp = -rp * b + (s * t);
         shot.getPose().setRotationVector(Mat(rp));
         shot.getPose().setTranslation(tp);
     }
@@ -220,7 +220,6 @@ bool Reconstruction::usesGps() const
 
 tuple<double, cv::Matx33d, ShoColumnVector3d> Reconstruction::getGPSTransform()
 {
-    std::cout << "Aligning reconstruction \n";
     double s;
     Mat shotOrigins(0, 3, CV_64FC1);
     Mat a;
@@ -261,11 +260,11 @@ tuple<double, cv::Matx33d, ShoColumnVector3d> Reconstruction::getGPSTransform()
     Mat cvRPlane(3, 3, CV_64FC1);
     eigen2cv(rPlane, cvRPlane);
 #if 0
-    cout << "Size of CV r plane was " << cvRPlane.size() << "\n";
-    cout << "Size of shot origins is " << shotOrigins.size() << "\n";
+    std::cout << "Size of CV r plane was " << cvRPlane.size() << "\n";
+    std::cout << "Size of shot origins is " << shotOrigins.size() << "\n";
 
-    cout << "R plane was " << cvRPlane << "\n";
-    cout << "Shot origins was " << shotOrigins << "\n";
+    std::cout << "R plane was " << cvRPlane << "\n";
+    std::cout << "Shot origins was " << shotOrigins << "\n";
 #endif
     const auto shotOriginsTranspose = shotOrigins.t();
     //TODO check this dotplane product

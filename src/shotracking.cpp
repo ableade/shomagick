@@ -42,9 +42,9 @@ void ShoTracker::createFeatureNodes(vector<pair<ImageFeatureNode, ImageFeatureNo
     //Image name and corresponding keypoint index form a single node
     for (const auto&[imageName, candidateImages] : mapOfImageNamesToCandidateImages)
     {
-        auto allPairMatches = this->flight.loadMatches(imageName);
+        auto allPairMatches = flight.loadMatches(imageName);
         auto leftImageName = imageName;
-        auto leftImageFeatures = this->_loadImageFeatures(leftImageName);
+        auto leftImageFeatures = _loadImageFeatures(leftImageName);
         for (const auto&[matchImageName, dMatches] : allPairMatches)
         {
             for (const auto& dMatch : dMatches)
@@ -52,7 +52,7 @@ void ShoTracker::createFeatureNodes(vector<pair<ImageFeatureNode, ImageFeatureNo
                 //The left image is the query image and the right image is the train image
                 auto leftFeature = make_pair(leftImageName, dMatch.queryIdx);
                 auto rightFeature = make_pair(matchImageName, dMatch.trainIdx);
-                auto rightImageFeature = this->_loadImageFeatures(matchImageName);
+                auto rightImageFeature = _loadImageFeatures(matchImageName);
                 allFeatures.push_back(make_pair(leftFeature, rightFeature));
                 if (addFeatureToIndex(leftFeature, featureIndex))
                 {
@@ -76,8 +76,8 @@ void ShoTracker::createFeatureNodes(vector<pair<ImageFeatureNode, ImageFeatureNo
 }
 
 ImageFeatures ShoTracker::_loadImageFeatures(const string fileName) {
-    if (imageFeatures.find(fileName) == this->imageFeatures.end()) {
-        imageFeatures[fileName] = this->flight.loadFeatures(fileName);
+    if (imageFeatures.find(fileName) == imageFeatures.end()) {
+        imageFeatures[fileName] = flight.loadFeatures(fileName);
     }
     return imageFeatures[fileName];
 }
@@ -97,7 +97,7 @@ void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNo
     for (const auto&[imageFeatureNode, index] : imageFeatureNodes_)
     {
         int dSet = uf.findSet(index);
-        if (uf.sizeOfSet(dSet) >= this->minTrackLength)
+        if (uf.sizeOfSet(dSet) >= minTrackLength_)
         {
             tracks_[dSet].push_back(index);
         }

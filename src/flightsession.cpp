@@ -286,7 +286,7 @@ const std::map<std::string, double>& FlightSession::getReferenceLLA() const
     return referenceLLA_;
 }
 
-bool FlightSession::hasGps()
+bool FlightSession::hasGps() const
 {
     return gpsDataPresent_;
 }
@@ -295,6 +295,11 @@ void FlightSession::undistort()
 {
     for (auto img : imageSet) {
         auto imagePath = imageDirectoryPath_ / img.getFileName();
+        auto undistortedImagePath = undistortedImagesPath_ / img.getFileName();
+
+        if (boost::filesystem::exists(undistortedImagePath))
+            continue;
+
         Mat distortedImage = cv::imread(imagePath.string(),
             SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM |
             SHO_LOAD_ANYDEPTH_IMAGE_OPENCV_ENUM);
@@ -305,7 +310,6 @@ void FlightSession::undistort()
             undistortedImage,
             camera_.getKMatrix(),
             camera_.getDistortionMatrix());
-        auto undistortedImagePath = undistortedImagesPath_ / img.getFileName();
         undistortedImagePath.replace_extension("png");
         cv::imwrite(undistortedImagePath.string(), undistortedImage);
     }

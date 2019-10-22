@@ -96,16 +96,7 @@ void HahogFeatureDetector::detectAndCompute(cv::InputArray image, cv::InputArray
     cv::Mat mat = image.getMat();
     //Scale pixels to floating point values between 0 and 1. Vl feat expects this
     mat.convertTo(mat, CV_32FC1, 1.0 / 255.0);
-    std::cout << "Rows *m flat " << image.rows() << "\n";
-    std::cout << "Cols *m flat " << image.cols() << "\n";
     cv::Mat imFlat = mat.reshape(1, 1).clone();
-    if (imFlat.isContinuous()) {
-        std::cout << "We have continious \n";
-    }
-    std::cout << "Rows * cols m flat " << imFlat.rows * imFlat.cols << "\n";
-    std::cout << "Rows m flat " << imFlat.rows << "\n";
-    std::cout << "Cols m flat " << imFlat.cols << "\n";
-    std::cout << "Type of mat is " << mat.type() << "\n";
     // set various parameters (optional)
     vl_covdet_set_first_octave(covdet_, 0);
     //vl_covdet_set_octave_resolution(covdet, octaveResolution);
@@ -117,7 +108,6 @@ void HahogFeatureDetector::detectAndCompute(cv::InputArray image, cv::InputArray
     
     std::vector<float> buffer{ (float*)imFlat.data, (float*)imFlat.data + imFlat.total() };
     //buffer.assign((float*)
-    std::cout << "Buffer size is " << buffer.size() << "\n";
     //const float* buffer = imFlat.ptr<float>(0);
     //vl_covdet_put_image(covdet_, buffer, image.cols(), image.rows());
 
@@ -183,9 +173,6 @@ void HahogFeatureDetector::detectAndCompute(cv::InputArray image, cv::InputArray
             (double)(patchSide - 1) / 2, (double)(patchSide - 1) / 2,
             (double)patchRelativeExtent / (3.0 * (4 + 1) / 2) / patchStep,
             VL_PI / 2);
-    }
-    for (auto i = 0; i < 5; ++i) {
-        std::cout << "Descriptor at " << i << " is " << desc.at(i) << "\n";
     }
     descriptors.create(static_cast<int>(numFeatures), static_cast<int>(dimension), CV_32FC1);
     cv::Mat& dst = descriptors.getMatRef();

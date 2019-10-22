@@ -62,6 +62,6 @@ public:
     void setCamera(Camera camera);
     void inventReferenceLLA();
     const std::map<std::string, double>& getReferenceLLA() const;
-    bool hasGps();
+    bool hasGps() const;
     void undistort();
 };
