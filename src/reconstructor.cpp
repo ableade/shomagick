@@ -610,9 +610,9 @@ Reconstructor::OptionalReconstruction Reconstructor::beginReconstruction(CommonT
 
 
 void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& images) {
+    rec.alignToGps();
     bundle(rec, flight_, tg_);
     removeOutliers(rec);
-    rec.alignToGps();
     colorReconstruction(rec);
     auto partialRecFileName = (flight_.getReconstructionsPath() / "green.ply").string();
     auto partialMVSFileName = (flight_.getReconstructionsPath() / "green.mvs").string();
@@ -639,17 +639,17 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
 
             if (rec.needsRetriangulation()) {
                 cerr << "Retriangulating reconstruction \n";
+                rec.alignToGps();
                 bundle(rec, flight_, tg_);
                 retriangulate(rec);
                 bundle(rec, flight_, tg_);
                 removeOutliers(rec);
-                rec.alignToGps();
                 rec.updateLastCounts();
             }
             else if (rec.needsBundling()) {
+                rec.alignToGps();
                 bundle(rec, flight_, tg_);;
                 removeOutliers(rec);
-                rec.alignToGps();
                 rec.updateLastCounts();
             }
             else {
@@ -662,9 +662,9 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
                 cerr << "Added " << after - before << " points to the reconstruction \n";
             }
         }
+        rec.alignToGps();
         bundle(rec, flight_, tg_);
         removeOutliers(rec);
-        rec.alignToGps();
         return;
     }
 }
