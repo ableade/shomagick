@@ -126,4 +126,6 @@ namespace boost {
 
 bool checkIfCudaEnabled();
 
+std::string getDateTimeAsString();
+
 

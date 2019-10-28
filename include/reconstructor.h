@@ -59,6 +59,18 @@ void bundle(Reconstruction& rec, const FlightSession& flight, const ShoTracksGra
 
 void _getCameraFromBundle(BundleAdjuster& ba, Camera& cam);
 
+void savePartialReconstruction(
+    const Reconstruction & rec, 
+    const FlightSession& flight, 
+    const ShoTracksGraph& tg
+);
+
+void exportToMvs(const Reconstruction& rec, 
+    const std::string mvsFileName, 
+    const FlightSession& flight,
+    const ShoTracksGraph & tg
+);
+
 class Reconstructor
 {
 public:
@@ -102,7 +114,6 @@ public:
     cv::Mat getRotationInverse(const Shot& shot);
     void localBundleAdjustment(std::string centralShotId, Reconstruction& rec);
     void plotTracks(CommonTrack track) const;
-    void exportToMvs(const Reconstruction& rec, const std::string mvsFileName);
     void removeOutliers(Reconstruction & rec);
     std::tuple<bool, ReconstructionReport> resect(Reconstruction & rec, const vertex_descriptor imageVetex,
         double threshold = 0.004, int iterations = 1000, double probability = 0.999, int resectionInliers = 10);
