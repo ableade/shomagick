@@ -1,4 +1,3 @@
-//#include "stdafx.h"
 #include <Eigen/Core>
 #include <catch.hpp>
 #include <vector>

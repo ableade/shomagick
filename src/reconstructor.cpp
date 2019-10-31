@@ -142,6 +142,67 @@ void _getCameraFromBundle(BundleAdjuster &ba, Camera &cam) {
     cam.setK2(c.GetK2());
 }
 
+tuple<bool, ReconstructionReport> twoViewResect(opengv::bearingVectors_t bearings,
+    opengv::points_t points,
+    const ShoTracksGraph& tg,
+    const vertex_descriptor imageVertex,
+    const FlightSession& flight,
+    Reconstruction & rec,
+    double threshold, 
+    int iterations, 
+    double probability, 
+    int resectionInliers)
+{
+    ReconstructionReport report;
+    const auto T = absolutePoseRansac(bearings, points, threshold, iterations);
+    Eigen::Matrix3d rotation;
+    Eigen::RowVector3d translation;
+    rotation = T.leftCols(3);
+    translation = T.rightCols(1).transpose();
+    auto fd = points.data()->data();
+    auto bd = bearings.data()->data();
+    report.numCommonPoints = points.size();
+    Matrix<double, Dynamic, 3> eigenXs = Eigen::Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(fd, points.size(), 3);
+    Matrix<double, Dynamic, 3> eigenBs = Eigen::Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(bd, bearings.size(), 3);
+    const auto eigenXsMinusTranslationTranspose = (eigenXs.rowwise() - translation).transpose();
+    const auto rtProduct = rotation.transpose() * eigenXsMinusTranslationTranspose;
+    Eigen::MatrixXd reprojectedBs(rtProduct.cols(), rtProduct.rows());
+    reprojectedBs = rtProduct.transpose();
+    Eigen::VectorXd reprojectedBsNorm(reprojectedBs.rows());
+    reprojectedBsNorm = reprojectedBs.rowwise().norm();
+    auto divReprojectedBs = reprojectedBs.array().colwise() / reprojectedBsNorm.array();
+    Eigen::MatrixXd reprojectedDifference(eigenBs.rows(), eigenBs.cols());
+    reprojectedDifference = divReprojectedBs.matrix() - eigenBs;
+    auto reprojectedDifferenceNorm = reprojectedDifference.rowwise().norm();
+    auto inliersCount = (reprojectedDifferenceNorm.array() < threshold).count();
+    report.numInliers = inliersCount;
+
+    if(report.numInliers > resectionInliers)
+    {
+        Eigen::Matrix3d shotRotation = rotation.transpose();
+        Eigen::RowVector3d shotTranslation = -shotRotation * translation.transpose();
+
+        Mat cvRot;
+        Mat3d cvT;
+        eigen2cv(shotRotation, cvRot);
+        eigen2cv(shotTranslation, cvT);
+        std::cout << "cv t is " << cvT << "\n";
+        std::cout << "cv Rot is " << cvRot << "\n";
+       
+        //cout << "Shot rotation is " << shotRotation << "\n";
+        //cout << "Shot translation is " << shotTranslation << "\n";
+        //cout << "Number of inliers is " << inliersCount << "\n";
+
+        const auto shotName = tg.getTrackGraph()[imageVertex].name;
+        const auto shot = flight.getImageSet()[flight.getImageIndex(shotName)];
+        ShotMetadata shotMetadata(shot.getMetadata(), flight);
+        Shot recShot(shotName, flight.getCamera(), Pose(cvRot, cv::Vec3d((double*)cvT.data)), shotMetadata);
+        rec.addShot(recShot.getId(), recShot);
+        return { true, report };
+    }
+    return { false, report };
+}
+
 void bundle(Reconstruction& rec, const FlightSession& flight, const ShoTracksGraph& tg) {
     auto fixCameras = !OPTIMIZE_CAMERA_PARAEMETERS;
     BundleAdjuster bundleAdjuster;
@@ -986,6 +1047,12 @@ void Reconstructor::removeOutliers(Reconstruction& rec) {
 
 tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, const vertex_descriptor imageVertex, double threshold,
     int iterations, double probability, int resectionInliers) {
+
+# if 1
+    opengv::points_t Xs;
+    opengv::bearingVectors_t Bs;
+#endif
+
     ReconstructionReport report;
     vector<Point2d> fPoints;
     vector<Point3d> realWorldPoints;
@@ -997,6 +1064,9 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
             fPoints.push_back(flight_.getCamera().denormalizeImageCoordinates(fPoint));
             auto position = rec.getCloudPoints().at(stoi(trackName)).getPosition();
             realWorldPoints.push_back(position);
+            Xs.push_back({ position.x, position.y, position.z });
+            auto fBearing = flight_.getCamera().normalizedPointToBearingVec(fPoint);
+            Bs.push_back(fBearing);
         }
     }
 
@@ -1005,9 +1075,23 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
         return make_tuple(false, report);
     }
 
+    return twoViewResect(Bs, 
+        Xs, 
+        tg_, 
+        imageVertex, 
+        flight_, 
+        rec, 
+        threshold, 
+        iterations, 
+        probability, 
+        resectionInliers
+    );
+#if 0
     Mat pnpRot, pnpTrans, inliers;
     if (cv::solvePnPRansac(realWorldPoints, fPoints, flight_.getCamera().getKMatrix(),
         flight_.getCamera().getDistortionMatrix(), pnpRot, pnpTrans, false, iterations, 8.0, probability, inliers)) {
+        std::cout << "Rotation was " << pnpRot << "\n";
+        std::cout << "Translation was " << pnpTrans << "\n";
         const auto shotName = tg_.getTrackGraph()[imageVertex].name;
         const auto shot = flight_.getImageSet()[flight_.getImageIndex(shotName)];
         ShotMetadata shotMetadata(shot.getMetadata(), flight_);
@@ -1018,6 +1102,7 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
         return { true, report };
     }
     return make_tuple(false, report);
+#endif
 }
 
 set<string> Reconstructor::directShotNeighbors(

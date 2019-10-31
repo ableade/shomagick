@@ -1,7 +1,7 @@
 #include <opencv2/core.hpp>
 #include <Eigen/core>
-#include "../src/transformations.h"
-#include "../src/allclose.h"
+#include "transformations.h"
+#include "allclose.h"
 #include <catch.hpp>
 
 using cv::Mat;

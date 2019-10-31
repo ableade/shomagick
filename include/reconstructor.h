@@ -59,6 +59,18 @@ void bundle(Reconstruction& rec, const FlightSession& flight, const ShoTracksGra
 
 void _getCameraFromBundle(BundleAdjuster& ba, Camera& cam);
 
+std::tuple<bool, ReconstructionReport> twoViewResect(opengv::bearingVectors_t bearings,
+    opengv::points_t points,
+    const ShoTracksGraph& tg,
+    const vertex_descriptor imageVertex,
+    const FlightSession& flight,
+    Reconstruction & rec,
+    double threshold,
+    int iterations, 
+    double probability, 
+    int resectionInliers = 10
+);
+
 class Reconstructor
 {
 public:
