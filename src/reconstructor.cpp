@@ -148,9 +148,9 @@ tuple<bool, ReconstructionReport> twoViewResect(opengv::bearingVectors_t bearing
     const vertex_descriptor imageVertex,
     const FlightSession& flight,
     Reconstruction & rec,
-    double threshold, 
-    int iterations, 
-    double probability, 
+    double threshold,
+    int iterations,
+    double probability,
     int resectionInliers)
 {
     ReconstructionReport report;
@@ -177,7 +177,7 @@ tuple<bool, ReconstructionReport> twoViewResect(opengv::bearingVectors_t bearing
     auto inliersCount = (reprojectedDifferenceNorm.array() < threshold).count();
     report.numInliers = inliersCount;
 
-    if(report.numInliers > resectionInliers)
+    if (report.numInliers > resectionInliers)
     {
         Eigen::Matrix3d shotRotation = rotation.transpose();
         Eigen::RowVector3d shotTranslation = -shotRotation * translation.transpose();
@@ -188,7 +188,7 @@ tuple<bool, ReconstructionReport> twoViewResect(opengv::bearingVectors_t bearing
         eigen2cv(shotTranslation, cvT);
         std::cout << "cv t is " << cvT << "\n";
         std::cout << "cv Rot is " << cvRot << "\n";
-       
+
         //cout << "Shot rotation is " << shotRotation << "\n";
         //cout << "Shot translation is " << shotTranslation << "\n";
         //cout << "Number of inliers is " << inliersCount << "\n";
@@ -201,6 +201,57 @@ tuple<bool, ReconstructionReport> twoViewResect(opengv::bearingVectors_t bearing
         return { true, report };
     }
     return { false, report };
+}
+   
+
+void exportToMvs(const Reconstruction & rec,
+    const std::string mvsFileName,
+    const FlightSession& flight,
+    const ShoTracksGraph & tg)
+{
+    csfm::OpenMVSExporter exporter;
+    exporter.AddCamera("1", rec.getCamera().getNormalizedKMatrix());
+
+    for (const auto[shotId, shot] : rec.getReconstructionShots()) {
+        auto imagePath = flight.getUndistortedImagesDirectoryPath() / shotId;
+        imagePath.replace_extension("png");
+        auto origin = Mat(shot.getPose().getOrigin()).data;
+        exporter.AddShot(
+            imagePath.string(),
+            shotId,
+            "1",
+            shot.getPose().getRotationMatrix(),
+            { static_cast<double>(origin[0]), static_cast<double>(origin[1]), static_cast<double>(origin[2]) }
+        );
+    }
+
+    for (const auto &[trackId, cloudPoint] : rec.getCloudPoints()) {
+        vector<string> shots;
+        auto trackVertex = tg.getTrackNodes().at(std::to_string(trackId));
+
+        const auto[edgesBegin, edgesEnd] =
+            boost::out_edges(trackVertex, tg.getTrackGraph());
+
+        for (auto edgesIter = edgesBegin; edgesIter != edgesEnd; ++edgesIter) {
+            const auto shotName = tg.getTrackGraph()[*edgesIter].imageName;
+            shots.push_back(shotName);
+        }
+        exporter.AddPoint(cloudPoint.getPosition(), shots);
+    }
+    exporter.Export(mvsFileName);
+}
+
+void savePartialReconstruction(
+    const Reconstruction & rec, 
+    const FlightSession& flight,
+    const ShoTracksGraph& tg
+)
+{
+    auto dt = getDateTimeAsString();
+    auto partialRecFileName = (flight.getReconstructionsPath() / (dt + ".ply")).string();
+    auto partialMVSFileName = (flight.getReconstructionsPath() / ( dt +".mvs")).string();
+    rec.saveReconstruction(partialRecFileName);
+    exportToMvs(rec, partialMVSFileName, flight, tg);
 }
 
 void bundle(Reconstruction& rec, const FlightSession& flight, const ShoTracksGraph& tg) {
@@ -585,7 +636,7 @@ void Reconstructor::runIncrementalReconstruction(const ShoTracker& tracker) {
 
                 colorReconstruction(rec);
                 rec.saveReconstruction(recFileName);
-                exportToMvs(rec, mvsFileName);
+                exportToMvs(rec, mvsFileName, flight_, tg_);
                 reconstructions.push_back(rec);
             }
         }
@@ -675,12 +726,9 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
     bundle(rec, flight_, tg_);
     removeOutliers(rec);
     colorReconstruction(rec);
-    auto partialRecFileName = (flight_.getReconstructionsPath() / "green.ply").string();
-    auto partialMVSFileName = (flight_.getReconstructionsPath() / "green.mvs").string();
-    rec.saveReconstruction(partialRecFileName);
-    exportToMvs(rec, partialMVSFileName);
     rec.updateLastCounts();
     while (1) {
+        savePartialReconstruction(rec, flight_, tg_);
         auto candidates = reconstructedPointForImages(rec, images);
         if (candidates.empty())
             break;
@@ -693,7 +741,6 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
                 continue;
 
             singleViewBundleAdjustment(imageName, rec, tg_.getTrackGraph());
-            rec.saveReconstruction("partialgreen.ply");
             cerr << "Adding " << imageName << " to the reconstruction \n";
             images.erase(imageName);
             triangulateShotTracks(imageName, rec);
@@ -895,7 +942,7 @@ void Reconstructor::localBundleAdjustment(std::string centralShotId, Reconstruct
                 }
         }
     }
-#if 1
+#if 0
     if (flight_.hasGps() && rec.usesGps()) {
         cout << "Using gps prior \n";
         for (const auto[shotId, shot] : rec.getReconstructionShots()) {
@@ -966,40 +1013,6 @@ void Reconstructor::plotTracks(CommonTrack track) const {
     imshow(frameName, imageMatches);
 }
 
-void Reconstructor::exportToMvs(const Reconstruction & rec, const std::string mvsFileName)
-{
-    csfm::OpenMVSExporter exporter;
-    exporter.AddCamera("1", rec.getCamera().getNormalizedKMatrix());
-
-    for (const auto[shotId, shot] : rec.getReconstructionShots()) {
-        auto imagePath = flight_.getUndistortedImagesDirectoryPath() / shotId;
-        imagePath.replace_extension("png");
-        auto origin = Mat(shot.getPose().getOrigin()).data;
-        exporter.AddShot(
-            imagePath.string(),
-            shotId,
-            "1",
-            shot.getPose().getRotationMatrix(),
-            { static_cast<double>(origin[0]), static_cast<double>(origin[1]), static_cast<double>(origin[2]) }
-        );
-    }
-
-    for (const auto &[trackId, cloudPoint] : rec.getCloudPoints()) {
-        vector<string> shots;
-        auto trackVertex = tg_.getTrackNodes().at(std::to_string(trackId));
-
-        const auto[edgesBegin, edgesEnd] =
-            boost::out_edges(trackVertex, tg_.getTrackGraph());
-
-        for (auto edgesIter = edgesBegin; edgesIter != edgesEnd; ++edgesIter) {
-            const auto shotName = tg_.getTrackGraph()[*edgesIter].imageName;
-            shots.push_back(shotName);
-        }
-        exporter.AddPoint(cloudPoint.getPosition(), shots);
-    }
-    exporter.Export(mvsFileName);
-}
-
 vector<pair<string, int>> Reconstructor::reconstructedPointForImages(const Reconstruction & rec, set<string> & images)
 {
     vector<pair <string, int>> res;
@@ -1048,11 +1061,11 @@ void Reconstructor::removeOutliers(Reconstruction& rec) {
 tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, const vertex_descriptor imageVertex, double threshold,
     int iterations, double probability, int resectionInliers) {
 
+
 # if 1
     opengv::points_t Xs;
     opengv::bearingVectors_t Bs;
 #endif
-
     ReconstructionReport report;
     vector<Point2d> fPoints;
     vector<Point3d> realWorldPoints;
@@ -1097,6 +1110,8 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
         ShotMetadata shotMetadata(shot.getMetadata(), flight_);
         report.numCommonPoints = realWorldPoints.size();
         report.numInliers = cv::countNonZero(inliers);
+        cout << "Rotation is " << pnpRot << "\n";
+        cout << "Translation is " << pnpTrans << "\n";
         Shot recShot(shotName, flight_.getCamera(), Pose(pnpRot, pnpTrans), shotMetadata);
         rec.addShot(recShot.getId(), recShot);
         return { true, report };

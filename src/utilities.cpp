@@ -5,6 +5,7 @@ using std::cerr;
 
 using cv::Point3d;
 using cv::Vec3d;
+using std::string;
 
 ShoRowVector3d convertPointToRowVector(Point3d p) {
     return { p.x, p.y, p.z };
@@ -38,4 +39,21 @@ bool checkIfCudaEnabled()
         cerr << "The CUDA driver is not installed, or is incompatible \n";
     }
     return false;
+}
+
+string getDateTimeAsString()
+{
+#if 0
+    auto now = std::chrono::system_clock::now();
+    auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+    std::stringstream ss;
+    ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
+    return ss.str();
+#endif
+
+#if 1
+    unsigned long int sec = time(NULL);
+    return std::to_string(sec);
+#endif
 }
