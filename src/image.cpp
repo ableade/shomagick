@@ -47,7 +47,8 @@ ImageMetadata Img::extractExifFromImage(std::string imagePath)
     const auto loc = _extractCoordinatesFromExif(exifData);
     const auto[make, model] = _extractMakeAndModelFromExif(exifData);
     const auto orientation = _extractOrientationFromExif(exifData);
-
+    _extractLensModel(imageExif, exifData);
+    _extractExifWidthAndHeight(imageExif, exifData);
     imageExif.location = loc;
     imageExif.cameraMake = make;
     imageExif.cameraModel = model;
@@ -152,6 +153,61 @@ int Img::_extractOrientationFromExif(Exiv2::ExifData imageExifData)
         return orientationVal->toLong();
     }
     return orientation;
+}
+
+void Img::_extractLensModel(ImageMetadata & metaData, Exiv2::ExifData imageExifData)
+{
+    const auto lensKey = Exiv2::ExifKey("Exif.Photo.LensModel");
+    const auto lensIt = imageExifData.findKey(lensKey);
+    if (lensIt != imageExifData.end()) {
+        metaData.lensModel = lensIt->getValue()->toString();
+    }
+}
+
+void Img::_extractExifWidthAndHeight(ImageMetadata & metadata, Exiv2::ExifData imageExifData)
+{
+    const auto heightKey = Exiv2::ExifKey("Exif.Image.ImageLength");
+    const auto widthKey = Exiv2::ExifKey("Exif.Image.ImageWidth");
+
+    auto hIt = imageExifData.findKey(heightKey);
+    auto wIt = imageExifData.findKey(widthKey);
+    if (hIt != imageExifData.end()) {
+        metadata.height = hIt->getValue()->toLong();
+    }
+    if (wIt != imageExifData.end()) {
+        metadata.width = wIt->getValue()->toLong();
+    }
+}
+
+void Img::_extractFocalMetadata(ImageMetadata & metadata, Exiv2::ExifData imageExifData)
+{
+    //Extract the sensor width if available
+    auto fPXKey = Exiv2::ExifKey("Exif.Image.FocalPlaneXResolution");
+    auto fPrKey = Exiv2::ExifKey("Exif.Image.FocalPlaneResolutionUnit");
+
+    if (imageExifData.findKey(fPXKey) == imageExifData.end() ||
+        imageExifData.findKey(fPrKey) == imageExifData.end())
+        return;
+    
+
+    auto resolutionUnit = imageExifData.findKey(fPrKey)->getValue()->toLong();
+    float mmUnit = 0;
+
+    if (resolutionUnit == 2)
+        mmUnit = 25.4; //1 inch is 25.4 millimeters
+
+    else if (resolutionUnit == 3)
+        mmUnit = 10; // I centimeter is 10 millimeters
+         
+    if (mmUnit != 0) {
+        //Calculate sensor width
+        auto pixelsPerUnit = imageExifData.findKey(fPXKey)->getValue()->toFloat();
+        auto unitsPerPixel = 1 / pixelsPerUnit;
+        metadata.sensorWidth = metadata.width * unitsPerPixel * mmUnit;
+    }
+    else {
+        //TODO extract sensor width from the sensor database
+    }
 }
 
 Img::Img(string imageFileName) : imageFileName(imageFileName) {

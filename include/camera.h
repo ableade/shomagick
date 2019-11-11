@@ -4,6 +4,7 @@
 #include <opencv2/opencv.hpp>
 #include <opengv/types.hpp>
 #include <ostream>
+#include "image.hpp"
 #include "types.h"
 
 class Pose {
@@ -75,6 +76,7 @@ class Camera
     friend std::ostream & operator << (std::ostream& out, const  Camera & c);
     static Camera getCameraFromCalibrationFile(std::string calibFile);
     static Camera getCameraFromExifMetaData(std::string image);
+    static double getSensorWidth(const ImageMetadata& metadata);
     void setFocalWithPhysical(double physicalFocal);
     void setK1(double k1);
     void setK2(double k2);

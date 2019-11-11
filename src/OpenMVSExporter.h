@@ -31,9 +31,8 @@ namespace csfm {
             const std::string &path,
             const std::string &shot_id,
             const std::string &camera_id,
-            cv::Matx33d R,
-            cv::Point3_<double> C) {
-
+            const cv::Matx33d& R,
+            const cv::Point3_<double>& C) {
             int platform_id = platform_ids_[camera_id];
             MVS::Interface::Platform &platform = scene_.platforms[platform_id];
 

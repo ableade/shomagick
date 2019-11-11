@@ -72,14 +72,21 @@ std::vector<float> getStdByAxis(cv::InputArray m, int axis);
 std::vector<float> getMeanByAxis(cv::InputArray m, int axis);
 opengv::transformation_t absolutePoseRansac(opengv::bearingVectors_t bearings,
     opengv::points_t points,
-    double threshold,
-    int iterations,
-    double probability);
+    double threshold =0.004,
+    int iterations =1000,
+    double probability=0.999);
 opengv::transformation_t relativePoseRansac(opengv::bearingVectors_t bearings,
     opengv::points_t points,
     double threshold,
     int iterations,
     double probability);
+
+opengv::rotation_t relativePoseRotationOnly(const opengv::bearingVectors_t& bearings1,
+    const opengv::bearingVectors_t& bearings2,
+    int iterations = 1000,
+    float probability = 0.9999,
+    float treshold = cos(0.016)
+);
 
 cv::Mat homography_dlt(const std::vector< cv::Point2f > &x1, const std::vector< cv::Point2f > &x2);
 
@@ -88,3 +95,4 @@ void pose_from_homography_dlt(const std::vector< cv::Point2f > &xw,
     cv::Mat &otw, cv::Mat &oRw);
 
 void fitSimilarityTransform(int maxIterations = 1000, int treshold = 1);
+

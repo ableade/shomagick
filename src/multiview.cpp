@@ -19,7 +19,12 @@ This code is taken from OpenSFM see License at
 #include <opencv2/core/eigen.hpp>
 #include <opengv/absolute_pose/methods.hpp>
 #include <opengv/absolute_pose/CentralAbsoluteAdapter.hpp>
+#include <opengv/relative_pose/CentralRelativeAdapter.hpp>  
 #include <opengv/sac_problems/absolute_pose/AbsolutePoseSacProblem.hpp>
+#include <opengv/relative_pose/methods.hpp>
+#include <opengv/sac_problems/relative_pose/CentralRelativePoseSacProblem.hpp>
+#include <opengv/sac_problems/relative_pose/RotationOnlySacProblem.hpp>
+#include <opengv/sac/Ransac.hpp>
 #include <opengv/sac/Ransac.hpp>
 
 using cv::Mat;
@@ -33,6 +38,11 @@ using opengv::absolute_pose::CentralAbsoluteAdapter;
 using opengv::sac::Ransac;
 using opengv::sac_problems::absolute_pose::AbsolutePoseSacProblem;
 using opengv::transformation_t;
+using opengv::relative_pose::CentralRelativeAdapter;
+using opengv::rotation_t;
+using opengv::translation_t;
+using opengv::sac::Ransac;
+using opengv::sac_problems::relative_pose::RotationOnlySacProblem;
 
 namespace csfm
 {
@@ -479,6 +489,33 @@ transformation_t absolutePoseRansac(opengv::bearingVectors_t bearings, opengv::p
 
 transformation_t relativePoseRansac(opengv::bearingVectors_t bearings, opengv::points_t points, double threshold, int iterations, double probability) {
     return {};
+}
+
+opengv::rotation_t relativePoseRotationOnly(const opengv::bearingVectors_t& bearings1, 
+    const opengv::bearingVectors_t& bearings2, 
+    int iterations, 
+    float probability, 
+    float threshold)
+{
+    CentralRelativeAdapter adapter(bearings1, bearings2);
+    rotation_t relativeRotation;
+
+    std::shared_ptr<RotationOnlySacProblem>
+        relposeproblem_ptr(
+            new RotationOnlySacProblem(adapter));
+
+    // Create a ransac solver for the problem
+    opengv::sac::Ransac<RotationOnlySacProblem> ransac;
+
+    ransac.sac_model_ = relposeproblem_ptr;
+    ransac.threshold_ = threshold;
+    ransac.max_iterations_ = iterations;
+    ransac.probability_ = probability;
+
+    // Solve
+    ransac.computeModel();
+    
+    return ransac.model_coefficients_;
 }
 
 Mat homography_dlt(vector< Point2f > &x1, const vector< Point2f > &x2)

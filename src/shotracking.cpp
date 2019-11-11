@@ -19,6 +19,18 @@ using std::string;
 using std::endl;
 using std::cerr;
 
+set<pair<string, string>> _getCombinations(const vector<string> &images)
+{
+    set<pair<string, string>> combinations;
+    for (size_t i = 0; i < images.size() - 1; ++i) {
+        for (size_t j = i + 1; j < images.size(); ++j) {
+            auto pair = make_pair(images[i], images[j]);
+            combinations.insert(pair);
+        }
+    }
+    return combinations;
+}
+
 ShoTracker::ShoTracker(
     FlightSession flight,
     std::map<string,
@@ -162,41 +174,6 @@ TrackGraph ShoTracker::buildTracksGraph()
     return tg;
 }
 
-vector<CommonTrack> ShoTracker::commonTracks(const TrackGraph &tg) const
-{
-    auto minCommonTracks = 50;
-    vector<CommonTrack> commonTracks;
-    map<pair<string, string>, std::set<string>> _commonTracks;
-    for (auto& trackNode : trackNodes_)
-    {
-        std::string vertexName;
-        TrackGraph::vertex_descriptor trackDescriptor;
-        std::tie(vertexName, trackDescriptor) = trackNode;
-        vector<string> imageNeighbours;
-
-        auto neighbours = boost::adjacent_vertices(trackDescriptor, tg);
-        for (auto vd : make_iterator_range(neighbours))
-        {
-            imageNeighbours.push_back(tg[vd].name);
-        }
-        auto combinations = _getCombinations(imageNeighbours);
-
-        for (const auto &combination : combinations)
-        {
-            _commonTracks[combination].insert(vertexName);
-        }
-    }
-    for (auto pair : _commonTracks) {
-        //Skip pairs that have common tracks less than a length of 50
-        if (pair.second.size() < minCommonTracks)
-            continue;
-
-        CommonTrack cTrack(pair.first, 0, pair.second);
-        commonTracks.push_back(cTrack);
-    }
-    return commonTracks;
-}
-
 FeatureProperty ShoTracker::getFeatureProperty_(const ImageFeatures &imageFeatures, ImageFeatureNode fNode) const
 {
     assert(fNode.second < imageFeatures.keypoints.size());
@@ -206,18 +183,6 @@ FeatureProperty ShoTracker::getFeatureProperty_(const ImageFeatures &imageFeatur
         imageFeatures.colors[fNode.second],
         imageFeatures.keypoints[fNode.second].size
     };
-}
-
-set<pair<string, string>> ShoTracker::_getCombinations(const vector<string> &images) const
-{
-    set<pair<string, string>> combinations;
-    for (size_t i = 0; i < images.size() - 1; ++i) {
-        for (size_t j = i + 1; j < images.size(); ++j) {
-            auto pair = make_pair(images[i], images[j]);
-            combinations.insert(pair);
-        }
-    }
-    return combinations;
 }
 
 void ShoTracker::mergeFeatureTracks(pair<string, int> feature1, pair<string, int> feature2)

@@ -9,6 +9,8 @@ typedef std::string ImageName;
 typedef int KeyPointIndex;
 typedef std::pair<ImageName, KeyPointIndex> ImageFeatureNode;
 
+std::set<std::pair<std::string, std::string>> _getCombinations(const std::vector<std::string>& images);
+
 struct VertexProperty
 {
     std::string name;
@@ -75,17 +77,22 @@ public:
 
     CommonTrack(const CommonTrack& c)
     {
-        this->imagePair = c.imagePair;
-        this->rScore = c.rScore;
-        this->commonTracks = c.commonTracks;
+        imagePair = c.imagePair;
+        rScore = c.rScore;
+        commonTracks = c.commonTracks;
     }
 
     CommonTrack& operator= (const CommonTrack &c)
     {
-        this->imagePair = c.imagePair;
-        this->rScore = c.rScore;
-        this->commonTracks = c.commonTracks;
+        imagePair = c.imagePair;
+        rScore = c.rScore;
+        commonTracks = c.commonTracks;
         return *this;
+    }
+    friend std::ostream & operator << (std::ostream& out, const  CommonTrack & c) {
+        out << c.imagePair.first << " - " << c.imagePair.second << "\n";
+        out << "Number of common tracks is " << c.commonTracks.size() << "\n";
+        out << "Score: " << c.rScore << "\n";
     }
 };
 
@@ -109,7 +116,6 @@ private:
     std::map<std::string, TrackGraph::vertex_descriptor> imageNodes_;
     std::map<std::string, TrackGraph::vertex_descriptor> trackNodes_;
     std::map<std::string, ImageFeatures> imageFeatures;
-    std::set<std::pair<std::string, std::string>> _getCombinations(const std::vector<std::string>& images) const;
     FeatureProperty getFeatureProperty_(const ImageFeatures& imageFeatures, ImageFeatureNode fNode) const;
     ImageFeatures _loadImageFeatures(const std::string fileName);
 
@@ -120,7 +126,6 @@ public:
     void mergeFeatureTracks(ImageFeatureNode feature1, ImageFeatureNode feature2);
     void createFeatureNodes(std::vector<std::pair<ImageFeatureNode, ImageFeatureNode>>& allFeatures,
         std::vector<FeatureProperty> & props);
-    std::vector<CommonTrack> commonTracks(const TrackGraph &tg) const;
     std::map <int, std::vector <int>> getTracks();
     ImageFeatureNode retrieveFeatureByIndexValue(int index);
     const std::map<std::string, TrackGraph::vertex_descriptor> getTrackNodes() const;

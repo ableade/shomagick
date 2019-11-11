@@ -2,7 +2,9 @@
 #include <ostream>
 #include <algorithm>
 #include <string>
+#include <fstream>
 #include <Eigen/Core>
+#include "json.hpp"
 #include "allclose.h"
 //#include <boost/filesystem.hpp>
 
@@ -10,6 +12,7 @@ using std::ostream;
 using std::max;
 using std::vector;
 using std::string;
+using std::ifstream;
 using cv::Matx33d;
 using cv::Mat;
 using cv::Vec3d;
@@ -18,6 +21,11 @@ using cv::Point_;
 using cv::Size;
 using opengv::bearingVector_t;
 using opengv::bearingVectors_t;
+using json = nlohmann::json;
+
+#ifdef _MSC_VER 
+
+#endif
 
 Matx33d Pose::getRotationMatrix() const
 {
@@ -145,9 +153,9 @@ Camera::Camera(Mat cameraMatrix, Mat distortion, int height, int width, int scal
     assert(!cameraMatrix.empty());
     assert(!distortionCoefficients.empty());
     assert(height != 0 && width != 0);
-    this->initialK1_ = this->getK1();
-    this->initialK2_ = this->getK2();
-    this->initialPhysicalFocal = this->getPhysicalFocalLength();
+    initialK1_ = this->getK1();
+    initialK2_ = this->getK2();
+    initialPhysicalFocal = this->getPhysicalFocalLength();
 }
 
 Mat Camera::getKMatrix() { return this->cameraMatrix; }
@@ -261,6 +269,17 @@ Camera Camera::getCameraFromCalibrationFile(string calibrationFile) {
 Camera Camera::getCameraFromExifMetaData(std::string image)
 {
     return Camera();
+}
+
+double Camera::getSensorWidth(const ImageMetadata & metadata)
+{
+    //TODO Finish implementation of sensor width
+    if (!metadata.cameraMake.length() != 0) {
+        ifstream jsonFileStream("");
+        json jsonRecFile;
+        jsonFileStream >> jsonRecFile;
+    }
+    return {};
 }
 
 void Camera::setFocalWithPhysical(double physicalFocal)
