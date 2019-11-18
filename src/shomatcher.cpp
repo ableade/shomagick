@@ -193,7 +193,6 @@ void ShoMatcher::runRobustFeatureMatching()
 
     map<string, ImageFeatures> loadedFeatures;
     for (const auto&[queryImg, trainImages] : candidateImages) {
-        vector<string> trainImageSet;
         auto queryImagePath = flight_.getImageDirectoryPath() / queryImg;
         ImageFeatures queryFeaturesSet;
         try {
@@ -206,7 +205,6 @@ void ShoMatcher::runRobustFeatureMatching()
         map<string, vector<DMatch>> matchSet;
         for (const auto trainImg : trainImages)
         {
-            trainImageSet.push_back(trainImg);
             ImageFeatures trainFeaturesSet;
             try {
                 trainFeaturesSet = loadedFeatures.at(trainImg);
@@ -226,7 +224,7 @@ void ShoMatcher::runRobustFeatureMatching()
             matchSet[trainImg] = matches;
             cout << queryImg << " - " << trainImg << " has " << matches.size() << "candidate matches" << endl;
         }
-        this->flight_.saveMatches(queryImg, matchSet);
+        flight_.saveMatches(queryImg, matchSet);
     }
 }
 

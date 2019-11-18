@@ -36,7 +36,7 @@ struct Location
     double latitude;
     double altitude;
     double dop;
-    bool isEmpty = true;
+     bool isEmpty = true;
 
     double distanceTo(Location loc)
     {
@@ -137,6 +137,10 @@ struct ImageMetadata
     double captureTime;
     std::string lensModel;
     float sensorWidth;
+    float focal;
+    float focalRatio;
+    float focal35;
+    float focalLength;
 };
 
 class Img
@@ -150,15 +154,16 @@ private:
     std::string imageFileName;
     ImageMetadata metadata;
     static Location _extractCoordinatesFromExif(Exiv2::ExifData exifData);
-    static double _extractPhysicalFocalFromExif(Exiv2::ExifData exifData);
+    static void _extractFocalLengthFromExifData(ImageMetadata& metadata, Exiv2::ExifData exifData);
     // TODO Implement unimplemented functions in image class
     static void _extractProjectionTypeFromExif(ImageMetadata& metadata,Exiv2::ExifData exifData);
     static CameraMakeAndModel _extractMakeAndModelFromExif(Exiv2::ExifData exifData);
     static double _extractDopFromExif(Exiv2::ExifData imageExifData);
     static int _extractOrientationFromExif(Exiv2::ExifData imageExifData);
     static void _extractLensModel(ImageMetadata& metaData, Exiv2::ExifData imageExifData);
-    static void _extractExifWidthAndHeight(ImageMetadata& metadata, Exiv2::ExifData imageExifData);
+    static void _extractExifWidthAndHeight(std::string imagePath, ImageMetadata& metadata, Exiv2::ExifData imageExifData);
     static void _extractFocalMetadata(ImageMetadata& metadata, Exiv2::ExifData imageExifData);
+    static void _extractSensorWidthFromDB(ImageMetadata& metadata, Exiv2::ExifData imageExifData);
 
 public:
     Img() : imageFileName(), metadata() {};

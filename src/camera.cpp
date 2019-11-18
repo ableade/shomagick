@@ -148,14 +148,14 @@ cameraModel_(), initialK1_(), initialK2_(), initialPhysicalFocal()
 
 Camera::Camera(Mat cameraMatrix, Mat distortion, int height, int width, int scaledHeight, int scaledWidth) :
     scaledHeight_(scaledHeight), scaledWidth_(scaledWidth), cameraMatrix(cameraMatrix), distortionCoefficients(distortion), height_(height),
-    width_(width), cameraMake_(),
+    width_(width), cameraMake_(), 
     cameraModel_(), initialK1_(), initialK2_(), initialPhysicalFocal() {
     assert(!cameraMatrix.empty());
     assert(!distortionCoefficients.empty());
     assert(height != 0 && width != 0);
     initialK1_ = this->getK1();
     initialK2_ = this->getK2();
-    initialPhysicalFocal = this->getPhysicalFocalLength();
+    initialPhysicalFocal = getPhysicalFocalLength();
 }
 
 Mat Camera::getKMatrix() { return this->cameraMatrix; }
@@ -218,7 +218,7 @@ double & Camera::getK2() {
 
 double Camera::getPhysicalFocalLength() const {
 
-    return (double)this->getPixelFocal() / (double)max(getHeight(), getWidth());
+    return (double)getPixelFocal() / (double)max(getHeight(), getWidth());
 }
 
 double Camera::getK1() const {
@@ -266,20 +266,34 @@ Camera Camera::getCameraFromCalibrationFile(string calibrationFile) {
     return Camera{ cameraMatrix, distortionParameters, height, width };
 }
 
-Camera Camera::getCameraFromExifMetaData(std::string image)
+Camera Camera::getCameraFromExifMetaData(ImageMetadata metadata)
 {
-    return Camera();
-}
+    auto focal = metadata.focalRatio;
+    if (focal == 0)
+        focal = 0.75;
+    
+    focal *= max(metadata.width, metadata.height); //Use this as default focal for camera
 
-double Camera::getSensorWidth(const ImageMetadata & metadata)
-{
-    //TODO Finish implementation of sensor width
-    if (!metadata.cameraMake.length() != 0) {
-        ifstream jsonFileStream("");
-        json jsonRecFile;
-        jsonFileStream >> jsonRecFile;
-    }
-    return {};
+    cv::Mat dist = (cv::Mat_<double>(4, 1) <<
+        0,
+        0,
+        0.,
+        0.
+        );
+
+    cv::Mat cameraMatrix = (cv::Mat_<double>(3, 3) <<
+        focal,
+        0.,
+        metadata.width / 2,
+        0.,
+        focal,
+        metadata.height / 2,
+        0.,
+        0.,
+        1
+        );
+
+    return Camera(cameraMatrix, dist, metadata.height, metadata.width);
 }
 
 void Camera::setFocalWithPhysical(double physicalFocal)

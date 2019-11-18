@@ -179,31 +179,6 @@ void HahogFeatureDetector::detectAndCompute(cv::InputArray image, cv::InputArray
     cv::Mat descriptorsMat(static_cast<int>(numFeatures), static_cast<int>(dimension), CV_32FC1, desc.data());
     dst = descriptorsMat.clone();
   
-    /*
-    int rows = dst.rows;
-    int cols = dst.cols;
-
-    if (dst.isContinuous()) {
-        cols = rows * cols;
-        rows = 1;
-    }
-
-    for (int r = 0; r < rows; ++r)
-    {
-        uchar *pOutput = dst.ptr<uchar>(r);
-
-        for (int c = 0; c < cols; ++c)
-        {
-            *pOutput = (uchar)desc.at(c);
-            ++pOutput;
-        }
-    }
-    */
-    //Apply square root mapping to features.
-    //cv::sqrt(dst, dst);
-
-    //std::cout << descriptorsMat.row(0) << "\n";
-    //std::cout << descriptorsMat.row(1) << "\n";
-    //std::cout << descriptorsMat.row(2) << "\n";
-    //descriptors.assign(descriptorsMat);
+    vl_sift_delete(sift_);
+    vl_covdet_delete(covdet_);
 }

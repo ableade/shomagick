@@ -109,6 +109,12 @@ namespace boost {
             ar & m.cameraModel;
             ar & m.orientation;
             ar & m.captureTime;
+            ar & m.lensModel;
+            ar & m.sensorWidth;
+            ar & m.focal;
+            ar & m.focalRatio;
+            ar & m.focal35;
+            ar & m.focalLength;
         }
 
 
@@ -127,5 +133,6 @@ namespace boost {
 bool checkIfCudaEnabled();
 
 std::string getDateTimeAsString();
+
 
 

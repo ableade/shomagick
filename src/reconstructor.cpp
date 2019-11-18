@@ -186,12 +186,6 @@ tuple<bool, ReconstructionReport> twoViewResect(opengv::bearingVectors_t bearing
         Mat3d cvT;
         eigen2cv(shotRotation, cvRot);
         eigen2cv(shotTranslation, cvT);
-        std::cout << "cv t is " << cvT << "\n";
-        std::cout << "cv Rot is " << cvRot << "\n";
-
-        //cout << "Shot rotation is " << shotRotation << "\n";
-        //cout << "Shot translation is " << shotTranslation << "\n";
-        //cout << "Number of inliers is " << inliersCount << "\n";
 
         const auto shotName = tg.getTrackGraph()[imageVertex].name;
         const auto shot = flight.getImageSet()[flight.getImageIndex(shotName)];
@@ -770,7 +764,9 @@ void Reconstructor::continueReconstruction(Reconstruction& rec, set<string>& ima
     colorReconstruction(rec);
     rec.updateLastCounts();
     while (1) {
+#if 0
         savePartialReconstruction(rec, flight_, tg_);
+#endif
         auto candidates = reconstructedPointForImages(rec, images);
         if (candidates.empty())
             break;
@@ -1129,6 +1125,7 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
         return make_tuple(false, report);
     }
 
+#if 1
     return twoViewResect(Bs,
         Xs,
         tg_,
@@ -1140,6 +1137,8 @@ tuple<bool, ReconstructionReport> Reconstructor::resect(Reconstruction & rec, co
         probability,
         resectionInliers
     );
+#endif
+
 #if 0
     Mat pnpRot, pnpTrans, inliers;
     if (cv::solvePnPRansac(realWorldPoints, fPoints, flight_.getCamera().getKMatrix(),

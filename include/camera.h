@@ -75,8 +75,7 @@ class Camera
     std::vector<cv::Point_<T>> denormalizeImageCoordinates(const std::vector<cv::Point_<T>>&) const;
     friend std::ostream & operator << (std::ostream& out, const  Camera & c);
     static Camera getCameraFromCalibrationFile(std::string calibFile);
-    static Camera getCameraFromExifMetaData(std::string image);
-    static double getSensorWidth(const ImageMetadata& metadata);
+    static Camera getCameraFromExifMetaData(ImageMetadata metadata);
     void setFocalWithPhysical(double physicalFocal);
     void setK1(double k1);
     void setK2(double k2);

@@ -69,7 +69,8 @@ imageTracksPath_(), camera_(), referenceLLA_()
     });
     for (auto entry : v)
     {
-        if (entry.path().extension().string() == ".jpg" || entry.path().extension().string() == ".png") {
+        auto ext = entry.path().extension().string();
+        if (ext ==".jpg" || ext == ".png" || ext==".JPG" || ext == ".PNG") {
             const auto imageFileName = parseFileNameFromPath(entry.path().string());
             const auto imageExifPath = getImageExifPath() / (imageFileName + ".dat");
             ImageMetadata metadata;
@@ -91,8 +92,13 @@ imageTracksPath_(), camera_(), referenceLLA_()
         assert(exists(calibrationFile));
         camera_ = Camera::getCameraFromCalibrationFile(calibrationFile);
     }
+    else {
+        //Get camera information from metadata in the images
+        camera_ = Camera::getCameraFromExifMetaData(imageSet[0].getMetadata());
+        cout << "Camera retreived from metadata was " << camera_ << "\n";
+    }
     inventReferenceLLA();
-    cout << "Found " << this->imageSet.size() << " usable images" << endl;
+    cout << "Found " << imageSet.size() << " usable images" << endl;
 }
 
 std::string FlightSession::_extractProjectionTypeFromExif(Exiv2::ExifData exifData) const
@@ -190,7 +196,6 @@ bool FlightSession::saveImageExifFile(std::string imageName, ImageMetadata image
 bool FlightSession::saveMatches(string fileName, const std::map<string, vector<cv::DMatch>>& matches)
 {
     auto imageMatchesPath = getImageMatchesPath() / (fileName + ".yaml");
-    cout << "Writing file " << imageMatchesPath.string() << endl;
     cv::FileStorage fs(imageMatchesPath.string(), cv::FileStorage::WRITE);
     fs << "MatchCount" << (int)matches.size();
     fs << "candidateImageMatches" << "[";
