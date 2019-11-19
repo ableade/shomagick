@@ -83,9 +83,12 @@ void exportToMvs(const Reconstruction& rec,
     const ShoTracksGraph & tg
 );
 
-void computeReconstructability(const ShoTracksGraph& tg, 
+template <class R>
+void computeReconstructability(
+    const ShoTracksGraph& tg, 
     std::vector<CommonTrack>& commonTracks,
-    const FlightSession& flight
+    const FlightSession& flight, 
+    R metric
 );
 
 TwoViewPose twoViewReconstructionRotationOnly(CommonTrack track, 
@@ -103,13 +106,34 @@ void _alignMatchingPoints(const CommonTrack track,
 TwoViewPose _computeRotationInliers(opengv::bearingVectors_t& b1, opengv::bearingVectors_t& b2,
     const opengv::rotation_t& rotation, cv::Mat& cvMask);
 
-float computeReconstructabilityScore(int tracks, cv::Mat inliers, int treshold = 0.3);
-
 std::vector<CommonTrack> getCommonTracks(const ShoTracksGraph &stg);
 
 void _computeTwoViewReconstructionInliers(opengv::bearingVectors_t b1, opengv::bearingVectors_t b2,
     opengv::rotation_t r, opengv::translation_t t);
 
+TwoViewPose recoverTwoViewPoseWithHomography(
+    CommonTrack track, 
+    cv::Mat& mask,
+    const FlightSession& flight,
+    const ShoTracksGraph& tg
+);
+
+std::tuple<cv::Mat, std::vector<cv::Point2f>, std::vector<cv::Point2f>, cv::Mat> commonTrackHomography(
+    CommonTrack commonTrack,
+    const ShoTracksGraph& tg
+);
+
+template <typename T>
+void twoViewReconstructionInliers(
+    std::vector<cv::Mat>& Rs_decomp, 
+    std::vector<cv::Mat>& ts_decomp, 
+    std::vector<int> possibleSolutions,
+    std::vector<cv::Point_<T>> points1, 
+    std::vector<cv::Point_<T>> points2,
+    const FlightSession& flight
+);
+
+template <class R>
 class Reconstructor
 {
 public:
@@ -124,16 +148,12 @@ private:
     std::map<std::string, ShoColumnVector3d> shotOrigins;
     std::map<std::string, cv::Mat> rInverses;
     std::vector<cv::DMatch> _getTrackDMatchesForImagePair(const CommonTrack track) const;
+    R reconstructabilityScorer_;
 
 public:
     Reconstructor(FlightSession flight, TrackGraph tg);
     TwoViewPose recoverTwoCameraViewPose(CommonTrack track, cv::Mat& mask);
     
-    template <typename T>
-    void twoViewReconstructionInliers(std::vector<cv::Mat>& Rs_decomp, std::vector<cv::Mat>& ts_decomp, std::vector<int> possibleSolutions,
-        std::vector<cv::Point_<T>> points1, std::vector<cv::Point_<T>> points2) const;
-    TwoViewPose recoverTwoViewPoseWithHomography(CommonTrack track, cv::Mat& mask);
-    std::tuple<cv::Mat, std::vector<cv::Point2f>, std::vector<cv::Point2f>, cv::Mat> commonTrackHomography(CommonTrack commonTrack) const;
     void runIncrementalReconstruction(const ShoTracker& tracker);
 
     using OptionalReconstruction = std::optional<Reconstruction>;

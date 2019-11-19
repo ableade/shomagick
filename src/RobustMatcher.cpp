@@ -160,8 +160,8 @@ cv::Ptr<RobustMatcher> RobustMatcher::createSurfMatcher(const bool cudaEnabled, 
     Ptr<FeatureDetector> extractor;
     if (cudaEnabled)
     {
-        detector = CudaSurfFeatureDetector::create();
-        extractor = CudaSurfFeatureDetector::create();
+        detector = CudaSurfFeatureDetector::create(minHessian);
+        extractor = CudaSurfFeatureDetector::create(minHessian);
         cMatcher = cv::cuda::DescriptorMatcher::createBFMatcher();
     }
     else
