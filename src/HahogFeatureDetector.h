@@ -9,6 +9,31 @@ const float HAHOG_PEAK_THRESHOLD = 0.00001;
 const int HAHOG_EDGE_TRESHOLD = 10;
 const bool HAHOG_NORMALIZE_TO_UCHAR = false;
 
+inline VlCovDet * initializeCovdet() {
+    VlCovDet * covdet = vl_covdet_new(VL_COVDET_METHOD_HESSIAN);
+    return covdet;
+}
+
+inline void freeCovdet(VlCovDet* covdet) {
+    vl_covdet_delete(covdet);
+}
+
+
+struct CovariantDetectorDeleter
+{
+    void operator()(VlCovDet* cov) const
+    {
+        freeCovdet(cov);
+    }
+};
+
+using unique_vl_COVDET = std::unique_ptr<VlCovDet, CovariantDetectorDeleter>;
+
+static_assert(
+    sizeof(VlCovDet*) == sizeof(unique_vl_COVDET),
+    "unique covariant pointer has unexpected size"
+    );
+
 class HahogFeatureDetector : public cv::Feature2D {
     
 private:
@@ -16,7 +41,6 @@ private:
     int edgeThreshold_;
     int featuresSize_;
     bool useAdaptiveSupression_;
-    VlCovDet * covdet_;
     VlSiftFilt* sift_;
 
 public:

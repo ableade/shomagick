@@ -13,14 +13,12 @@ using cv::KeyPoint;
 HahogFeatureDetector::~HahogFeatureDetector()
 {
     vl_sift_delete(sift_);
-    vl_covdet_delete(covdet_);
 }
 
 HahogFeatureDetector::HahogFeatureDetector(int targetNumFeatures, float peakThreshold, int edgeThreshold,  bool useAdaptiveSupression) :featuresSize_(targetNumFeatures), peakTreshhold_(peakThreshold),
 edgeThreshold_(edgeThreshold),  useAdaptiveSupression_(useAdaptiveSupression)
 {
     sift_ = vl_sift_new(16, 16, 1, 3, 0);
-    covdet_ = vl_covdet_new(VL_COVDET_METHOD_HESSIAN);
 }
 
 HahogFeatureDetector::HahogFeatureDetector()
@@ -34,6 +32,7 @@ cv::Ptr<HahogFeatureDetector> HahogFeatureDetector::create(int targetNumFeatures
 
 void HahogFeatureDetector::detect(cv::InputArray image, std::vector<cv::KeyPoint>& keypoints, cv::InputArray mask)
 {
+     VlCovDet * covdet_ = vl_covdet_new(VL_COVDET_METHOD_HESSIAN);
     auto imFlat = image.getMat().reshape(1, 1);
     // set various parameters (optional)
     vl_covdet_set_first_octave(covdet_, 0);
@@ -79,6 +78,7 @@ void HahogFeatureDetector::detect(cv::InputArray image, std::vector<cv::KeyPoint
 
         keypoints.push_back(kp);
     }
+    vl_covdet_delete(covdet_);
 }
 
 void HahogFeatureDetector::compute(cv::InputArray image, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors)
@@ -87,12 +87,9 @@ void HahogFeatureDetector::compute(cv::InputArray image, std::vector<cv::KeyPoin
 
 void HahogFeatureDetector::detectAndCompute(cv::InputArray image, cv::InputArray mask, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray& descriptors, bool useProvidedKeypoints)
 {
-    //TODO Currently exploring if we need to do this every time
-    {
-        sift_ = vl_sift_new(16, 16, 1, 3, 0);
-        covdet_ = vl_covdet_new(VL_COVDET_METHOD_HESSIAN);
-    }
-
+    VlCovDet * covdet_ = vl_covdet_new(VL_COVDET_METHOD_HESSIAN);
+ 
+    
     cv::Mat mat = image.getMat();
     //Scale pixels to floating point values between 0 and 1. Vl feat expects this
     mat.convertTo(mat, CV_32FC1, 1.0 / 255.0);
@@ -178,7 +175,5 @@ void HahogFeatureDetector::detectAndCompute(cv::InputArray image, cv::InputArray
     cv::Mat& dst = descriptors.getMatRef();
     cv::Mat descriptorsMat(static_cast<int>(numFeatures), static_cast<int>(dimension), CV_32FC1, desc.data());
     dst = descriptorsMat.clone();
-  
-    vl_sift_delete(sift_);
     vl_covdet_delete(covdet_);
 }

@@ -104,6 +104,6 @@ private:
         const bool cudaEnabled,
         const int numFeatures,
         const double ratio,
-        const int minHessian = 3000
+        const int minHessian = 300
     );
 };
