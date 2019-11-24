@@ -15,7 +15,12 @@ HahogFeatureDetector::~HahogFeatureDetector()
     vl_sift_delete(sift_);
 }
 
-HahogFeatureDetector::HahogFeatureDetector(int targetNumFeatures, float peakThreshold, int edgeThreshold,  bool useAdaptiveSupression) :featuresSize_(targetNumFeatures), peakTreshhold_(peakThreshold),
+HahogFeatureDetector::HahogFeatureDetector(
+    int targetNumFeatures, 
+    float peakThreshold, 
+    int edgeThreshold,  
+    bool useAdaptiveSupression
+) :featuresSize_(targetNumFeatures), peakTreshhold_(peakThreshold),
 edgeThreshold_(edgeThreshold),  useAdaptiveSupression_(useAdaptiveSupression)
 {
     sift_ = vl_sift_new(16, 16, 1, 3, 0);
@@ -25,9 +30,19 @@ HahogFeatureDetector::HahogFeatureDetector()
 {
 }
 
-cv::Ptr<HahogFeatureDetector> HahogFeatureDetector::create(int targetNumFeatures, float peakThreshold, int edgeThreshold,  bool useAdaptiveSupression)
+cv::Ptr<HahogFeatureDetector> HahogFeatureDetector::create(
+    int targetNumFeatures, 
+    float peakThreshold, 
+    int edgeThreshold,  
+    bool useAdaptiveSupression
+)
 {
-    return cv::makePtr<HahogFeatureDetector>(targetNumFeatures, peakThreshold, edgeThreshold,  useAdaptiveSupression);
+    return cv::makePtr<HahogFeatureDetector>(
+        targetNumFeatures, 
+        peakThreshold, 
+        edgeThreshold,  
+        useAdaptiveSupression
+        );
 }
 
 void HahogFeatureDetector::detect(cv::InputArray image, std::vector<cv::KeyPoint>& keypoints, cv::InputArray mask)

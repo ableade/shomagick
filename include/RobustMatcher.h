@@ -12,6 +12,7 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/cudafeatures2d.hpp>
 
+const int MIN_NUMBER_FEATURES = 4000;
 
 class RobustMatcher
 {
@@ -20,8 +21,8 @@ public:
     virtual ~RobustMatcher();
     // creates a robust matcher with chosen feature detection algorithm
     static cv::Ptr<RobustMatcher> create(
-        Feature alg, 
-        int numFeatures = 8000, 
+        Feature alg,
+        int numFeatures = MIN_NUMBER_FEATURES,
         double ratio = 0.8
     );
     // Set the feature detector

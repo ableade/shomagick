@@ -73,7 +73,7 @@ void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
         cout << "Found " << count << " candidate matches for " << currentImageName << endl;
         if (matchSet.size())
         {
-            this->candidateImages[currentImageName] = matchSet;
+            candidateImages[currentImageName] = matchSet;
         }
     }
 }
@@ -103,9 +103,7 @@ int ShoMatcher::extractFeatures()
     set<string> detected;
     if (!candidateImages.size())
         return 0;
-    const auto cudaEnabled = checkIfCudaEnabled();
-    //Only use parallelism if not on a cuda device. Working with one cuda device from  multiple threads is undefined behaviour
-//#pragma omp parallel for if(!cudaEnabled) shared(detected)
+
 #pragma omp parallel for shared(detected)
         for (auto i = 0; i < candidateImages.size(); ++i)
             //for (auto it = candidateImages.begin(); it != candidateImages.end(); it++)

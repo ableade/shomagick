@@ -16,6 +16,7 @@
 #include "utilities.h"
 #include "cudaSurfFeatureDetector.hpp"
 #include "cudaSiftFeatureDetector.h"
+#include "smartsurf.h"
 
 using std::cout;
 using std::cerr;
@@ -160,14 +161,14 @@ cv::Ptr<RobustMatcher> RobustMatcher::createSurfMatcher(const bool cudaEnabled, 
     Ptr<FeatureDetector> extractor;
     if (cudaEnabled)
     {
-        detector = CudaSurfFeatureDetector::create(minHessian);
-        extractor = CudaSurfFeatureDetector::create(minHessian);
+        detector = CudaSurfFeatureDetector::create(numFeatures);
+        extractor = CudaSurfFeatureDetector::create(numFeatures);
         cMatcher = cv::cuda::DescriptorMatcher::createBFMatcher();
     }
     else
     {
-        detector = SURF::create(minHessian);
-        extractor = SURF::create(minHessian);
+        detector = SmartSurfDetector::create(minHessian);
+        extractor = SmartSurfDetector::create(minHessian);
         matcher = cv::makePtr<cv::BFMatcher>();
     }
 

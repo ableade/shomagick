@@ -6,10 +6,12 @@ class CudaSurfFeatureDetector : public cv::Feature2D {
     
 private:
     cv::cuda::SURF_CUDA cudaSurf_;
+    int minFeatures_;
 
 public:
     CudaSurfFeatureDetector(
-        double hessianThreshold, 
+        int minFeatures, 
+        int minHessian=3000,
         int nOctaves =4, 
         int nOctaveLayers =2, 
         bool extended= false, 
@@ -17,8 +19,9 @@ public:
         bool upright = false
     );
 
-    static cv::Ptr<CudaSurfFeatureDetector> create( 
-        double hessianThreshold = 3000, 
+    static cv::Ptr<CudaSurfFeatureDetector> create(
+        int minFeatures = 4000,
+        int minHessian = 3000,
         int nOctaves =4, 
         int nOctaveLayers =2, 
         bool extended= false, 
