@@ -5,7 +5,7 @@
 #include "camera.h"
 #include "bundle.h"
 #include "reconstruction.h"
-#include "ShoTracksGraph.h"
+#include "shotracksgraph.h"
 #include <tuple>
 #include <optional>
 

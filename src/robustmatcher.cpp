@@ -6,7 +6,7 @@
  */
 
 #include "RobustMatcher.h"
-#include "HahogFeatureDetector.h"
+#include "hahogfeaturedetector.h"
 #include <iostream>
 #include <time.h>
 #include <opencv2/cudafeatures2d.hpp>
@@ -14,8 +14,8 @@
 #include <opencv2/xfeatures2d.hpp>
 #include <opencv2/xfeatures2d/cuda.hpp>
 #include "utilities.h"
-#include "cudaSurfFeatureDetector.hpp"
-#include "cudaSiftFeatureDetector.h"
+#include "cudasurf_feature_detector.hpp"
+#include "cudasift_feature_detector.h"
 #include "smartsurf.h"
 
 using std::cout;

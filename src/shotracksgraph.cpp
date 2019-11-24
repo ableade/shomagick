@@ -1,4 +1,4 @@
-#include "ShoTracksGraph.h"
+#include "shotracksgraph.h"
 
 void ShoTracksGraph::_initNodes()
 {

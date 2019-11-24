@@ -1,23 +1,19 @@
 #pragma once
 #include <opencv2/features2d.hpp>
+#include <memory>
 
 extern "C" {
 #include "vl/covdet.h"
 #include "vl/sift.h"
 }
+
 const float HAHOG_PEAK_THRESHOLD = 0.00001;
 const int HAHOG_EDGE_TRESHOLD = 10;
 const bool HAHOG_NORMALIZE_TO_UCHAR = false;
 
-inline VlCovDet * initializeCovdet() {
-    VlCovDet * covdet = vl_covdet_new(VL_COVDET_METHOD_HESSIAN);
-    return covdet;
-}
+VlCovDet * initializeCovdet();
 
-inline void freeCovdet(VlCovDet* covdet) {
-    vl_covdet_delete(covdet);
-}
-
+void freeCovdet(VlCovDet* covdet);
 
 struct CovariantDetectorDeleter
 {

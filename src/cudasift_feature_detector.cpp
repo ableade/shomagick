@@ -1,4 +1,4 @@
-#include "cudaSiftFeatureDetector.h"
+#include "cudasift_feature_detector.h"
 #include "cudasift/cudaImage.h"
 #include "cudasift/cudaSift.h"
 

@@ -1,4 +1,4 @@
-#include "HahogFeatureDetector.h"
+#include "hahogfeaturedetector.h"
 #include "bootstrap.h"
 #include <iostream>
 
@@ -9,6 +9,16 @@ extern "C" {
 }
 
 using cv::KeyPoint;
+
+VlCovDet * initializeCovdet() {
+    VlCovDet * covdet = vl_covdet_new(VL_COVDET_METHOD_HESSIAN);
+    return covdet;
+}
+
+void freeCovdet(VlCovDet* covdet) {
+    vl_covdet_delete(covdet);
+}
+
 
 HahogFeatureDetector::~HahogFeatureDetector()
 {

@@ -46,8 +46,8 @@ add_library(vl ${VLFEAT_SRCS})
 
 add_library(
 	shomagick 
-	${SOURCE_DIR}/RobustMatcher.cpp 
-	${SOURCE_DIR}/HahogFeatureDetector.cpp 
+	${SOURCE_DIR}/robustmatcher.cpp 
+	${SOURCE_DIR}/hahogfeaturedetector.cpp 
 	${SOURCE_DIR}/allclose.cpp 
 	${SOURCE_DIR}/camera.cpp 
 	${SOURCE_DIR}/flightsession.cpp  
@@ -61,8 +61,10 @@ add_library(
 	${SOURCE_DIR}/transformations.cpp  
 	${SOURCE_DIR}/shotracking.cpp  
 	${SOURCE_DIR}/utilities.cpp
-	${SOURCE_DIR}/cudaSurfFeatureDetector.cpp
-	${SOURCE_DIR}/cudaSiftFeatureDetector.cpp
+	${SOURCE_DIR}/cudasurf_feature_detector.cpp
+	${SOURCE_DIR}/cudasift_feature_detector.cpp
+	${SOURCE_DIR}/shotracksgraph.cpp
+
 )
 
 target_compile_features(shomagick PRIVATE cxx_std_17)
