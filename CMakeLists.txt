@@ -64,7 +64,7 @@ add_library(
 	${SOURCE_DIR}/cudasurf_feature_detector.cpp
 	${SOURCE_DIR}/cudasift_feature_detector.cpp
 	${SOURCE_DIR}/shotracksgraph.cpp
-
+	${SOURCE_DIR}/smartsurf.cpp
 )
 
 target_compile_features(shomagick PRIVATE cxx_std_17)
