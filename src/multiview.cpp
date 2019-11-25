@@ -463,7 +463,13 @@ std::vector<float> getMeanByAxis(cv::InputArray data, int axis)
     return means;
 }
 
-transformation_t absolutePoseRansac(opengv::bearingVectors_t bearings, opengv::points_t points, double threshold, int iterations, double probability)
+transformation_t absolutePoseRansac(
+    const opengv::bearingVectors_t& bearings, 
+    const opengv::points_t& points, 
+    double threshold, 
+    int iterations, 
+    double probability
+)
 {
     // create the central adapter
     CentralAbsoluteAdapter adapter(
