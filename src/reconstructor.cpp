@@ -183,7 +183,7 @@ tuple<bool, ReconstructionReport> twoViewResect(opengv::bearingVectors_t bearing
         Eigen::RowVector3d shotTranslation = -shotRotation * translation.transpose();
 
         Mat cvRot;
-        Mat3d cvT;
+        Mat cvT;
         eigen2cv(shotRotation, cvRot);
         eigen2cv(shotTranslation, cvT);
 
