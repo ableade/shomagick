@@ -83,13 +83,15 @@ IF(MSVC)
   target_compile_options(vl PRIVATE /wd4514 /wd4267 /bigobj)
   target_compile_definitions(vl PRIVATE _USE_MATH_DEFINES)
 ELSE()
+  target_compile_options(shomagick PRIVATE -march=native)
   IF (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
     target_compile_options (vl PRIVATE -march=armv8-a)
   ELSEIF (CMAKE_SYSTEM_PROCESSOR MATCHES 
           "(arm)|(ARM)|(armhf)|(ARMHF)|(armel)|(ARMEL)")
 	target_compile_options(vl PRIVATE -march=armv7-a)
   ELSE ()
-    target_compile_options (vl PRIVATE -march=native) #TODO use correct c++11 def once everybody has moved to gcc 4.7 # for now I even removed std=gnu++0x
+	target_compile_options (vl PRIVATE -march=native)
+	target_compile_options(shomagick PRIVATE -march=native)
   ENDIF()
   target_compile_options (vl
   	PRIVATE
