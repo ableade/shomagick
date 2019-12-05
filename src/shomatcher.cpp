@@ -7,6 +7,8 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include "json.hpp"
 #include "bootstrap.h"
+#include "point.h"
+#include "utilities.h"
 #include <set>
 
 using cv::DMatch;
@@ -33,18 +35,37 @@ using json = nlohmann::json;
 ShoMatcher::ShoMatcher(FlightSession flight, int featureSize, RobustMatcher::Feature featureType)
     : flight_(flight)
     , featureSize_(featureSize)
-    , kd_(nullptr)
     , candidateImages()
-    , rMatcher_(RobustMatcher::create(featureType)){}
+    , rMatcher_(RobustMatcher::create(featureType)),
+    kdTreeData_()
+{
+    buildKdTree_();
+}
 
-void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
+void ShoMatcher::getCandidateMatchesUsingKNNSearch(int n)
 {
     set<pair<string, string>> alreadyPaired;
-    buildKdTree();
-    auto imageSet = flight_.getImageSet();
-    for (const auto img : imageSet) {
+    for (const auto & locPair : kdTreeData_) {
         vector<string> matchSet;
-        auto currentImageName = img.getFileName();
+        auto currentImageName = locPair.second;
+        matchSet = kd_.kNearestNeighbours(locPair.first, n);
+        auto matchesCount = matchSet.size();
+        //Remove pairs that have already been matched
+        erase_if(
+            matchSet,
+            [currentImageName, &alreadyPaired](const auto& match) {
+                const auto pair1 = make_pair(currentImageName, match);
+                const auto pair2 = make_pair(match, currentImageName);
+                return (alreadyPaired.find(pair1) != alreadyPaired.end() ||
+                    alreadyPaired.find(pair2) != alreadyPaired.end());
+            }
+        );
+
+        for (const auto & match : matchSet) {
+            alreadyPaired.insert(make_pair(currentImageName, match));
+        }
+
+# if 0
         void *result_set;
 
         double pt[] = { img.getMetadata().location.longitude, img.getMetadata().location.latitude };
@@ -60,7 +81,7 @@ void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
             if (currentImageName != img->getFileName())
             {
                 count++;
-                //Make sure we are matching pairs already matched in reverse order
+                //Make sure we are not matching pairs already matched in reverse order
                 if (alreadyPaired.find(make_pair(currentImageName, img->getFileName())) == alreadyPaired.end()
                     || alreadyPaired.find(make_pair(img->getFileName(), currentImageName)) == alreadyPaired.end()) {
                     alreadyPaired.insert(make_pair(currentImageName, img->getFileName()));
@@ -70,7 +91,8 @@ void ShoMatcher::getCandidateMatchesUsingSpatialSearch(double range)
             }
             kd_res_next(static_cast<kdres *>(result_set));
         }
-        cout << "Found " << count << " candidate matches for " << currentImageName << endl;
+#endif
+        cout << "Found " << matchesCount << " candidate matches for " << currentImageName << endl;
         if (matchSet.size())
         {
             candidateImages[currentImageName] = matchSet;
@@ -226,16 +248,16 @@ void ShoMatcher::runRobustFeatureMatching()
     }
 }
 
-void ShoMatcher::buildKdTree()
+void ShoMatcher::buildKdTree_()
 {
-    kd_ = kd_create(dimensions_);
-    for (auto &img : flight_.getImageSet())
-    {
-        auto pos = vector<double>{ img.getMetadata().location.longitude, img.getMetadata().location.latitude };
-        void *dt = &img;
-        assert(kd_insert(static_cast<kdtree *>(kd_), pos.data(), dt) == 0);
+    for (const auto & img : flight_.getImageSet()) {
+        const auto loc = img.getMetadata().location;
+        vector<double> coordinate{ loc.longitude, loc.latitude };
+        Point<KD_TREE_DIMENSION_SIZE> imgLocation;
+        copy(coordinate.begin(), coordinate.end(), imgLocation.begin());
+        kdTreeData_.push_back(make_pair(imgLocation, img.getFileName()));
     }
-
+    kd_ = KDTree<KD_TREE_DIMENSION_SIZE, std::string>(kdTreeData_);
 }
 
 map<string, std::vector<string>> ShoMatcher::getCandidateImages() const

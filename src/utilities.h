@@ -71,6 +71,12 @@ void erase_if(std::map<Key, Value, Comparator>& container, Predicate shouldRemov
     return erase_if_impl(container, shouldRemove);
 }
 
+template<typename Value, typename Predicate>
+void erase_if(std::vector<Value>& container, Predicate shouldRemove)
+{
+    return erase_if_impl(container, shouldRemove);
+}
+
 template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
