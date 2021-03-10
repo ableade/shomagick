@@ -52,7 +52,6 @@ add_library(
 	${SOURCE_DIR}/camera.cpp 
 	${SOURCE_DIR}/flightsession.cpp  
 	${SOURCE_DIR}/image.cpp 
-	${SOURCE_DIR}/kdtree.cpp 
 	${SOURCE_DIR}/multiview.cpp 
 	${SOURCE_DIR}/reconstruction.cpp 
 	${SOURCE_DIR}/reconstructor.cpp  	
