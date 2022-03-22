@@ -111,6 +111,60 @@ void ShoMatcher::getCandidateMatchesFromFile(string candidatesFile) {
     }
 }
 
+
+/*
+int ShoMatcher::extractFeatures()
+{
+    if (featureSize_ != -1) {
+        auto maxSize = max(flight_.getCamera().getHeight(), flight_.getCamera().getWidth());
+        int fx = flight_.getCamera().getWidth() * featureSize_ / maxSize;
+        int fy = flight_.getCamera().getHeight() * featureSize_ / maxSize;
+        flight_.getCamera().setScaledHeight(fy);
+        flight_.getCamera().setScaledWidth(fx);
+    }
+
+    set<string> detected;
+    if (candidateImages.empty())
+        return 0;
+
+    // Collect all keys from the map into a vector
+    vector<string> keys;
+    for (const auto& kv : candidateImages) {
+        keys.push_back(kv.first);
+    }
+
+    omp_lock_t lock;
+    omp_init_lock(&lock);
+
+#pragma omp parallel for
+    for (int i = 0; i < keys.size(); ++i) {
+        const string& key = keys[i];
+        const auto& images = candidateImages.at(key);
+        bool shouldInsert = false;
+
+        omp_set_lock(&lock);
+        if (detected.find(key) == detected.end() && _extractFeature(key)) {
+            detected.insert(key);
+            shouldInsert = true;
+        }
+        omp_unset_lock(&lock);
+
+        if (shouldInsert) {
+            for (const auto& imgId : images) {
+                omp_set_lock(&lock);
+                if (detected.find(imgId) == detected.end() && _extractFeature(imgId)) {
+                    detected.insert(imgId);
+                }
+                omp_unset_lock(&lock);
+            }
+        }
+    }
+
+    omp_destroy_lock(&lock);
+    return detected.size();
+}
+*/
+
 int ShoMatcher::extractFeatures()
 {
     //set feature process size to -1 to avoid resizing
@@ -242,7 +296,7 @@ void ShoMatcher::runRobustFeatureMatching()
                 matches[i].imgIdx = trainIndex;
             }
             matchSet[trainImg] = matches;
-            cout << queryImg << " - " << trainImg << " has " << matches.size() << "candidate matches" << endl;
+            cout << queryImg << " - " << trainImg << " has " << matches.size() << " candidate matches" << endl;
         }
         flight_.saveMatches(queryImg, matchSet);
     }

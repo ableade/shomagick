@@ -2,7 +2,6 @@
 #include <iostream>
 
 using std::cerr;
-
 using cv::Point3d;
 using cv::Vec3d;
 using std::string;

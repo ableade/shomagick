@@ -1,7 +1,7 @@
 #include "allclose.h"
 #include <vector>
 #include <iostream>
-#include <algorithm> 
+#include <algorithm>
 #include <Eigen/Core>
 
 using std::vector;

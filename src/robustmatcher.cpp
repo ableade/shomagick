@@ -1,14 +1,13 @@
 /*
- * RobustMatcher.cpp
- * Adebodun Adekunle
- * Based on robust matcher code from open cv tutorial 
+ * file: RobustMatcher.cpp
+ * author: Sola Adekunle
+ * 
+ * This class is based on robust matcher implementation from the  cv tutorial 
  * See https://raw.githubusercontent.com/opencv/opencv/master/samples/cpp/tutorial_code/calib3d/real_time_pose_estimation/src/RobustMatcher.h
  */
 
 #include "RobustMatcher.h"
-#include "hahogfeaturedetector.h"
 #include <iostream>
-#include <time.h>
 #include <opencv2/cudafeatures2d.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/xfeatures2d.hpp>
@@ -17,6 +16,7 @@
 #include "cudasurf_feature_detector.hpp"
 #include "cudasift_feature_detector.h"
 #include "smartsurf.h"
+#include "hahogfeaturedetector.h"
 
 using std::cout;
 using std::cerr;

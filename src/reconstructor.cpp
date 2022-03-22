@@ -75,6 +75,7 @@ void singleViewBundleAdjustment(
     const ShoTracksGraph& tg,
     bool usesGPS
 ) {
+    cerr << "Running single view bundle adjustment for " << shotId << "\n";
     BundleAdjuster bundleAdjuster;
     auto shot = rec.getShot(shotId);
     auto camera = shot.getCamera();
@@ -95,9 +96,9 @@ void singleViewBundleAdjustment(
     for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
         auto trackId = tg.getTrackGraph()[*tracksIter].trackName;
         try {
-            const auto track = rec.getCloudPoints().at(stoi(trackId));
-            const auto p = track.getPosition();
-            const auto featureCoords = tg.getTrackGraph()[*tracksIter].fProp.coordinates;
+            const auto& track = rec.getCloudPoints().at(stoi(trackId));
+            const auto& p = track.getPosition();
+            const auto featureCoords = tg.getTrackGraph()[*tracksIter].featureProp.coordinates;
             bundleAdjuster.AddPoint(trackId, p.x, p.y, p.z, true);
             bundleAdjuster.AddObservation(shotId, trackId, featureCoords.x,
                 featureCoords.y);
@@ -250,6 +251,7 @@ void savePartialReconstruction(
 }
 
 void bundle(Reconstruction& rec, const FlightSession& flight, const ShoTracksGraph& tg) {
+    cerr << "Running bundle adjustment \n";
     auto fixCameras = !OPTIMIZE_CAMERA_PARAEMETERS;
     BundleAdjuster bundleAdjuster;
 
@@ -265,7 +267,7 @@ void bundle(Reconstruction& rec, const FlightSession& flight, const ShoTracksGra
     }
 
     for (const auto[id, cloudPoint] : rec.getCloudPoints()) {
-        const auto coord = cloudPoint.getPosition();
+        const auto& coord = cloudPoint.getPosition();
         bundleAdjuster.AddPoint(std::to_string(id), coord.x, coord.y, coord.z,
             false);
     }
@@ -280,7 +282,7 @@ void bundle(Reconstruction& rec, const FlightSession& flight, const ShoTracksGra
                 const auto trackName = tg.getTrackGraph()[*edgesIter].trackName;
                 if (rec.getCloudPoints().find(stoi(trackName)) !=
                     rec.getCloudPoints().end()) {
-                    const auto featureCoords = tg.getTrackGraph()[*edgesIter].fProp.coordinates;
+                    const auto featureCoords = tg.getTrackGraph()[*edgesIter].featureProp.coordinates;
                     bundleAdjuster.AddObservation(shotId, trackName, featureCoords.x,
                         featureCoords.y);
                 }
@@ -293,7 +295,7 @@ void bundle(Reconstruction& rec, const FlightSession& flight, const ShoTracksGra
 
 #if 1
     if (flight.hasGps() && rec.usesGps()) {
-        cout << "Using gps prior \n";
+        cerr << "Using gps prior \n";
         for (const auto[shotId, shot] : rec.getReconstructionShots()) {
             const auto g = shot.getMetadata().gpsPosition;
             bundleAdjuster.AddPositionPrior(shotId, g.x, g.y, g.z, shot.getMetadata().gpsDop);
@@ -347,14 +349,14 @@ void _alignMatchingPoints(const CommonTrack track,
     for (auto edgeIt = edges1Begin; edgeIt != edges1End; ++edgeIt) {
         if (tracks.find(tg.getTrackGraph()[*edgeIt].trackName) != tracks.end()) {
             aPoints1[tg.getTrackGraph()[*edgeIt].trackName] =
-                tg.getTrackGraph()[*edgeIt].fProp.coordinates;
+                tg.getTrackGraph()[*edgeIt].featureProp.coordinates;
         }
     }
 
     for (auto edgeIt = edges2Begin; edgeIt != edges2End; ++edgeIt) {
         if (tracks.find(tg.getTrackGraph()[*edgeIt].trackName) != tracks.end()) {
             aPoints2[tg.getTrackGraph()[*edgeIt].trackName] =
-                tg.getTrackGraph()[*edgeIt].fProp.coordinates;
+                tg.getTrackGraph()[*edgeIt].featureProp.coordinates;
         }
     }
 
@@ -419,13 +421,20 @@ TwoViewPose _computeRotationInliers(opengv::bearingVectors_t& b1, opengv::bearin
     eigen2cv(rotation, rotationCv);
     return { true, rotationCv, Mat(), Mat() };
 }
-
-std::vector<CommonTrack> getCommonTracks(const ShoTracksGraph & stg)
+/*
+* Fetches all pairs of images and the common tracks between them.
+* Skips image pairs that do not have the minimim number of tracks.
+* Sets bootstrap track if bootstrap pair is provided.
+* Places bootstap track as the first element from the returned vector
+*/
+std::vector<CommonTrack> getCommonTracks(const ShoTracksGraph & stg, 
+    const pair<string, string>& overrideImagePair)
 {
     const auto & tg = stg.getTrackGraph();
     auto minCommonTracks = 50;
     vector<CommonTrack> commonTracks;
     map<pair<string, string>, std::set<string>> _commonTracks;
+    CommonTrack bootstrapTrack;
     for (auto& trackNode : stg.getTrackNodes())
     {
         std::string vertexName;
@@ -445,13 +454,19 @@ std::vector<CommonTrack> getCommonTracks(const ShoTracksGraph & stg)
             _commonTracks[combination].insert(vertexName);
         }
     }
-    for (auto pair : _commonTracks) {
-        //Skip pairs that have common tracks less than a length of 50
-        if (pair.second.size() < minCommonTracks)
+    for (auto imagePair : _commonTracks) {
+        //Skip pairs that have common tracks less than a length of 50 unless it is an image pair
+        //that needs to be overidden
+        if (imagePair.second.size() < minCommonTracks && imagePair.first != overrideImagePair)
             continue;
 
-        CommonTrack cTrack(pair.first, 0, pair.second);
-        commonTracks.push_back(cTrack);
+        CommonTrack cTrack(imagePair.first, 0, imagePair.second);
+        if (imagePair.first == overrideImagePair) {
+            commonTracks.insert(commonTracks.begin(), cTrack);
+        }
+        else {
+            commonTracks.push_back(cTrack);
+        }
     }
     return commonTracks;
 }
@@ -528,8 +543,22 @@ Reconstructor<R>::Reconstructor(
 )
     : flight_(flight),
     tg_(tg),
-    shotOrigins(),
-    rInverses() {}
+    shotOrigins_(),
+    rInverses_(),
+    bootstrapTrack_(){}
+
+template <class R>
+Reconstructor<R>::Reconstructor(
+    FlightSession flight,
+    TrackGraph tg,
+    const pair<ImageName, ImageName>& bootstrapPair
+    )
+    : flight_(flight),
+    tg_(tg),
+    bootstrapPair_(bootstrapPair),
+    shotOrigins_(),
+    rInverses_(),
+    bootstrapTrack_(){}
 
 template <class R>
 std::vector<cv::DMatch> Reconstructor<R>::_getTrackDMatchesForImagePair(
@@ -546,13 +575,13 @@ std::vector<cv::DMatch> Reconstructor<R>::_getTrackDMatchesForImagePair(
     for (; im1Edges.first != im1Edges.second; ++im1Edges.first) {
         if (tracks.find(tg_.getTrackGraph()[*im1Edges.first].trackName) != tracks.end()) {
             aPoints1[tg_.getTrackGraph()[*im1Edges.first].trackName] =
-                tg_.getTrackGraph()[*im1Edges.first].fProp.featureNode;
+                tg_.getTrackGraph()[*im1Edges.first].featureProp.featureNode;
         }
     }
     for (; im2Edges.first != im2Edges.second; ++im2Edges.first) {
         if (tracks.find(tg_.getTrackGraph()[*im2Edges.first].trackName) != tracks.end()) {
             aPoints2[tg_.getTrackGraph()[*im2Edges.first].trackName] =
-                tg_.getTrackGraph()[*im2Edges.first].fProp.featureNode;
+                tg_.getTrackGraph()[*im2Edges.first].featureProp.featureNode;
         }
     }
 
@@ -564,6 +593,12 @@ std::vector<cv::DMatch> Reconstructor<R>::_getTrackDMatchesForImagePair(
     assert(imageTrackMatches.size() == tracks.size());
 
     return imageTrackMatches;
+}
+
+template<class R>
+bool Reconstructor<R>::hasBootstrapPair_() const
+{
+    return (!bootstrapPair_.first.empty() && !bootstrapPair_.second.empty());
 }
 
 template <class R>
@@ -629,14 +664,26 @@ inline void Reconstructor<R>::runIncrementalReconstruction(const ShoTracker& tra
         [this] { flight_.undistort(); }
     );
 
+    bool overrideReconsrtructability = false;
     vector<Reconstruction> reconstructions;
     set<string> reconstructionImages;
     for (const auto it : tg_.getImageNodes()) {
         reconstructionImages.insert(it.first);
     }
-    auto commonTracks = getCommonTracks(tg_);
+    auto commonTracks = getCommonTracks(tg_, bootstrapPair_);
+
+    //Set bootstrap track here
+    if (hasBootstrapPair_()) {
+        bootstrapTrack_ = commonTracks[0];
+        commonTracks.erase(commonTracks.begin());
+    }
     computeReconstructability(tg_, commonTracks, flight_, reconstructabilityScorer_);
-    for (const auto& track : commonTracks) {
+    //Replace bootstrap track as the top track.
+    if (hasBootstrapPair_()) {
+        commonTracks.insert(commonTracks.begin(), bootstrapTrack_);
+    }
+    
+    for (const auto& track : commonTracks) {     
         if (reconstructionImages.find(track.imagePair.first) !=
             reconstructionImages.end() &&
             reconstructionImages.find(track.imagePair.second) !=
@@ -797,7 +844,7 @@ void Reconstructor<R>::continueReconstruction(Reconstruction& rec, set<string>& 
                 localBundleAdjustment(imageName, rec);
             }
             auto after = rec.getCloudPoints().size();
-            if (after - before > 0 && before > 0)
+            if (after > before)
             {
                 cerr << "Added " << after - before << " points to the reconstruction \n";
             }
@@ -825,8 +872,8 @@ void Reconstructor<R>::triangulateShotTracks(string image1, Reconstruction &rec)
 
 template <class R>
 void Reconstructor<R>::triangulateTrack(string trackId, Reconstruction& rec) {
-    rInverses.clear();
-    shotOrigins.clear();
+    rInverses_.clear();
+    shotOrigins_.clear();
     auto track = tg_.getTrackNodes().at(trackId);
     std::pair<adjacency_iterator, adjacency_iterator> neighbors =
         boost::adjacent_vertices(track, tg_.getTrackGraph());
@@ -838,8 +885,8 @@ void Reconstructor<R>::triangulateTrack(string trackId, Reconstruction& rec) {
             auto shot = rec.getShot(shotId);
             auto edgePair = boost::edge(track, tg_.getImageNodes().at(shotId), tg_.getTrackGraph());
             auto edgeDescriptor = edgePair.first;
-            auto fCol = tg_.getTrackGraph()[edgeDescriptor].fProp.color;
-            auto fPoint = tg_.getTrackGraph()[edgeDescriptor].fProp.coordinates;
+            auto fCol = tg_.getTrackGraph()[edgeDescriptor].featureProp.color;
+            auto fPoint = tg_.getTrackGraph()[edgeDescriptor].featureProp.coordinates;
             auto fBearing = flight_.getCamera().normalizedPointToBearingVec(fPoint);
             auto origin = getShotOrigin(shot);
             Eigen::Vector3d eOrigin;
@@ -864,8 +911,8 @@ void Reconstructor<R>::triangulateTrack(string trackId, Reconstruction& rec) {
 
 template <class R>
 void Reconstructor<R>::retriangulate(Reconstruction& rec) {
-    rInverses.clear();
-    shotOrigins.clear();
+    rInverses_.clear();
+    shotOrigins_.clear();
     set<string> tracks;
     for (const auto[imageName, shot] : rec.getReconstructionShots()) {
         try {
@@ -891,20 +938,20 @@ void Reconstructor<R>::retriangulate(Reconstruction& rec) {
 template <class R>
 ShoColumnVector3d Reconstructor<R>::getShotOrigin(const Shot& shot) {
     auto shotId = shot.getId();
-    if (shotOrigins.find(shotId) == shotOrigins.end()) {
-        shotOrigins[shotId] = shot.getPose().getOrigin();
+    if (shotOrigins_.find(shotId) == shotOrigins_.end()) {
+        shotOrigins_[shotId] = shot.getPose().getOrigin();
     }
-    return shotOrigins[shotId];
+    return shotOrigins_[shotId];
 }
 
 template <class R>
 Mat Reconstructor<R>::getRotationInverse(const Shot& shot) {
     auto shotId = shot.getId();
-    if (rInverses.find(shotId) == rInverses.end()) {
+    if (rInverses_.find(shotId) == rInverses_.end()) {
         auto rotationInverse = shot.getPose().getRotationMatrixInverse();
-        rInverses[shotId] = rotationInverse;
+        rInverses_[shotId] = rotationInverse;
     }
-    return rInverses[shotId];
+    return rInverses_[shotId];
 }
 
 template <class R>
@@ -959,8 +1006,8 @@ void Reconstructor<R>::localBundleAdjustment(std::string centralShotId, Reconstr
     }
 
     for (const auto pointId : pointIds) {
-        const auto cloudPoint = rec.getCloudPoints().at(stoi(pointId));
-        const auto p = cloudPoint.getPosition();
+        const auto& cloudPoint = rec.getCloudPoints().at(stoi(pointId));
+        const auto& p = cloudPoint.getPosition();
         bundleAdjuster.AddPoint(pointId, p.x, p.y, p.z, false);
     }
 
@@ -970,7 +1017,7 @@ void Reconstructor<R>::localBundleAdjustment(std::string centralShotId, Reconstr
             const auto[edgesBegin, edgesEnd] = boost::out_edges(imageVertex, tg_.getTrackGraph());
             for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
                 const auto trackId = tg_.getTrackGraph()[*tracksIter].trackName;
-                const auto point = tg_.getTrackGraph()[*tracksIter].fProp.coordinates;
+                const auto point = tg_.getTrackGraph()[*tracksIter].featureProp.coordinates;
                 bundleAdjuster.AddObservation(
                     shotId,
                     trackId,
@@ -982,7 +1029,7 @@ void Reconstructor<R>::localBundleAdjustment(std::string centralShotId, Reconstr
     }
 #if 1
     if (flight_.hasGps() && rec.usesGps()) {
-        cout << "Using gps prior \n";
+        cerr << "Using gps prior \n";
         for (const auto[shotId, shot] : rec.getReconstructionShots()) {
             const auto g = shot.getMetadata().gpsPosition;
             bundleAdjuster.AddPositionPrior(shotId, g.x, g.y, g.z, shot.getMetadata().gpsDop);
@@ -1082,7 +1129,7 @@ void Reconstructor<R>::colorReconstruction(Reconstruction & rec)
         const auto trackNode = tg_.getTrackNodes().at(to_string(trackId));
         auto[edgesBegin, _] = boost::out_edges(trackNode, tg_.getTrackGraph());
         edgesBegin++;
-        cp.setColor(tg_.getTrackGraph()[*edgesBegin].fProp.color);
+        cp.setColor(tg_.getTrackGraph()[*edgesBegin].featureProp.color);
     }
 }
 
@@ -1096,8 +1143,10 @@ void Reconstructor<R>::removeOutliers(Reconstruction& rec) {
         return (p.getError() > BUNDLE_OUTLIER_THRESHOLD);
     }
     );
-    const auto removed = before - rec.getCloudPoints().size();
-    cout << "Removed " << removed << " outliers from reconstruction \n";
+    if (before > rec.getCloudPoints().size()) {
+        const auto removed = before - rec.getCloudPoints().size();
+        cout << "Removed " << removed << " outliers from reconstruction \n";
+    }
 }
 
 template <class R>
@@ -1116,9 +1165,9 @@ tuple<bool, ReconstructionReport> Reconstructor<R>::resect(Reconstruction & rec,
     for (auto tracksIter = edgesBegin; tracksIter != edgesEnd; ++tracksIter) {
         const auto trackName = tg_.getTrackGraph()[*tracksIter].trackName;
         if (rec.hasTrack(trackName)) {
-            auto fPoint = tg_.getTrackGraph()[*tracksIter].fProp.coordinates;
+            auto fPoint = tg_.getTrackGraph()[*tracksIter].featureProp.coordinates;
             fPoints.push_back(flight_.getCamera().denormalizeImageCoordinates(fPoint));
-            auto position = rec.getCloudPoints().at(stoi(trackName)).getPosition();
+            const auto& position = rec.getCloudPoints().at(stoi(trackName)).getPosition();
             realWorldPoints.push_back(position);
             Xs.push_back({ position.x, position.y, position.z });
             auto fBearing = flight_.getCamera().normalizedPointToBearingVec(fPoint);
@@ -1127,6 +1176,7 @@ tuple<bool, ReconstructionReport> Reconstructor<R>::resect(Reconstruction & rec,
     }
 
     if (realWorldPoints.size() < 5) {
+        cerr << "Failed to resect image " <<imageVertex<< endl;
         report.numCommonPoints = realWorldPoints.size();
         return make_tuple(false, report);
     }

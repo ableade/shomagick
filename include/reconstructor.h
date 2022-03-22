@@ -106,7 +106,8 @@ void _alignMatchingPoints(const CommonTrack track,
 TwoViewPose _computeRotationInliers(opengv::bearingVectors_t& b1, opengv::bearingVectors_t& b2,
     const opengv::rotation_t& rotation, cv::Mat& cvMask);
 
-std::vector<CommonTrack> getCommonTracks(const ShoTracksGraph &stg);
+std::vector<CommonTrack> getCommonTracks(const ShoTracksGraph &stg, 
+    const std::pair<std::string, std::string>& overrideImagePair);
 
 void _computeTwoViewReconstructionInliers(opengv::bearingVectors_t b1, opengv::bearingVectors_t b2,
     opengv::rotation_t r, opengv::translation_t t);
@@ -145,17 +146,19 @@ public:
 private:
     FlightSession flight_;
     ShoTracksGraph tg_;
-    std::map<std::string, ShoColumnVector3d> shotOrigins;
-    std::map<std::string, cv::Mat> rInverses;
+    std::pair<ImageName, ImageName> bootstrapPair_; //Pair to bootstrap selection(optional)
+    CommonTrack bootstrapTrack_;
+    std::map<std::string, ShoColumnVector3d> shotOrigins_;
+    std::map<std::string, cv::Mat> rInverses_;
     std::vector<cv::DMatch> _getTrackDMatchesForImagePair(const CommonTrack track) const;
+    bool hasBootstrapPair_() const;
     R reconstructabilityScorer_;
 
 public:
     Reconstructor(FlightSession flight, TrackGraph tg);
+    Reconstructor(FlightSession flight, TrackGraph tg, const std::pair<ImageName, ImageName>& bootstrapPair);
     TwoViewPose recoverTwoCameraViewPose(CommonTrack track, cv::Mat& mask);
-    
     void runIncrementalReconstruction(const ShoTracker& tracker);
-
     using OptionalReconstruction = std::optional<Reconstruction>;
     OptionalReconstruction beginReconstruction(CommonTrack track, const ShoTracker& tracker);
     void continueReconstruction(Reconstruction& rec, std::set<std::string>& images);

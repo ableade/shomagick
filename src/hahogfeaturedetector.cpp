@@ -38,6 +38,11 @@ edgeThreshold_(edgeThreshold),  useAdaptiveSupression_(useAdaptiveSupression)
 
 HahogFeatureDetector::HahogFeatureDetector()
 {
+    edgeThreshold_ = 0;
+    peakTreshhold_ = 0;
+    useAdaptiveSupression_ = false;
+    featuresSize_ = 0;
+    sift_ = nullptr;
 }
 
 cv::Ptr<HahogFeatureDetector> HahogFeatureDetector::create(

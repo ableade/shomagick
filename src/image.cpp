@@ -163,7 +163,7 @@ Img::CameraMakeAndModel Img::_extractMakeAndModelFromExif(Exiv2::ExifData exifDa
 
 double Img::_extractDopFromExif(Exiv2::ExifData imageExifData)
 {
-    const auto dop = 0.0;
+    const auto dop = 15.0; //default is 15. Cannot be 0. Will cause INF error in bundle adjustment step
     const auto dopKey = Exiv2::ExifKey("Exif.GPSInfo.GPSDOP");
     const auto dopIt = imageExifData.findKey(dopKey);
     if (dopIt != imageExifData.end()) {

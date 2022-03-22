@@ -83,7 +83,7 @@ Pose Pose::poseInverse() const {
     inv.setRotationVector(Mat(transposedRotation));
     cv::transpose(-r, transposedRotation);
     auto inverseTranslation = transposedRotation * Mat(translation);
-    inv.setTranslation(inverseTranslation);
+    inv.setTranslation(Mat(inverseTranslation));
     return inv;
 }
 
@@ -93,7 +93,7 @@ Pose Pose::compose(const Pose& other) const {
     auto nR = (r * otherR);
     auto nT = (r * Mat(other.getTranslation())) + getTranslation();
     Pose p;
-    p.setTranslation(nT);
+    p.setTranslation(Mat(nT));
     p.setRotationVector(Mat(nR));
     return p;
 }

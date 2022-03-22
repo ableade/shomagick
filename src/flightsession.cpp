@@ -301,7 +301,7 @@ void FlightSession::undistort()
     for (auto img : imageSet) {
         auto imagePath = imageDirectoryPath_ / img.getFileName();
         auto undistortedImagePath = undistortedImagesPath_ / img.getFileName();
-
+        undistortedImagePath.replace_extension("png");
         if (boost::filesystem::exists(undistortedImagePath))
             continue;
 
@@ -315,7 +315,6 @@ void FlightSession::undistort()
             undistortedImage,
             camera_.getKMatrix(),
             camera_.getDistortionMatrix());
-        undistortedImagePath.replace_extension("png");
         cv::imwrite(undistortedImagePath.string(), undistortedImage);
     }
 

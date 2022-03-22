@@ -5,6 +5,7 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/undirected_graph.hpp>
 
+
 typedef std::string ImageName;
 typedef int KeyPointIndex;
 typedef std::pair<ImageName, KeyPointIndex> ImageFeatureNode;
@@ -21,6 +22,9 @@ struct VertexProperty
 
 };
 
+/*
+Encapsulates all the properties of a feature in an image.
+*/
 struct FeatureProperty
 {
     ImageFeatureNode featureNode;
@@ -32,13 +36,16 @@ struct FeatureProperty
     FeatureProperty(ImageFeatureNode fNode, cv::Point2d coordinates, cv::Scalar color, double scale) : featureNode(fNode), coordinates(coordinates), color(color), scale(scale) {}
 };
 
+/*
+Encapsulates all the properties of an edge between images.
+*/
 struct EdgeProperty {
-    FeatureProperty fProp;
+    FeatureProperty featureProp;
     std::string trackName;
     std::string imageName;
 
-    EdgeProperty() : fProp(), trackName(), imageName() {}
-    EdgeProperty(FeatureProperty fProp, std::string trackName, std::string imageName) : fProp(fProp), trackName(trackName), imageName(imageName) {}
+    EdgeProperty() : featureProp(), trackName(), imageName() {}
+    EdgeProperty(FeatureProperty fProp, std::string trackName, std::string imageName) : featureProp(fProp), trackName(trackName), imageName(imageName) {}
 };
 
 using ShoOutEdgeListS = boost::listS;

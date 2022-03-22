@@ -1,5 +1,4 @@
 #pragma once
-#include <math.h>
 
 #ifdef CV_LOAD_IMAGE_COLOR
 #   define SHO_LOAD_COLOR_IMAGE_OPENCV_ENUM    CV_LOAD_IMAGE_COLOR
