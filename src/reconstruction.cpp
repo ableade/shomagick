@@ -182,7 +182,7 @@ void Reconstruction::applySimilarity(double s, Matx33d a, ShoColumnVector3d b)
         //std::cout << "Track id is " << trackId << "\n";
         const auto pointCoordinates = Mat(convertVecToRowVector(cp.getPosition()));
         //std::cout << "Point coordinates are " << pointCoordinates << "\n";
-        ShoColumnVector3d alignedCoordinate = (s *a) * (pointCoordinates);
+        ShoColumnVector3d alignedCoordinate = Mat((s *a) * (pointCoordinates));
         //std::cout << "Aligned coordinate before adding b is " << alignedCoordinate << "\n";
         alignedCoordinate += b;
         cp.setPosition(Point3d{ alignedCoordinate(0,0), alignedCoordinate(1,0), alignedCoordinate(2,0) });

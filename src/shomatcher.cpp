@@ -242,7 +242,7 @@ void ShoMatcher::runRobustFeatureMatching()
                 matches[i].imgIdx = trainIndex;
             }
             matchSet[trainImg] = matches;
-            cout << queryImg << " - " << trainImg << " has " << matches.size() << "candidate matches" << endl;
+            cout << queryImg << " - " << trainImg << " has " << matches.size() << " candidate matches" << endl;
         }
         flight_.saveMatches(queryImg, matchSet);
     }
