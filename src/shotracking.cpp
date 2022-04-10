@@ -10,7 +10,7 @@ using cv::Point2d;
 using cv::Scalar;
 using std::cout;
 using std::make_pair;
-using std::map;
+using std::unordered_map;
 using std::pair;
 using std::set;
 using std::to_string;
@@ -105,7 +105,7 @@ void ShoTracker::createTracks(const vector<pair<ImageFeatureNode, ImageFeatureNo
     }
     cerr << "Created a total of " << uf.numDisjointSets() << " tracks" << endl;
 
-    //Filter out bad tracks
+    //Filter out bad tracks`
     for (const auto&[imageFeatureNode, index] : imageFeatureNodes_)
     {
         int dSet = uf.findSet(index);
@@ -200,7 +200,7 @@ bool ShoTracker::addFeatureToIndex(pair<string, int> feature, int featureIndex)
     return wasAdded;
 }
 
-map <int, vector <int>> ShoTracker::getTracks()
+unordered_map <int, vector <int>> ShoTracker::getTracks()
 {
     return tracks_;
 }
@@ -211,10 +211,10 @@ std::pair<string, int> ShoTracker::retrieveFeatureByIndexValue(int index)
     return reverseImageFeatureNodes_[index];
 }
 
-const std::map<string, TrackGraph::vertex_descriptor> ShoTracker::getImageNodes() const {
+const unordered_map<string, TrackGraph::vertex_descriptor> ShoTracker::getImageNodes() const {
     return imageNodes_;
 }
 
-const std::map<string, TrackGraph::vertex_descriptor> ShoTracker::getTrackNodes() const {
+const unordered_map<string, TrackGraph::vertex_descriptor> ShoTracker::getTrackNodes() const {
     return trackNodes_;
 }

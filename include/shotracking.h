@@ -5,9 +5,23 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/undirected_graph.hpp>
 
+// A hash function used to hash a pair of any kind
+struct hash_pair {
+    template <class T1, class T2>
+    size_t operator()(const std::pair<T1, T2>& p) const
+    {
+        auto hash1 = std::hash<T1>{}(p.first);
+        auto hash2 = std::hash<T2>{}(p.second);
+        return hash1 ^ hash2;
+    }
+};
+
+
 typedef std::string ImageName;
+typedef int GloballyUniqueImageFeatureId;
 typedef int KeyPointIndex;
 typedef std::pair<ImageName, KeyPointIndex> ImageFeatureNode;
+typedef  std::unordered_map<ImageFeatureNode, GloballyUniqueImageFeatureId, hash_pair> UmFeatureNodes;
 
 std::set<std::pair<std::string, std::string>> _getCombinations(const std::vector<std::string>& images);
 
@@ -103,19 +117,15 @@ private:
     using ImageName = std::string;
     using CandidateImageNames = std::vector<ImageName>;
     std::map<ImageName, CandidateImageNames> mapOfImageNamesToCandidateImages;
-
-public:
-    typedef int GloballyUniqueImageFeatureId;
-private:
-    std::map<ImageFeatureNode, GloballyUniqueImageFeatureId> imageFeatureNodes_;
-    std::map<GloballyUniqueImageFeatureId, ImageFeatureNode> reverseImageFeatureNodes_;
-    std::map<int, std::vector<int>> tracks_;
+    UmFeatureNodes imageFeatureNodes_;
+    std::unordered_map<GloballyUniqueImageFeatureId, ImageFeatureNode> reverseImageFeatureNodes_;
+    std::unordered_map<int, std::vector<int>> tracks_;
     UnionFind uf;
     int minTrackLength_ = 2;
     bool addFeatureToIndex(std::pair<std::string, int> feature, int featureIndex);
-    std::map<std::string, TrackGraph::vertex_descriptor> imageNodes_;
-    std::map<std::string, TrackGraph::vertex_descriptor> trackNodes_;
-    std::map<std::string, ImageFeatures> imageFeatures;
+    std::unordered_map<std::string, TrackGraph::vertex_descriptor> imageNodes_;
+    std::unordered_map<std::string, TrackGraph::vertex_descriptor> trackNodes_;
+    std::unordered_map<std::string, ImageFeatures> imageFeatures;
     FeatureProperty getFeatureProperty_(const ImageFeatures& imageFeatures, ImageFeatureNode fNode) const;
     ImageFeatures _loadImageFeatures(const std::string fileName);
 
@@ -126,8 +136,8 @@ public:
     void mergeFeatureTracks(ImageFeatureNode feature1, ImageFeatureNode feature2);
     void createFeatureNodes(std::vector<std::pair<ImageFeatureNode, ImageFeatureNode>>& allFeatures,
         std::vector<FeatureProperty> & props);
-    std::map <int, std::vector <int>> getTracks();
+    std::unordered_map<int, std::vector <int>> getTracks();
     ImageFeatureNode retrieveFeatureByIndexValue(int index);
-    const std::map<std::string, TrackGraph::vertex_descriptor> getTrackNodes() const;
-    const std::map<std::string, TrackGraph::vertex_descriptor> getImageNodes() const;
+    const std::unordered_map<std::string, TrackGraph::vertex_descriptor> getTrackNodes() const;
+    const std::unordered_map<std::string, TrackGraph::vertex_descriptor> getImageNodes() const;
 };
